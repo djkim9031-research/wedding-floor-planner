@@ -471,9 +471,13 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
     roof.add(im);
   }
 
-  // ridge skylight strip + thin white bars
-  skyGlassG.push(slopedBox(SKY0, RIDGE_X, 0.5, -60, 640, 1));
-  skyGlassG.push(slopedBox(RIDGE_X, SKY1, 0.5, -60, 640, 1));
+  // ridge strip: opaque white panels (they pass no light) except one small
+  // transparent patch near the deck — per the satellite view
+  const GLASS_Z1 = 90;
+  skyGlassG.push(slopedBox(SKY0, RIDGE_X, 0.5, -60, GLASS_Z1, 1));
+  skyGlassG.push(slopedBox(RIDGE_X, SKY1, 0.5, -60, GLASS_Z1, 1));
+  whiteRoofG.push(slopedBox(SKY0, RIDGE_X, 1, GLASS_Z1, 640, 1));
+  whiteRoofG.push(slopedBox(RIDGE_X, SKY1, 1, GLASS_Z1, 640, 1));
   const skyGlass = merged(
     skyGlassG,
     new THREE.MeshStandardMaterial({
@@ -776,49 +780,52 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   rails.castShadow = true;
   group.add(rails);
 
-  // canopy — alternating reed and skylight bays; it all rides the roof group
-  // so the ceiling toggle clears the walk. Glass never casts shadows; the
-  // white glazing bars do, which is what draws the grid on the pavers.
-  const BAY_N = 11;
-  const BAY_D = (BW_Z1 - BW_Z0) / BAY_N;
+  // canopy — per the satellite: a continuous glazed ridge spine, plus exactly
+  // two asymmetric skylight groups: west slope near the entrance, east slope
+  // near the venue. Everything else is reed. Rides the roof group so the
+  // ceiling toggle clears the walk; glass never casts shadows, the white
+  // glazing bars do (they draw the grid on the pavers).
   const bwReedG: Geo[] = [];
   const bwTopG: Geo[] = [];
   const bwGlassG: Geo[] = [];
   const bwBarG: Geo[] = [];
   const bwWhiteG: Geo[] = [];
-  for (let k = 0; k < BAY_N; k++) {
-    const z0 = BW_Z0 + k * BAY_D;
-    const z1 = z0 + BAY_D;
-    if (k % 2) {
-      // skylight bay: big glass bands eave-strip to ridge cap on both slopes
-      bwReedG.push(bwSlopedPlane(BW_X0, 140, z0, z1, 0, false));
-      bwReedG.push(bwSlopedPlane(405, BW_X1, z0, z1, 0, false));
-      bwTopG.push(bwSlopedPlane(BW_X0, 140, z0, z1, 3, true));
-      bwTopG.push(bwSlopedPlane(405, BW_X1, z0, z1, 3, true));
-      for (const [ga, gb] of [
-        [140, 266.5],
-        [278.5, 405],
-      ] as const) {
-        bwGlassG.push(bwSlopedBox(ga, gb, 0.5, z0 + 2, z1 - 2, 1));
-        for (let j = 1; j <= 3; j++) {
-          const px = ga + ((gb - ga) * j) / 4;
-          bwBarG.push(bwSlopedBox(px - 0.75, px + 0.75, 1.5, z0 + 2, z1 - 2, 1.6));
-        }
-        for (let j = 0; j <= 4; j++) {
-          const pz = z0 + 2 + ((z1 - z0 - 4) * j) / 4;
-          bwBarG.push(bwSlopedBox(ga, gb, 1.5, pz - 0.75, pz + 0.75, 1.6));
-        }
-      }
-    } else {
-      // reed bay; a narrow ridge strip keeps the skylight spine continuous
-      bwReedG.push(bwSlopedPlane(BW_X0, 252.5, z0, z1, 0, false));
-      bwReedG.push(bwSlopedPlane(292.5, BW_X1, z0, z1, 0, false));
-      bwTopG.push(bwSlopedPlane(BW_X0, 252.5, z0, z1, 3, true));
-      bwTopG.push(bwSlopedPlane(292.5, BW_X1, z0, z1, 3, true));
-      bwGlassG.push(bwSlopedBox(252.5, 266.5, 0.5, z0, z1, 1));
-      bwGlassG.push(bwSlopedBox(278.5, 292.5, 0.5, z0, z1, 1));
+
+  // continuous ridge spine
+  bwGlassG.push(bwSlopedBox(252.5, 266.5, 0.5, BW_Z0, BW_Z1, 1));
+  bwGlassG.push(bwSlopedBox(278.5, 292.5, 0.5, BW_Z0, BW_Z1, 1));
+
+  const GROUP_E: [number, number] = [1360, 1660]; // east slope, venue side
+  const GROUP_W: [number, number] = [1520, 1820]; // west slope, entrance side
+
+  const slopeSeg = (xa: number, xb: number, z0: number, z1: number) => {
+    if (z1 <= z0) return;
+    bwReedG.push(bwSlopedPlane(xa, xb, z0, z1, 0, false));
+    bwTopG.push(bwSlopedPlane(xa, xb, z0, z1, 3, true));
+  };
+  // west slope: reed except the west group band (x 140..252.5)
+  slopeSeg(BW_X0, 252.5, BW_Z0, GROUP_W[0]);
+  slopeSeg(BW_X0, 252.5, GROUP_W[1], BW_Z1);
+  slopeSeg(BW_X0, 140, GROUP_W[0], GROUP_W[1]);
+  // east slope: reed except the east group band (x 292.5..405)
+  slopeSeg(292.5, BW_X1, BW_Z0, GROUP_E[0]);
+  slopeSeg(292.5, BW_X1, GROUP_E[1], BW_Z1);
+  slopeSeg(405, BW_X1, GROUP_E[0], GROUP_E[1]);
+
+  const skylightGroup = (ga: number, gb: number, z0: number, z1: number) => {
+    bwGlassG.push(bwSlopedBox(ga, gb, 0.5, z0, z1, 1));
+    for (let j = 1; j <= 3; j++) {
+      const px = ga + ((gb - ga) * j) / 4;
+      bwBarG.push(bwSlopedBox(px - 0.75, px + 0.75, 1.5, z0, z1, 1.6));
     }
-  }
+    const nCross = Math.round((z1 - z0) / 50);
+    for (let j = 0; j <= nCross; j++) {
+      const pz = z0 + ((z1 - z0) * j) / nCross;
+      bwBarG.push(bwSlopedBox(ga, gb, 1.5, pz - 0.75, pz + 0.75, 1.6));
+    }
+  };
+  skylightGroup(140, 252.5, GROUP_W[0], GROUP_W[1]);
+  skylightGroup(292.5, 405, GROUP_E[0], GROUP_E[1]);
 
   // ridge cap, ridge beam, post headers, fascias
   bwTopG.push(bwSlopedBox(266.5, RIDGE_X, 3, BW_Z0, BW_Z1, 0));
@@ -852,7 +859,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
 
   const bwReedTex = reed.clone();
   const bwSlopeLen = Math.hypot(BW_HALF - 40, (BW_HALF - 40) * SLOPE);
-  bwReedTex.repeat.set(bwSlopeLen / 64, BAY_D / 64);
+  bwReedTex.repeat.set(bwSlopeLen / 64, 145 / 64);
   bwReedTex.needsUpdate = true;
   const bwReedMesh = merged(bwReedG, new THREE.MeshStandardMaterial({ map: bwReedTex, roughness: 0.92, metalness: 0 }));
   const bwTopMesh = merged(bwTopG, new THREE.MeshStandardMaterial({ color: 0x9a8f80, roughness: 0.95, metalness: 0 }));

@@ -201,13 +201,27 @@ button.ui-btn.danger:hover {
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
   background: var(--ivory);
   border: 1px solid var(--hairline);
   border-radius: 14px;
   box-shadow: var(--shadow);
   padding: 8px;
   z-index: 10;
+  max-width: calc(100vw - 560px); /* clear of the status panel */
+}
+
+.palette-cards {
+  display: flex;
+  gap: 8px;
+}
+
+.palette-nav {
+  font-size: 20px;
+  min-width: 30px;
+  padding: 6px 4px;
+  align-self: stretch;
 }
 
 .palette-card {
@@ -544,8 +558,8 @@ button.ui-btn.danger:hover {
     left: 8px;
     right: 8px;
     transform: none;
-    overflow-x: auto;
-    justify-content: flex-start;
+    max-width: none;
+    justify-content: space-between;
   }
   .status-panel {
     right: 8px;

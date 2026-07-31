@@ -31,6 +31,46 @@ export function buildPalette(
   bar.className = 'palette';
   root.appendChild(bar);
 
+  const prev = document.createElement('button');
+  prev.className = 'ui-btn palette-nav';
+  prev.textContent = '‹';
+  prev.title = 'Previous items';
+  const cardsWrap = document.createElement('div');
+  cardsWrap.className = 'palette-cards';
+  const next = document.createElement('button');
+  next.className = 'ui-btn palette-nav';
+  next.textContent = '›';
+  next.title = 'More items';
+  bar.append(prev, cardsWrap, next);
+
+  const cards: HTMLButtonElement[] = [];
+  let page = 0;
+  const pageSize = (): number => {
+    const w = window.innerWidth;
+    return w >= 1250 ? 6 : w >= 1000 ? 5 : w >= 800 ? 4 : 3;
+  };
+  const renderPage = (): void => {
+    const n = pageSize();
+    const pages = Math.ceil(cards.length / n);
+    page = Math.min(page, pages - 1);
+    cards.forEach((c, i) => {
+      c.style.display = i >= page * n && i < (page + 1) * n ? '' : 'none';
+    });
+    prev.disabled = page === 0;
+    next.disabled = page >= pages - 1;
+    prev.style.visibility = pages > 1 ? 'visible' : 'hidden';
+    next.style.visibility = pages > 1 ? 'visible' : 'hidden';
+  };
+  prev.addEventListener('click', () => {
+    page = Math.max(0, page - 1);
+    renderPage();
+  });
+  next.addEventListener('click', () => {
+    page += 1;
+    renderPage();
+  });
+  window.addEventListener('resize', renderPage);
+
   for (const type of CARD_TYPES) {
     const card = document.createElement('button');
     card.className = 'palette-card';
@@ -95,6 +135,8 @@ export function buildPalette(
       window.addEventListener('pointercancel', cancel);
     });
 
-    bar.appendChild(card);
+    cardsWrap.appendChild(card);
+    cards.push(card);
   }
+  renderPage();
 }

@@ -177,6 +177,14 @@ if (presetName) {
 if (params.get('demo') === 'qcc') {
   store.placeItem('tableQ', { x: 272.5, z: 300, yawDeg: 0 });
   store.placeItem('clothA', { x: 272.5, z: 300, yawDeg: 0 });
+} else if (params.get('demo') === 'deck') {
+  store.placeItem('table', { x: 200, z: -160, yawDeg: 40 });
+  store.placeItem('clothA', { x: 200, z: -160, yawDeg: 40 });
+  store.placeItem('tableSq', { x: 420, z: -220, yawDeg: 10 });
+  store.placeItem('lantern30', { x: 330, z: -110, yawDeg: 0 });
+  store.placeItem('lantern24', { x: 140, z: -260, yawDeg: 0 });
+  store.placeItem('chair', { x: 455, z: -185, yawDeg: 190 });
+  store.placeItem('figureM', { x: 380, z: -280, yawDeg: 140 });
 } else if (params.get('demo') === 'dinner') {
   // the planned rental setup: 3-table block, cloth, bistro chairs, settings,
   // lanterns, and a privacy hedge + screen

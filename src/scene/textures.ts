@@ -449,3 +449,171 @@ export function valleyTexture(): THREE.CanvasTexture {
   t.wrapT = THREE.ClampToEdgeWrapping;
   return t;
 }
+
+// ---------------------------------------------------------------------------
+// Bay Area panorama — full 360°, painted by true compass bearing and rotated
+// for the facade azimuth (model −z faces true 50°). The venue sits on a hill:
+// foreground trees/roofs fall away below the horizon in every direction.
+//   NE–E: bay water, Dumbarton Bridge, Fremont hills beyond
+//   SE–S: rolling gold-green hills, Stanford (Hoover Tower) in the distance
+//   SW–W: closer wooded ridgeline (higher horizon)
+//   NW–N: trees and rooftops rolling downhill
+// ---------------------------------------------------------------------------
+
+export function bayPanoramaTexture(): THREE.CanvasTexture {
+  const W = 2048;
+  const H = 512;
+  const ctx = makeCanvas(W, H);
+  const rnd = mulberry32(0xba1);
+  const HORIZON = H * 0.42;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const trueAzAt = (col: number): number => {
+    const th = (col / W) * Math.PI * 2;
+    const modelAz = (Math.atan2(Math.sin(th), -Math.cos(th)) * 180) / Math.PI;
+    return (((modelAz + 50) % 360) + 360) % 360;
+  };
+  // sector weight with soft edges (degrees)
+  const sector = (az: number, a0: number, a1: number, feather = 18): number => {
+    const inRange = (x: number) => {
+      const d0 = ((x - a0 + 540) % 360) - 180;
+      const d1 = ((a1 - x + 540) % 360) - 180;
+      if (d0 < -feather || d1 < -feather) return 0;
+      return Math.min(1, Math.min(d0, d1) / feather + 1);
+    };
+    return Math.max(0, Math.min(1, inRange(az)));
+  };
+
+  const smooth: number[] = [];
+  for (let x = 0; x < W; x++) smooth.push(rnd());
+
+  // 1. far ridge (hazy) — higher & closer toward the west
+  ctx.fillStyle = '#a3b2c0';
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let x = 0; x <= W; x++) {
+    const az = trueAzAt(x);
+    const west = sector(az, 205, 320, 30);
+    const bay = sector(az, 15, 95, 25);
+    const base = HORIZON - 14 - west * 66 - Math.sin(x * 0.012) * 8 - Math.sin(x * 0.0031) * 14 * (1 + west);
+    ctx.lineTo(x, base + bay * 26); // ridge sits lower behind the bay
+  }
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  ctx.fill();
+
+  // 2. bay water + Dumbarton Bridge (NE–E)
+  for (let x = 0; x < W; x++) {
+    const az = trueAzAt(x);
+    const bay = sector(az, 18, 92, 22);
+    if (bay <= 0.02) continue;
+    const top = HORIZON + 4;
+    const bot = HORIZON + 34;
+    const g = ctx.createLinearGradient(0, top, 0, bot);
+    g.addColorStop(0, `rgba(168,191,201,${0.9 * bay})`);
+    g.addColorStop(1, `rgba(150,172,182,${0.85 * bay})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(x, top, 1.2, bot - top);
+    // bridge line with low truss humps mid-bay
+    const brid = sector(az, 38, 72, 8);
+    if (brid > 0.05) {
+      ctx.fillStyle = `rgba(74,82,94,${0.9 * brid})`;
+      const by = HORIZON + 13 - Math.max(0, Math.sin((az - 40) / 10) * 2.5);
+      ctx.fillRect(x, by, 1.2, 1.6);
+      if (Math.abs(az - 52) < 1.2 || Math.abs(az - 60) < 1.2) {
+        ctx.fillRect(x, by - 4, 1.2, 4); // truss towers
+      }
+    }
+  }
+
+  // 3. mid rolling hills (gold-green, more gold to the south)
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  const midTops: number[] = [];
+  for (let x = 0; x <= W; x++) {
+    const az = trueAzAt(x);
+    const west = sector(az, 200, 325, 35);
+    const bay = sector(az, 18, 92, 22);
+    const y =
+      HORIZON +
+      18 +
+      bay * 22 -
+      west * 20 +
+      Math.sin(x * 0.02 + 2) * 6 +
+      Math.sin(x * 0.0055) * 10;
+    midTops.push(y);
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  const midGrad = ctx.createLinearGradient(0, HORIZON, 0, H);
+  midGrad.addColorStop(0, '#93a276');
+  midGrad.addColorStop(1, '#7c8d63');
+  ctx.fillStyle = midGrad;
+  ctx.fill();
+
+  // Stanford cluster + Hoover Tower (true az ~145)
+  for (let x = 0; x < W; x++) {
+    const az = trueAzAt(x);
+    if (Math.abs(az - 145) < 3.2) {
+      const y = midTops[x] - 2;
+      ctx.fillStyle = '#b8a58c';
+      ctx.fillRect(x, y - 3.5, 1.4, 3.5);
+      if (Math.abs(az - 145) < 0.5) {
+        ctx.fillRect(x - 1, y - 15, 3, 15); // Hoover Tower
+        ctx.fillStyle = '#9a4f3c';
+        ctx.fillRect(x - 1.4, y - 17.5, 3.8, 3);
+      }
+    }
+  }
+
+  // 4. near treetops + rooftops falling away downhill
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  const treeTops: number[] = [];
+  for (let x = 0; x <= W; x++) {
+    const az = trueAzAt(x);
+    const west = sector(az, 205, 320, 30);
+    const n = smooth[(x / 6) | 0] ?? 0.5;
+    const y = HORIZON + 44 - west * 12 + Math.sin(x * 0.06) * 5 + n * 14;
+    treeTops.push(y);
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  const treeGrad = ctx.createLinearGradient(0, HORIZON + 20, 0, H);
+  treeGrad.addColorStop(0, '#57683f');
+  treeGrad.addColorStop(1, '#3c4a2e');
+  ctx.fillStyle = treeGrad;
+  ctx.fill();
+  // canopy scallops + rooftop speckles between the trees
+  for (let i = 0; i < 900; i++) {
+    const x = (rnd() * W) | 0;
+    const az = trueAzAt(x);
+    const y = treeTops[x] + rnd() * (H - treeTops[x]) * 0.6;
+    if (rnd() < 0.24 && sector(az, 320, 200, 30) > 0.3) {
+      ctx.fillStyle = rnd() < 0.5 ? '#b4917a' : '#cfc5b2'; // roofs among the trees
+      ctx.fillRect(x, y, 5 + rnd() * 7, 2.5 + rnd() * 2);
+    } else {
+      ctx.fillStyle = rnd() < 0.5 ? '#4a5a3c' : '#33402a';
+      ctx.beginPath();
+      ctx.arc(x, y, 3 + rnd() * 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 5. haze wash toward the horizon line
+  const haze = ctx.createLinearGradient(0, HORIZON - 30, 0, HORIZON + 60);
+  haze.addColorStop(0, 'rgba(220,228,236,0.55)');
+  haze.addColorStop(1, 'rgba(220,228,236,0)');
+  ctx.fillStyle = haze;
+  ctx.fillRect(0, HORIZON - 30, W, 90);
+
+  const t = new THREE.CanvasTexture(ctx.canvas);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  t.anisotropy = 8;
+  return t;
+}

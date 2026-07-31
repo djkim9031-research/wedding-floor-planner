@@ -91,6 +91,10 @@ export const DECK_POLY: Vec2[] = [
 /** The single oak rising through the central deck (per the venue photos). */
 export const DECK_TREES: Vec2[] = [{ x: 287, z: -190 }];
 
+/** Zones where items may be placed: the room, and the Tree Deck (an item
+ * must fit fully inside one zone — nothing halfway through the glass wall). */
+export const PLACEMENT_AREAS: Vec2[][] = [ROOM_POLYGON, DECK_POLY];
+
 /** Where the stand-here camera may walk: room, deck, hallways, bathrooms,
  * and the entry breezeway. */
 export const WALK_AREAS: Vec2[][] = [

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { i2m, DECK_POLY, DECK_TREES, ROOM_W, ROOM_D, EAVE_Y } from '../constants';
-import { deckWoodTexture, skyTexture, valleyTexture } from './textures';
+import { bayPanoramaTexture, deckWoodTexture, skyTexture } from './textures';
 
 type Geo = THREE.BufferGeometry;
 
@@ -233,12 +233,12 @@ export function buildExterior(): THREE.Group {
   oak(1, 240, -620, 4, 1, -0.5, 280, -90);
 
   // -------------------------------------------------------------------------
-  // South campus — hip-roofed wings flanking the breezeway, entry court with
-  // the drop-off circle, dry-grass ground so the massing sits on something.
-  // The court sits one terrace (10") below the wing grade.
+  // South campus — neighboring masses ring two open courtyards off the
+  // breezeway, entry court with the drop-off circle, dry-grass ground so the
+  // massing sits on something. The court sits one terrace (10") below grade.
   // -------------------------------------------------------------------------
   const grass = merged(
-    [box(-1500, 1900, -3, -1, 600, 2160), box(-1500, 1900, -13, -11, 2160, 3150)],
+    [box(-2100, 3400, -3, -1, 300, 2160), box(-2100, 3400, -13, -11, 2160, 3150)],
     new THREE.MeshStandardMaterial({ color: 0xc9bfa3, roughness: 1, metalness: 0 }),
   );
   grass.receiveShadow = true;
@@ -246,7 +246,7 @@ export function buildExterior(): THREE.Group {
 
   // terrace edge where the grade steps down to the court
   const ledge = merged(
-    [box(-1500, 70, -13, -0.9, 2154, 2162), box(475, 1900, -13, -0.9, 2154, 2162)],
+    [box(-2100, 70, -13, -0.9, 2154, 2162), box(475, 3400, -13, -0.9, 2154, 2162)],
     new THREE.MeshStandardMaterial({ color: 0x8d8579, roughness: 0.95, metalness: 0 }),
   );
   ledge.castShadow = true;
@@ -264,35 +264,60 @@ export function buildExterior(): THREE.Group {
     const t = up ? [a, b, c, a, c, d] : [a, d, c, a, c, b];
     for (const p of t) hipPos.push(i2m(p[0]), i2m(p[1]), i2m(p[2]));
   };
-  const hip = (x0: number, x1: number, z0: number, z1: number) => {
+  const hip = (x0: number, x1: number, z0: number, z1: number, ridge = 200) => {
     wingWallG.push(box(x0, x1, -2, EAVE_Y, z0, z1));
     const ov = 20;
-    const zc = (z0 + z1) / 2;
-    const ins = (z1 - z0) / 2;
     const e0 = [x0 - ov, 106, z0 - ov];
     const e1 = [x1 + ov, 106, z0 - ov];
     const e2 = [x1 + ov, 106, z1 + ov];
     const e3 = [x0 - ov, 106, z1 + ov];
-    const r0 = [x0 + ins, 200, zc];
-    const r1 = [x1 - ins, 200, zc];
-    quad(e0, e1, r1, r0);
-    quad(e3, e2, r1, r0);
-    quad(e3, e0, r0, r0);
-    quad(e1, e2, r1, r1);
+    if (x1 - x0 >= z1 - z0) {
+      const zc = (z0 + z1) / 2;
+      const ins = (z1 - z0) / 2;
+      const r0 = [x0 + ins, ridge, zc];
+      const r1 = [x1 - ins, ridge, zc];
+      quad(e0, e1, r1, r0);
+      quad(e3, e2, r1, r0);
+      quad(e3, e0, r0, r0);
+      quad(e1, e2, r1, r1);
+    } else {
+      // deep plan: ridge runs along z instead
+      const xc = (x0 + x1) / 2;
+      const ins = (x1 - x0) / 2;
+      const r0 = [xc, ridge, z0 + ins];
+      const r1 = [xc, ridge, z1 - ins];
+      quad(e0, e3, r1, r0);
+      quad(e1, e2, r1, r0);
+      quad(e0, e1, r0, r0);
+      quad(e3, e2, r1, r1);
+    }
   };
-  hip(-900, 100, 800, 1450);
-  hip(445, 1350, 800, 1450);
-  hip(-760, 90, 1560, 2100); // second pair past the courtyard break
-  hip(455, 1250, 1560, 2100);
+  // masses traced off the satellite; corners interpenetrate for a merged read
+  hip(-2000, -610, 380, 760); // north-west arm
+  hip(700, 2300, 380, 760); // north-east arm
+  hip(-2000, -730, 760, 1480); // west connector
+  hip(-2000, 120, 1480, 2260); // south band west, clear of the canopy posts
+  hip(405, 2300, 1480, 2260); // south band east
+  hip(1040, 2300, 760, 1480); // east connector
+  hip(2300, 3300, 300, 2200, 230); // far-east block, a touch taller
 
-  // a few dark openings on the walk-facing walls
+  // a few dark openings on the faces seen from the courts and breezeway
   for (const wz of [900, 1030, 1160, 1290]) {
-    winG.push(box(99.4, 100.6, 40, 88, wz, wz + 52));
-    winG.push(box(444.4, 445.6, 40, 88, wz, wz + 52));
+    winG.push(box(-730.6, -729.4, 40, 88, wz, wz + 52)); // west court, west wall
+    winG.push(box(1039.4, 1040.6, 40, 88, wz, wz + 52)); // east court, east wall
   }
-  for (const wz of [1650, 1780, 1910]) {
-    winG.push(box(89.4, 90.6, 40, 88, wz, wz + 52));
-    winG.push(box(454.4, 455.6, 40, 88, wz, wz + 52));
+  for (const wx of [-650, -480, -310, -140, 20]) {
+    winG.push(box(wx, wx + 52, 40, 88, 1479.4, 1480.6)); // west court, south wall
+  }
+  for (const wx of [460, 630, 800, 970]) {
+    winG.push(box(wx, wx + 52, 40, 88, 1479.4, 1480.6)); // east court, south wall
+  }
+  for (const wx of [740, 880]) {
+    winG.push(box(wx, wx + 52, 40, 88, 759.4, 760.6)); // east court, north wall
+  }
+  for (const wz of [1600, 1760, 1920, 2080]) {
+    winG.push(box(119.4, 120.6, 40, 88, wz, wz + 52)); // breezeway, south half
+    winG.push(box(404.4, 405.6, 40, 88, wz, wz + 52));
   }
 
   const wingWalls = merged(wingWallG, new THREE.MeshStandardMaterial({ color: 0xede8dd, roughness: 0.95, metalness: 0 }));
@@ -378,6 +403,96 @@ export function buildExterior(): THREE.Group {
     blob(southRnd, px, 92, pz, 17, '#4E6B3C');
     blob(southRnd, px, 82, pz, 13, '#57743F');
   }
+  // -------------------------------------------------------------------------
+  // Open courtyards flanking the breezeway's north half — patio court west,
+  // garden court east. Court planters ride the breezeway-planter merge.
+  // -------------------------------------------------------------------------
+  const pavers = merged(
+    [box(-730, 100, -2, -0.5, 815, 1440), box(375, 1040, -2, -0.5, 815, 1440)],
+    new THREE.MeshStandardMaterial({ color: 0xcfc5b2, roughness: 0.95, metalness: 0 }),
+  );
+  pavers.receiveShadow = true;
+  group.add(pavers);
+
+  // west court: white patio sets kept toward the west side
+  const patioG: Geo[] = [];
+  for (const [px, pz] of [
+    [-600, 940],
+    [-590, 1180],
+    [-420, 1060],
+    [-380, 1330],
+  ] as const) {
+    patioG.push(new THREE.CylinderGeometry(i2m(24), i2m(24), i2m(29), 12).translate(i2m(px), i2m(14.5), i2m(pz)));
+    for (const [dx, dz] of [
+      [-40, 0],
+      [40, 0],
+      [0, -40],
+      [0, 40],
+    ] as const) {
+      const cx = px + dx;
+      const cz = pz + dz;
+      patioG.push(box(cx - 8, cx + 8, 0, 17, cz - 8, cz + 8)); // seat
+      if (dx) patioG.push(box(cx + (dx < 0 ? -8 : 5), cx + (dx < 0 ? -5 : 8), 17, 34, cz - 8, cz + 8));
+      else patioG.push(box(cx - 8, cx + 8, 17, 34, cz + (dz < 0 ? -8 : 5), cz + (dz < 0 ? -5 : 8)));
+    }
+  }
+  const patio = merged(patioG, new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.6, metalness: 0 }));
+  patio.castShadow = true;
+  patio.receiveShadow = true;
+  group.add(patio);
+
+  // low hedge run along the west court's south edge
+  for (let hx = -690; hx <= 30; hx += 80) {
+    blob(southRnd, hx, 8, 1408, 16, foliageColors[1]);
+  }
+
+  // east court: three planting beds, each with a few foliage blobs
+  const beds = merged(
+    [box(440, 660, 0, 8, 890, 980), box(780, 1000, 0, 8, 890, 980), box(440, 660, 0, 8, 1280, 1370)],
+    new THREE.MeshStandardMaterial({ color: 0x5c4a37, roughness: 1, metalness: 0 }),
+  );
+  beds.castShadow = true;
+  beds.receiveShadow = true;
+  group.add(beds);
+  for (const [bx, bz] of [
+    [480, 935],
+    [555, 928],
+    [625, 940],
+    [820, 935],
+    [895, 942],
+    [965, 930],
+    [485, 1325],
+    [560, 1332],
+    [630, 1320],
+  ] as const) {
+    blob(southRnd, bx, 20, bz, 14, foliageColors[(southRnd() * 3) | 0]);
+  }
+
+  // small central fountain: basin + pedestal, water discs on both
+  const fountain = merged(
+    [
+      new THREE.CylinderGeometry(i2m(40), i2m(44), i2m(14), 16).translate(i2m(707), i2m(7), i2m(1127)),
+      new THREE.CylinderGeometry(i2m(12), i2m(15), i2m(28), 12).translate(i2m(707), i2m(28), i2m(1127)),
+    ],
+    curbMat,
+  );
+  fountain.castShadow = true;
+  fountain.receiveShadow = true;
+  const water = merged(
+    [
+      new THREE.CylinderGeometry(i2m(34), i2m(34), i2m(1.5), 16).translate(i2m(707), i2m(12), i2m(1127)),
+      new THREE.CylinderGeometry(i2m(16), i2m(16), i2m(1.5), 12).translate(i2m(707), i2m(42.5), i2m(1127)),
+    ],
+    new THREE.MeshStandardMaterial({ color: 0x5f8fa8, roughness: 0.15, metalness: 0.1 }),
+  );
+  water.receiveShadow = true;
+  group.add(fountain, water);
+
+  // court planters: two on the patio court, one in the garden court
+  bwPlanter(-700, 855, -0.5, true);
+  bwPlanter(55, 855, -0.5, true);
+  bwPlanter(1000, 860, -0.5, true);
+
   const bwPlanters = merged(
     bwPlanterG,
     new THREE.MeshStandardMaterial({ color: 0x6b4f38, roughness: 0.5, metalness: 0.45 }),
@@ -388,8 +503,8 @@ export function buildExterior(): THREE.Group {
 
   // island oak + scenery oaks flanking the wings
   oak(21, 272.5, 2480, 6, 0.5, 1, 250, -40);
-  oak(22, -680, 740, 8, -0.6, 0.5, 290, -60);
-  oak(23, 950, 730, 6, 0.8, 0.3, 270, -50);
+  oak(22, -430, 1150, 8, -0.6, 0.5, 290, -60);
+  oak(23, 900, 1300, 6, 0.8, 0.3, 270, -50);
   oak(24, -520, 2320, 10, -0.8, 0.6, 300, -70);
   oak(25, 1080, 2260, 7, 0.7, 0.8, 260, -70);
 
@@ -429,18 +544,18 @@ export function applyAtmosphere(scene: THREE.Scene): Atmosphere {
   sky.renderOrder = -2;
   scene.add(sky);
 
-  // haze is baked into the texture; fog would double-dip at 60m, so fog:false
+  // full-circle Bay Area panorama; haze baked in, so fog:false
   const valley = new THREE.Mesh(
-    new THREE.CylinderGeometry(60, 60, 25, 48, 1, true, Math.PI - 1.25, 2.5),
+    new THREE.CylinderGeometry(85, 85, 40, 96, 1, true),
     new THREE.MeshBasicMaterial({
-      map: valleyTexture(),
+      map: bayPanoramaTexture(),
       side: THREE.BackSide,
       transparent: true,
       fog: false,
       depthWrite: false,
     }),
   );
-  valley.position.set(cx, 4, cz);
+  valley.position.set(cx, 7, cz);
   valley.renderOrder = -1;
   scene.add(valley);
 

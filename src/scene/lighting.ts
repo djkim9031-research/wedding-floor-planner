@@ -181,26 +181,31 @@ export function setupLighting(
           ? lerpHex(0xffb877, 0xffd9a8, (alt - 8) / 17)
           : lerpHex(0xffd9a8, 0xfff2dc, (alt - 25) / 40);
     sun.color.copy(warm).lerp(colB.setHex(0xe6e6e6), c * 0.7);
-    const altBoost = THREE.MathUtils.clamp(alt / 30, 0.45, 1.15);
+    const altBoost = THREE.MathUtils.clamp(alt / 30, 0.6, 1.15);
     // dramatic reading: hot direct beam over a subdued ambient, so the sun's
     // pools and window patterns clearly dominate the scene
     sun.intensity = 3.4 * altBoost * (1 - 0.88 * c);
     sun.position.copy(center).addScaledVector(dir, 40);
 
-    hemi.color.copy(lerpHex(0xbfd4ee, 0xaab2bc, c).clone());
-    hemi.groundColor.setHex(0x6d543c);
-    hemi.intensity = 0.26 + 0.52 * c; // overcast = flatter, more ambient
+    // ambient follows the day cycle: sky-blue at midday, golden near the
+    // horizon — outdoors reads bright while the hot direct beam still
+    // dominates indoors through the glazing
+    const golden = THREE.MathUtils.clamp(1 - alt / 25, 0, 1);
+    hemi.color.copy(lerpHex(0xbfd9f5, 0xf0a45c, golden).clone().lerp(colB.setHex(0xaab2bc), c * 0.7));
+    hemi.groundColor.setHex(0x8a6b4c);
+    hemi.intensity = 0.5 + 0.12 * (1 - golden) + 0.4 * c;
     for (const s of spots) s.intensity = 50;
     for (const p of porch) p.intensity = 0;
-    sceneEnv.environmentIntensity = 0.2 - 0.06 * c;
+    sceneEnv.environmentIntensity = 0.3 - 0.08 * c;
 
-    const skyTint = lerpHex(0xffffff, 0x99a1ab, c * 0.85).clone().multiplyScalar(0.6);
-    const duskTint = alt < 10 ? lerpHex(0xffc9a0, 0xffffff, alt / 10) : colA.setHex(0xffffff);
-    skyTint.multiply(duskTint);
+    const skyTint = lerpHex(0xffffff, 0xffb066, golden)
+      .clone()
+      .multiplyScalar(0.85 - 0.1 * golden)
+      .lerp(colB.setHex(0x6f767e), c * 0.75);
     setAtmo(
       skyTint,
-      lerpHex(0xffffff, 0x8e959e, c * 0.8).clone().multiplyScalar(0.55),
-      c > 0.5 ? 0x8f9296 : 0x9aa0a8,
+      lerpHex(0xffffff, 0xe0b894, golden).clone().multiplyScalar(0.72).lerp(colB.setHex(0x777d85), c * 0.7),
+      c > 0.5 ? 0x9b9ea3 : golden > 0.5 ? 0xd8bfa5 : 0xc9d2dc,
     );
 
     disc.visible = true;

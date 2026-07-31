@@ -1,6 +1,26 @@
-import { COLUMNS, ITEM_DIMS, PENETRATION_EPS, ROOM_POLYGON, isBarrier, isFigure, isTable } from '../constants';
-import type { ItemType, PlacedItem, Pose } from '../types';
+import {
+  COLUMNS,
+  DECK_TREES,
+  ITEM_DIMS,
+  PENETRATION_EPS,
+  PLACEMENT_AREAS,
+  isBarrier,
+  isFigure,
+  isTable,
+} from '../constants';
+import type { ItemType, PlacedItem, Pose, Vec2 } from '../types';
 import { aabbToOBB, obbFromPose, obbIntersectsOBB, pointInPolygon, segmentIntersectsOBB, obbCorners } from './geometry';
+
+/** Fully inside one placement zone: all corners in, no boundary crossing. */
+function insideZone(corners: Vec2[], obb: ReturnType<typeof obbFromPose>, poly: Vec2[]): boolean {
+  for (const c of corners) {
+    if (!pointInPolygon(c, poly)) return false;
+  }
+  for (let i = 0; i < poly.length; i++) {
+    if (segmentIntersectsOBB(poly[i], poly[(i + 1) % poly.length], obb)) return false;
+  }
+  return true;
+}
 
 /**
  * Placement rules:
@@ -15,19 +35,17 @@ export function isPoseValid(type: ItemType, pose: Pose, items: PlacedItem[], sel
   const obb = obbFromPose(pose, ITEM_DIMS[type]);
 
   const corners = obbCorners(obb);
-  for (const c of corners) {
-    if (!pointInPolygon(c, ROOM_POLYGON)) return false;
-  }
-  for (let i = 0; i < ROOM_POLYGON.length; i++) {
-    const a = ROOM_POLYGON[i];
-    const b = ROOM_POLYGON[(i + 1) % ROOM_POLYGON.length];
-    if (segmentIntersectsOBB(a, b, obb)) return false;
-  }
+  if (!PLACEMENT_AREAS.some((poly) => insideZone(corners, obb, poly))) return false;
 
   if (isFigure(type)) return true;
 
   for (const col of COLUMNS) {
     if (obbIntersectsOBB(obb, aabbToOBB(col.cx, col.cz, col.size, col.size), PENETRATION_EPS)) {
+      return false;
+    }
+  }
+  for (const tree of DECK_TREES) {
+    if (obbIntersectsOBB(obb, aabbToOBB(tree.x, tree.z, 30, 30), PENETRATION_EPS)) {
       return false;
     }
   }
