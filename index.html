@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Our Wedding Floor — Open Space</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      // boot diagnostics: a silent white page is useless — name the failure
+      (function () {
+        function show(msg) {
+          var el = document.getElementById('boot-error');
+          if (!el) {
+            el = document.createElement('div');
+            el.id = 'boot-error';
+            el.style.cssText =
+              'position:fixed;left:12px;right:12px;top:12px;z-index:99999;background:#fff8f0;' +
+              'border:2px solid #b4655a;border-radius:10px;padding:14px 16px;color:#4a443d;' +
+              'font:13px/1.5 system-ui,sans-serif;white-space:pre-wrap;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+            el.textContent = 'The 3D planner could not start.\n\n';
+            (document.body || document.documentElement).appendChild(el);
+          }
+          el.textContent += '• ' + msg + '\n';
+        }
+        window.__wpShowBootError = show;
+        window.addEventListener('error', function (e) {
+          show((e.message || 'script error') + (e.filename ? '  [' + e.filename.split('/').pop() + ':' + e.lineno + ']' : ''));
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          show('unhandled: ' + String(e.reason && e.reason.message ? e.reason.message : e.reason));
+        });
+        document.addEventListener('DOMContentLoaded', function () {
+          var c = document.createElement('canvas');
+          var gl = null;
+          try {
+            gl = c.getContext('webgl2');
+          } catch (err) {
+            /* fall through */
+          }
+          if (!gl) {
+            show(
+              'WebGL2 is not available in this browser, so the 3D view cannot render.\n' +
+                '  1. Chrome: chrome://settings/system → enable "Use graphics acceleration when available" → Relaunch.\n' +
+                '  2. Still blank? chrome://flags/#ignore-gpu-blocklist → Enabled → Relaunch (Linux drivers are often blocklisted).\n' +
+                '  3. Or try Firefox on this machine — or open this link on your phone (phones always have WebGL2).\n' +
+                '  Browser: ' + navigator.userAgent,
+            );
+          }
+        });
+        setTimeout(function () {
+          if (!window.__wpBooted) {
+            show('The app did not finish starting within 8 seconds (no render yet). Browser: ' + navigator.userAgent);
+          }
+        }, 8000);
+      })();
+    </script>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
