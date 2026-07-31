@@ -18,6 +18,8 @@ export interface SceneHost {
   roofVisible(): boolean;
   invalidate(): void;
   invalidateShadows(): void;
+  /** drive the lighting from a real sun state; null = showcase preset */
+  applySun(input: import('./lighting').SunInput | null): void;
   /** cb runs every frame; return true to request a render (e.g. cloth settling) */
   onFrame(cb: (dt: number) => boolean | void): void;
   /** begin the loop; `update` is the camera rig tick returning "camera moved" */
@@ -39,8 +41,8 @@ export function createSceneHost(container: HTMLElement): SceneHost {
   const venue = buildVenue();
   scene.add(venue.group);
   scene.add(buildExterior());
-  applyAtmosphere(scene);
-  const lighting = setupLighting(scene, renderer);
+  const atmo = applyAtmosphere(scene);
+  const lighting = setupLighting(scene, renderer, atmo);
 
   const itemsGroup = new THREE.Group();
   const overlayGroup = new THREE.Group();
@@ -80,6 +82,10 @@ export function createSceneHost(container: HTMLElement): SceneHost {
     },
     invalidateShadows() {
       lighting.invalidateShadows();
+      dirty = true;
+    },
+    applySun(input) {
+      lighting.applySun(input);
       dirty = true;
     },
     onFrame(cb) {

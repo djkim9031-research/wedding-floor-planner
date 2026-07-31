@@ -11,9 +11,11 @@ import { Overlays } from './scene/overlays';
 import { createSceneHost } from './scene/scene';
 import * as persist from './state/persist';
 import * as store from './state/store';
+import { sunPosition } from './scene/sun';
 import { buildItemsPanel } from './ui/itemsPanel';
 import { buildPalette } from './ui/palette';
 import { buildStatusPanel } from './ui/statusPanel';
+import { buildSunPanel } from './ui/sunPanel';
 import { buildToolbar } from './ui/toolbar';
 
 const app = document.getElementById('app')!;
@@ -68,6 +70,18 @@ const toast = (msg: string): void => {
 
 const toolbar = buildToolbar(container, rig, host, toast);
 buildPalette(container, fsm, pointerCtl);
+const sunPanel = buildSunPanel(container, (s) => {
+  if (!s.enabled) {
+    host.applySun(null);
+    return;
+  }
+  const pos = sunPosition(s.date, s.minutes);
+  host.applySun({
+    altitudeDeg: pos.altitudeDeg,
+    azimuthModelDeg: pos.azimuthModelDeg,
+    clouds: s.clouds ? s.cloudPct / 100 : 0,
+  });
+});
 const statusPanel = buildStatusPanel(container, fsm, {
   getReport: (id) => clothMgr.getReport(id),
   predict: predictDrape,
@@ -163,6 +177,14 @@ if (presetName) {
 if (params.get('demo') === 'qcc') {
   store.placeItem('tableQ', { x: 272.5, z: 300, yawDeg: 0 });
   store.placeItem('clothA', { x: 272.5, z: 300, yawDeg: 0 });
+} else if (params.get('demo') === 'lanterns') {
+  store.placeItem('table', { x: 272.5, z: 300, yawDeg: 0 });
+  store.placeItem('clothB', { x: 272.5, z: 300, yawDeg: 0 });
+  store.placeItem('lantern18', { x: 258, z: 300, yawDeg: 0 });
+  store.placeItem('lantern18', { x: 287, z: 300, yawDeg: 0 });
+  store.placeItem('lantern30', { x: 210, z: 260, yawDeg: 0 });
+  store.placeItem('lantern36', { x: 340, z: 345, yawDeg: 0 });
+  store.placeItem('lantern24', { x: 240, z: 360, yawDeg: 0 });
 } else if (params.get('demo') === 'chairs') {
   store.placeItem('table', { x: 272.5, z: 300, yawDeg: 0 });
   store.placeItem('chair', { x: 262, z: 278.25, yawDeg: 0 });
@@ -196,9 +218,33 @@ if (params.get('cam') === 'close') {
 } else if (params.get('cam') === 'site') {
   rig.camera.position.set(7.1, 27, 24);
   rig.controls.target.set(7.1, 0, 2.5);
+} else if (params.get('cam') === 'site2') {
+  rig.camera.position.set(7.1, 44, 50);
+  rig.controls.target.set(7.1, 0, 18);
+} else if (params.get('cam') === 'entry') {
+  rig.camera.position.set(6.92, 2.4, 60.5);
+  rig.controls.target.set(6.92, 2.0, 44);
+} else if (params.get('cam') === 'hall') {
+  rig.camera.position.set(7.6, 1.6, 12.6);
+  rig.controls.target.set(3.3, 1.1, 16.3);
 }
 if (params.get('roof') === '1') host.setRoofVisible(true);
 if (params.get('burn') === '1') host.onFrame(() => true);
+// deterministic captures: #sun=YYYY-MM-DD,HH:MM,cloudPct  or  #sun=off
+const sunParam = params.get('sun');
+if (sunParam === 'off') {
+  sunPanel.set({ enabled: false });
+} else if (sunParam) {
+  const [d, t, c] = sunParam.split(',');
+  const [hh, mm] = (t ?? '12:00').split(':').map(Number);
+  sunPanel.set({
+    enabled: true,
+    date: d,
+    minutes: hh * 60 + (mm || 0),
+    clouds: !!c && +c > 0,
+    cloudPct: c ? +c : 0,
+  });
+}
 
 host.start(rig.camera, (dt) => rig.update(dt));
 (window as unknown as { __wpBooted?: boolean }).__wpBooted = true;

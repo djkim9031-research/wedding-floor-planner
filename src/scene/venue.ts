@@ -183,13 +183,25 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   // -------------------------------------------------------------------------
   // South wall z=599 — solid / storefront with open double doors / solid.
   // -------------------------------------------------------------------------
-  stuccoG.push(box(59, 180, 0, EAVE_Y, 599, 605));
+  // west portion opens into the hallway that leads to the bathrooms
+  stuccoG.push(box(59, 96, 0, EAVE_Y, 599, 605));
+  stuccoG.push(box(168, 180, 0, EAVE_Y, 599, 605));
+  stuccoG.push(box(96, 168, DOOR_HEAD_Y, EAVE_Y, 599, 605));
+  whiteG.push(box(94.5, 96, 0, DOOR_HEAD_Y, 598, 606));
+  whiteG.push(box(168, 169.5, 0, DOOR_HEAD_Y, 598, 606));
+  whiteG.push(box(94.5, 169.5, DOOR_HEAD_Y, DOOR_HEAD_Y + 1.5, 598, 606));
   pane('x', 602, 180, 236, 0, STOREFRONT_HEAD_Y);
   pane('x', 602, 308, 371, 0, STOREFRONT_HEAD_Y);
   pane('x', 602, 236, 272, DOOR_HEAD_Y, STOREFRONT_HEAD_Y); // transom over the opening
   pane('x', 602, 272, 308, DOOR_HEAD_Y, STOREFRONT_HEAD_Y);
   stuccoG.push(box(180, 371, STOREFRONT_HEAD_Y, EAVE_Y, 599, 605));
-  stuccoG.push(box(371, 484, 0, EAVE_Y, 599, 605));
+  // east portion opens into the hallway serving the east bathroom
+  stuccoG.push(box(371, 383, 0, EAVE_Y, 599, 605));
+  stuccoG.push(box(455, 484, 0, EAVE_Y, 599, 605));
+  stuccoG.push(box(383, 455, DOOR_HEAD_Y, EAVE_Y, 599, 605));
+  whiteG.push(box(381.5, 383, 0, DOOR_HEAD_Y, 598, 606));
+  whiteG.push(box(455, 456.5, 0, DOOR_HEAD_Y, 598, 606));
+  whiteG.push(box(381.5, 456.5, DOOR_HEAD_Y, DOOR_HEAD_Y + 1.5, 598, 606));
 
   // double door leaves swung open into the vestibule (axis-aligned at 90°)
   const openLeaf = (hx: number, dir: 1 | -1) => {
@@ -644,6 +656,286 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   fixtures.castShadow = true;
   fixtures.receiveShadow = true;
   group.add(fixtures);
+
+  // -------------------------------------------------------------------------
+  // Breezeway — open-air post-and-beam walk running south from the vestibule
+  // to the entry court. Same 4.5:12 pitch off a lower ridge; eaves at y=108
+  // over the canopy edges, no walls.
+  // -------------------------------------------------------------------------
+  const BW_X0 = 100;
+  const BW_X1 = 445;
+  const BW_Z0 = 662;
+  const BW_Z1 = 2260;
+  const BW_HALF = RIDGE_X - BW_X0;
+  const bwRoofY = (x: number) => EAVE_Y + (BW_HALF - Math.abs(x - RIDGE_X)) * SLOPE;
+  const BW_RIDGE = bwRoofY(RIDGE_X);
+
+  const bwSlopedBox = (xa: number, xb: number, thick: number, z0: number, z1: number, offset: number): Geo => {
+    const ya = bwRoofY(xa);
+    const yb = bwRoofY(xb);
+    const len = Math.hypot(xb - xa, yb - ya);
+    const th = (xa + xb) / 2 > RIDGE_X ? -THETA : THETA;
+    const g = new THREE.BoxGeometry(i2m(len), i2m(thick), i2m(z1 - z0));
+    g.rotateZ(th);
+    const d = offset + thick / 2;
+    g.translate(i2m((xa + xb) / 2 - Math.sin(th) * d), i2m((ya + yb) / 2 + Math.cos(th) * d), i2m((z0 + z1) / 2));
+    return g;
+  };
+  const bwSlopedPlane = (xa: number, xb: number, z0: number, z1: number, offset: number, faceUp: boolean): Geo => {
+    const ya = bwRoofY(xa);
+    const yb = bwRoofY(xb);
+    const len = Math.hypot(xb - xa, yb - ya);
+    const th = (xa + xb) / 2 > RIDGE_X ? -THETA : THETA;
+    const g = new THREE.PlaneGeometry(i2m(len), i2m(z1 - z0));
+    g.rotateX(faceUp ? -Math.PI / 2 : Math.PI / 2);
+    g.rotateZ(th);
+    g.translate(i2m((xa + xb) / 2 - Math.sin(th) * offset), i2m((ya + yb) / 2 + Math.cos(th) * offset), i2m((z0 + z1) / 2));
+    return g;
+  };
+
+  // terracotta pavers: running bond over a 64" tile at 4 px/in, sand joints
+  let pvSeed = 0x51ab;
+  const pvRnd = () => (pvSeed = (pvSeed * 48271) % 2147483647) / 2147483647;
+  const pvC = document.createElement('canvas');
+  pvC.width = 256;
+  pvC.height = 256;
+  const pv = pvC.getContext('2d')!;
+  pv.fillStyle = '#D3BE9B';
+  pv.fillRect(0, 0, 256, 256);
+  const pvTones = ['#A8674C', '#B5755A', '#9A5E44'];
+  for (let r = 0; r < 16; r++) {
+    const y = r * 16;
+    const off = r % 2 ? 16 : 0;
+    for (let x = off ? -16 : 0; x < (off ? 240 : 256); x += 32) {
+      pv.fillStyle = pvTones[(pvRnd() * 3) | 0];
+      pv.globalAlpha = 0.85 + pvRnd() * 0.15;
+      pv.fillRect(x + 1, y + 1, 30, 14);
+      if (x < 0) pv.fillRect(x + 257, y + 1, 30, 14); // seam brick, same tone
+    }
+  }
+  pv.globalAlpha = 1;
+  const paverTex = new THREE.CanvasTexture(pvC);
+  paverTex.colorSpace = THREE.SRGBColorSpace;
+  paverTex.wrapS = THREE.RepeatWrapping;
+  paverTex.wrapT = THREE.RepeatWrapping;
+  paverTex.repeat.set(1 / i2m(64), 1 / i2m(64));
+  paverTex.anisotropy = 4;
+
+  // walk drops 9" to the court over two shallow steps near the south end
+  const paverSurf = (x0: number, x1: number, z0: number, z1: number, y: number): Geo => {
+    const g = new THREE.ShapeGeometry(rectShape(x0, x1, z0, z1));
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, i2m(y), 0);
+    return g;
+  };
+  const pavers = merged(
+    [
+      paverSurf(76, 469, 659, 2148, -0.75),
+      paverSurf(76, 469, 2148, 2166, -5.25),
+      paverSurf(76, 469, 2166, 2295, -9.75),
+    ],
+    new THREE.MeshStandardMaterial({ map: paverTex, roughness: 0.9, metalness: 0 }),
+  );
+  pavers.receiveShadow = true;
+  group.add(pavers);
+
+  // slab masses give the grade change its risers
+  const plinth = merged(
+    [
+      box(76, 469, -12, -0.8, 659, 2148),
+      box(76, 469, -12, -5.3, 2148, 2166),
+      box(76, 469, -20, -9.8, 2166, 2295),
+    ],
+    new THREE.MeshStandardMaterial({ color: 0xaaa294, roughness: 0.95, metalness: 0 }),
+  );
+  plinth.castShadow = true;
+  plinth.receiveShadow = true;
+  group.add(plinth);
+
+  // two rows of 8" posts on the paver level
+  const bwPostG: Geo[] = [];
+  for (const px of [150, 395]) {
+    for (let pz = 730; pz <= 2170; pz += 144) bwPostG.push(box(px - 4, px + 4, -0.75, EAVE_Y, pz - 4, pz + 4));
+  }
+  const bwPosts = merged(bwPostG, whiteMat);
+  bwPosts.castShadow = true;
+  bwPosts.receiveShadow = true;
+  group.add(bwPosts);
+
+  // handrails at the grade change
+  const railG: Geo[] = [];
+  for (const rx of [160, 272.5, 385]) {
+    railG.push(box(rx - 0.6, rx + 0.6, -0.75, 32, 2139, 2140.2));
+    railG.push(box(rx - 0.6, rx + 0.6, -9.75, 23, 2173, 2174.2));
+    const rail = new THREE.BoxGeometry(i2m(1.2), i2m(2), i2m(37));
+    rail.rotateX(Math.atan2(9, 34));
+    rail.translate(i2m(rx), i2m(27.5), i2m(2156.5));
+    railG.push(rail);
+  }
+  const rails = merged(railG, new THREE.MeshStandardMaterial({ color: 0x9aa0a5, roughness: 0.35, metalness: 0.85 }));
+  rails.castShadow = true;
+  group.add(rails);
+
+  // canopy — alternating reed and skylight bays; it all rides the roof group
+  // so the ceiling toggle clears the walk. Glass never casts shadows; the
+  // white glazing bars do, which is what draws the grid on the pavers.
+  const BAY_N = 11;
+  const BAY_D = (BW_Z1 - BW_Z0) / BAY_N;
+  const bwReedG: Geo[] = [];
+  const bwTopG: Geo[] = [];
+  const bwGlassG: Geo[] = [];
+  const bwBarG: Geo[] = [];
+  const bwWhiteG: Geo[] = [];
+  for (let k = 0; k < BAY_N; k++) {
+    const z0 = BW_Z0 + k * BAY_D;
+    const z1 = z0 + BAY_D;
+    if (k % 2) {
+      // skylight bay: big glass bands eave-strip to ridge cap on both slopes
+      bwReedG.push(bwSlopedPlane(BW_X0, 140, z0, z1, 0, false));
+      bwReedG.push(bwSlopedPlane(405, BW_X1, z0, z1, 0, false));
+      bwTopG.push(bwSlopedPlane(BW_X0, 140, z0, z1, 3, true));
+      bwTopG.push(bwSlopedPlane(405, BW_X1, z0, z1, 3, true));
+      for (const [ga, gb] of [
+        [140, 266.5],
+        [278.5, 405],
+      ] as const) {
+        bwGlassG.push(bwSlopedBox(ga, gb, 0.5, z0 + 2, z1 - 2, 1));
+        for (let j = 1; j <= 3; j++) {
+          const px = ga + ((gb - ga) * j) / 4;
+          bwBarG.push(bwSlopedBox(px - 0.75, px + 0.75, 1.5, z0 + 2, z1 - 2, 1.6));
+        }
+        for (let j = 0; j <= 4; j++) {
+          const pz = z0 + 2 + ((z1 - z0 - 4) * j) / 4;
+          bwBarG.push(bwSlopedBox(ga, gb, 1.5, pz - 0.75, pz + 0.75, 1.6));
+        }
+      }
+    } else {
+      // reed bay; a narrow ridge strip keeps the skylight spine continuous
+      bwReedG.push(bwSlopedPlane(BW_X0, 252.5, z0, z1, 0, false));
+      bwReedG.push(bwSlopedPlane(292.5, BW_X1, z0, z1, 0, false));
+      bwTopG.push(bwSlopedPlane(BW_X0, 252.5, z0, z1, 3, true));
+      bwTopG.push(bwSlopedPlane(292.5, BW_X1, z0, z1, 3, true));
+      bwGlassG.push(bwSlopedBox(252.5, 266.5, 0.5, z0, z1, 1));
+      bwGlassG.push(bwSlopedBox(278.5, 292.5, 0.5, z0, z1, 1));
+    }
+  }
+
+  // ridge cap, ridge beam, post headers, fascias
+  bwTopG.push(bwSlopedBox(266.5, RIDGE_X, 3, BW_Z0, BW_Z1, 0));
+  bwTopG.push(bwSlopedBox(RIDGE_X, 278.5, 3, BW_Z0, BW_Z1, 0));
+  bwWhiteG.push(box(RIDGE_X - 3, RIDGE_X + 3, BW_RIDGE - 14, BW_RIDGE, BW_Z0, BW_Z1));
+  bwWhiteG.push(box(146, 154, EAVE_Y, EAVE_Y + 12, BW_Z0, BW_Z1));
+  bwWhiteG.push(box(391, 399, EAVE_Y, EAVE_Y + 12, BW_Z0, BW_Z1));
+  bwWhiteG.push(box(BW_X0 - 2, BW_X0, 99, 110, BW_Z0, BW_Z1));
+  bwWhiteG.push(box(BW_X1, BW_X1 + 2, 99, 110, BW_Z0, BW_Z1));
+  bwWhiteG.push(bwSlopedBox(BW_X0, RIDGE_X, 12, BW_Z1, BW_Z1 + 2, -6)); // entrance rake
+  bwWhiteG.push(bwSlopedBox(RIDGE_X, BW_X1, 12, BW_Z1, BW_Z1 + 2, -6));
+
+  // exposed rafters, instanced per slope like the main roof (no shadows)
+  const bwLen = BW_Z1 - BW_Z0;
+  const bwRafterCount = Math.floor(bwLen / 48) + 1;
+  const bwRafterMargin = (bwLen - (bwRafterCount - 1) * 48) / 2;
+  for (const [xa, xb] of [
+    [BW_X0, RIDGE_X],
+    [RIDGE_X, BW_X1],
+  ]) {
+    const geo = bwSlopedBox(xa, xb, 10, -2, 2, -10);
+    const im = new THREE.InstancedMesh(geo, whiteMat, bwRafterCount);
+    for (let k = 0; k < bwRafterCount; k++) {
+      m4.makeTranslation(0, 0, i2m(BW_Z0 + bwRafterMargin + k * 48));
+      im.setMatrixAt(k, m4);
+    }
+    im.instanceMatrix.needsUpdate = true;
+    im.frustumCulled = false;
+    roof.add(im);
+  }
+
+  const bwReedTex = reed.clone();
+  const bwSlopeLen = Math.hypot(BW_HALF - 40, (BW_HALF - 40) * SLOPE);
+  bwReedTex.repeat.set(bwSlopeLen / 64, BAY_D / 64);
+  bwReedTex.needsUpdate = true;
+  const bwReedMesh = merged(bwReedG, new THREE.MeshStandardMaterial({ map: bwReedTex, roughness: 0.92, metalness: 0 }));
+  const bwTopMesh = merged(bwTopG, new THREE.MeshStandardMaterial({ color: 0x9a8f80, roughness: 0.95, metalness: 0 }));
+  const bwGlassMesh = merged(
+    bwGlassG,
+    new THREE.MeshStandardMaterial({
+      color: 0xeaf4f8,
+      transparent: true,
+      opacity: 0.15,
+      roughness: 0.06,
+      metalness: 0,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
+  );
+  const bwBars = merged(bwBarG, whiteMat);
+  bwBars.castShadow = true;
+  const bwWhite = merged(bwWhiteG, whiteMat);
+  roof.add(bwReedMesh, bwTopMesh, bwGlassMesh, bwBars, bwWhite);
+
+  // -------------------------------------------------------------------------
+  // "2400" monument flanking the drop-off, uplit at the base.
+  // -------------------------------------------------------------------------
+  const monMat = new THREE.MeshStandardMaterial({ color: 0xe7e0d0, roughness: 0.92, metalness: 0 });
+  const mon = new THREE.Mesh(box(500, 590, -12, 23, 2280, 2288), monMat);
+  mon.castShadow = true;
+  mon.receiveShadow = true;
+  group.add(mon);
+
+  const monC = document.createElement('canvas');
+  monC.width = 512;
+  monC.height = 192;
+  const mc = monC.getContext('2d')!;
+  mc.fillStyle = '#E7E0D0';
+  mc.fillRect(0, 0, 512, 192);
+  mc.strokeStyle = '#4A3826';
+  mc.lineWidth = 16;
+  mc.lineJoin = 'round';
+  mc.lineCap = 'round';
+  const oy = 30;
+  mc.beginPath(); // 2
+  mc.arc(106, oy + 34, 34, Math.PI, 0);
+  mc.lineTo(72, oy + 128);
+  mc.lineTo(148, oy + 128);
+  mc.stroke();
+  mc.beginPath(); // 4
+  mc.moveTo(226, oy + 2);
+  mc.lineTo(172, oy + 84);
+  mc.lineTo(252, oy + 84);
+  mc.moveTo(226, oy + 2);
+  mc.lineTo(226, oy + 128);
+  mc.stroke();
+  for (const zx of [330, 438]) {
+    mc.beginPath(); // 0 0
+    mc.ellipse(zx, oy + 65, 34, 62, 0, 0, Math.PI * 2);
+    mc.stroke();
+  }
+  const monTex = new THREE.CanvasTexture(monC);
+  monTex.colorSpace = THREE.SRGBColorSpace;
+  const plaque = new THREE.Mesh(
+    new THREE.PlaneGeometry(i2m(80), i2m(30)),
+    new THREE.MeshStandardMaterial({ map: monTex, roughness: 0.85, metalness: 0.1 }),
+  );
+  plaque.position.set(i2m(545), i2m(7), i2m(2288.15));
+  group.add(plaque);
+
+  const upG: Geo[] = [];
+  for (const ux of [515, 545, 575]) {
+    const g = new THREE.CylinderGeometry(i2m(2.2), i2m(2.2), i2m(1.5), 10);
+    g.translate(i2m(ux), i2m(-10.2), i2m(2291));
+    upG.push(g);
+  }
+  const uplights = merged(
+    upG,
+    new THREE.MeshStandardMaterial({
+      color: 0x30281e,
+      emissive: 0xffd9a8,
+      emissiveIntensity: 1.6,
+      roughness: 0.4,
+      metalness: 0,
+    }),
+  );
+  group.add(uplights);
 
   return { group, roof };
 }

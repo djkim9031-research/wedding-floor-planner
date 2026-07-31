@@ -34,6 +34,7 @@ export function isPoseValid(type: ItemType, pose: Pose, items: PlacedItem[], sel
 
   const collidesWith = (other: ItemType): boolean =>
     isTable(type) ? isTable(other) : type === 'chair' ? other === 'chair' : false;
+  // lanterns are decor: no item collisions, and they may sit on tabletops
 
   for (const it of items) {
     if (it.id === selfId || !collidesWith(it.type)) continue;

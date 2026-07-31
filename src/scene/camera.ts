@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { EYE_HEIGHT, ROOM_POLYGON, i2m } from '../constants';
+import { EYE_HEIGHT, ROOM_POLYGON, WALK_AREAS, i2m } from '../constants';
 import { pointInPolygon } from '../core/geometry';
 import type { Vec2 } from '../types';
 
@@ -9,7 +9,7 @@ const TARGET_MARGIN = i2m(60);
 const TX0 = i2m(0) - TARGET_MARGIN;
 const TX1 = i2m(545) + TARGET_MARGIN;
 const TZ0 = i2m(-498) - TARGET_MARGIN; // allow panning across the full Tree Deck
-const TZ1 = i2m(659) + TARGET_MARGIN;
+const TZ1 = i2m(2740) + TARGET_MARGIN; // down the breezeway to the drop-off court
 
 export type RigMode = 'orbit' | 'stand';
 
@@ -44,7 +44,9 @@ export class CameraRig {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 400);
+    // tight near/far: low-precision depth buffers (Firefox on Tegra gets one)
+    // z-fight badly with a sloppy range
+    this.camera = new THREE.PerspectiveCamera(50, 1, 0.35, 320);
     this.camera.position.set(i2m(272.5), 7.5, i2m(300) + 11);
 
     this.controls = new OrbitControls(this.camera, canvas);
@@ -133,7 +135,7 @@ export class CameraRig {
 
   /** Teleport (stand mode) to a floor point given in inches. */
   teleport(p: Vec2): void {
-    if (!pointInPolygon(p, ROOM_POLYGON)) return;
+    if (!WALK_AREAS.some((poly) => pointInPolygon(p, poly))) return;
     this.standPos.set(i2m(p.x), i2m(EYE_HEIGHT), i2m(p.z));
     this.standDirty = true;
   }
@@ -237,7 +239,7 @@ export class CameraRig {
         v.normalize().multiplyScalar(speed * dt);
         const next = this.standPos.clone().add(v);
         const p = { x: next.x / i2m(1), z: next.z / i2m(1) };
-        if (pointInPolygon(p, ROOM_POLYGON)) {
+        if (WALK_AREAS.some((poly) => pointInPolygon(p, poly))) {
           this.standPos.copy(next);
         }
         moved = true;

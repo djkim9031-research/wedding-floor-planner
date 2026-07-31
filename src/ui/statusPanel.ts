@@ -1,4 +1,4 @@
-import { ITEM_DIMS, ITEM_LABELS, TABLE_TOPS, isTable } from '../constants';
+import { ITEM_DIMS, ITEM_LABELS, LANTERN_SPECS, TABLE_TOPS, isLantern, isTable } from '../constants';
 import { fmtInches } from '../core/format';
 import * as store from '../state/store';
 import type { DrapeReport, PlacedItem, Pose } from '../types';
@@ -123,7 +123,11 @@ export function buildStatusPanel(
     const sel = s.items.find((it) => it.id === s.selectedId);
     if (sel) {
       const dims = ITEM_DIMS[sel.type];
-      const height = isTable(sel.type) ? ` · ${fmtInches(TABLE_TOPS[sel.type])}"h` : '';
+      const height = isTable(sel.type)
+        ? ` · ${fmtInches(TABLE_TOPS[sel.type])}"h`
+        : isLantern(sel.type)
+          ? ` · ${LANTERN_SPECS[sel.type].h}"h · ~13 lm`
+          : '';
       let html = `<h3>${ITEM_LABELS[sel.type]}</h3>
         <div class="sub">${fmtInches(dims.w)}" × ${fmtInches(dims.d)}"${height} · ${Math.round(sel.yawDeg)}°</div>`;
       if (isCloth(sel.type)) {

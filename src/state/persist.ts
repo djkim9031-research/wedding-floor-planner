@@ -10,6 +10,10 @@ const TYPES = new Set([
   'chair',
   'clothA',
   'clothB',
+  'lantern18',
+  'lantern24',
+  'lantern30',
+  'lantern36',
   'figureW',
   'figureM',
 ]);

@@ -5,15 +5,18 @@ import {
   COLORS,
   FIGURE_HEIGHTS,
   ITEM_DIMS,
+  LANTERN_SPECS,
   LEG_SIZE,
   TABLE_TOPS,
   TABLE_TOP_T,
   isFigure,
+  isLantern,
   isTable,
+  type LanternType,
   type TableType,
   i2m,
 } from '../constants';
-import { DEG } from '../core/geometry';
+import { DEG, unrot } from '../core/geometry';
 import type { ItemType, PlacedItem } from '../types';
 import { oakTableTextures, teakTableTextures } from './textures';
 
@@ -166,11 +169,85 @@ function buildHuman(type: 'figureW' | 'figureM'): THREE.Group {
   return g;
 }
 
+/** Candle lantern per the DutchCrafters outdoor family: square open frame,
+ * pitched cap, real (dim) warm point light at the flame. */
+function buildLantern(type: LanternType): THREE.Group {
+  const spec = LANTERN_SPECS[type];
+  const { w } = ITEM_DIMS[type];
+  const h = spec.h;
+  const frame = new THREE.MeshStandardMaterial({ color: spec.colorHex, roughness: 0.6, metalness: 0.05 });
+  const g = new THREE.Group();
+  const add = (m: THREE.Mesh) => {
+    m.castShadow = true;
+    g.add(m);
+    return m;
+  };
+  const baseH = Math.max(1, h * 0.05);
+  add(new THREE.Mesh(new THREE.BoxGeometry(i2m(w), i2m(baseH), i2m(w)), frame)).position.y = i2m(baseH / 2);
+  const postT = Math.max(0.8, w * 0.09);
+  const postH = h * 0.68;
+  const postGeo = new THREE.BoxGeometry(i2m(postT), i2m(postH), i2m(postT));
+  for (const [sx, sz] of [
+    [1, 1],
+    [1, -1],
+    [-1, -1],
+    [-1, 1],
+  ]) {
+    const post = add(new THREE.Mesh(postGeo, frame));
+    post.position.set(i2m(sx * (w / 2 - postT / 2)), i2m(baseH + postH / 2), i2m(sz * (w / 2 - postT / 2)));
+  }
+  const collarY = baseH + postH;
+  add(new THREE.Mesh(new THREE.BoxGeometry(i2m(w), i2m(1), i2m(w)), frame)).position.y = i2m(collarY + 0.5);
+  const cap = add(
+    new THREE.Mesh(new THREE.CylinderGeometry(0, i2m((w / 2) * 1.5), i2m(h - collarY - 1.5), 4), frame),
+  );
+  cap.rotation.y = Math.PI / 4;
+  cap.position.y = i2m(collarY + 1 + (h - collarY - 1.5) / 2);
+  const finial = add(new THREE.Mesh(new THREE.SphereGeometry(i2m(Math.max(0.6, w * 0.06)), 10, 8), frame));
+  finial.position.y = i2m(h + 0.4);
+
+  const candleH = h * 0.2;
+  const candle = new THREE.Mesh(
+    new THREE.CylinderGeometry(i2m(w * 0.14), i2m(w * 0.14), i2m(candleH), 12),
+    new THREE.MeshStandardMaterial({ color: 0xf6efdf, roughness: 0.7, emissive: 0x241505, emissiveIntensity: 0.4 }),
+  );
+  candle.position.y = i2m(baseH + candleH / 2);
+  g.add(candle);
+  const flame = new THREE.Mesh(
+    new THREE.SphereGeometry(i2m(Math.max(0.7, w * 0.075)), 10, 8),
+    new THREE.MeshStandardMaterial({ color: 0xffdf9e, emissive: 0xffa63c, emissiveIntensity: 2.4 }),
+  );
+  flame.scale.y = 1.6;
+  flame.position.y = i2m(baseH + candleH + 1.1);
+  g.add(flame);
+
+  // ~13 lm candle: dim warm pool, no shadow casting (cheap per-lantern light)
+  const light = new THREE.PointLight(0xffa550, spec.candela, i2m(175), 2);
+  light.position.y = i2m(baseH + candleH + 2);
+  g.add(light);
+  return g;
+}
+
+/** Tallest tabletop under a floor point (0 = open floor) — lanterns mount on it. */
+export function tableTopUnder(items: PlacedItem[], x: number, z: number): number {
+  let top = 0;
+  for (const it of items) {
+    if (!isTable(it.type)) continue;
+    const dims = ITEM_DIMS[it.type];
+    const local = unrot(x - it.x, z - it.z, it.yawDeg * DEG);
+    if (Math.abs(local.x) <= dims.w / 2 && Math.abs(local.z) <= dims.d / 2) {
+      top = Math.max(top, TABLE_TOPS[it.type]);
+    }
+  }
+  return top;
+}
+
 function getTemplate(type: ItemType): THREE.Group {
   let template = templates.get(type);
   if (!template) {
     if (isTable(type)) template = buildTableTemplate(type);
     else if (type === 'chair') template = buildChair();
+    else if (isLantern(type)) template = buildLantern(type);
     else template = buildHuman(type as 'figureW' | 'figureM');
     templates.set(type, template);
   }
@@ -217,7 +294,7 @@ export class ItemMeshes {
   sync(items: PlacedItem[]): void {
     const wanted = new Map(
       items
-        .filter((it) => isTable(it.type) || it.type === 'chair' || isFigure(it.type))
+        .filter((it) => isTable(it.type) || it.type === 'chair' || isFigure(it.type) || isLantern(it.type))
         .map((it) => [it.id, it]),
     );
     for (const [id, mesh] of this.meshes) {
@@ -252,7 +329,8 @@ export class ItemMeshes {
           this.outlines.set(id, outline);
         }
       }
-      mesh.position.set(i2m(it.x), 0, i2m(it.z));
+      const mountY = isLantern(it.type) ? tableTopUnder(items, it.x, it.z) : 0;
+      mesh.position.set(i2m(it.x), i2m(mountY), i2m(it.z));
       mesh.rotation.y = it.yawDeg * DEG;
       mesh.visible = id !== this.hiddenId;
     }

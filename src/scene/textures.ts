@@ -89,7 +89,7 @@ export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: T
       for (let i = 0; i < n; i++) {
         const dark = rnd() < 0.7;
         map.strokeStyle = dark ? '#7A5230' : '#D8A96C';
-        map.globalAlpha = 0.05 + rnd() * 0.11;
+        map.globalAlpha = 0.04 + rnd() * 0.08;
         map.lineWidth = 0.7 + rnd() * 1.5;
         map.beginPath();
         let sx = x0 + 3 + rnd() * (w - 6);
@@ -108,17 +108,18 @@ export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: T
       // end joint
       if (bd.y0 > 0 && bd.y0 < S) {
         map.fillStyle = '#6E4526';
-        map.globalAlpha = 0.55;
+        map.globalAlpha = 0.38;
         map.fillRect(x0, bd.y0 - 1, w, 2);
         map.globalAlpha = 1;
         rough.fillStyle = '#9E9E9E';
         rough.fillRect(x0, bd.y0 - 1, w, 2);
       }
     }
-    // plank gap + milled edge highlight
+    // plank gap + milled edge highlight (soft: hairline contrast shimmers
+    // under minification on weak anisotropic filters)
     map.fillStyle = '#6E4526';
-    map.globalAlpha = 0.5;
-    map.fillRect(x0 + w - 1, 0, 1, S);
+    map.globalAlpha = 0.3;
+    map.fillRect(x0 + w - 1.25, 0, 1.5, S);
     map.globalAlpha = 0.07;
     map.fillStyle = '#E8C089';
     map.fillRect(x0, 0, 1.5, S);
@@ -128,7 +129,7 @@ export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: T
   });
 
   const mapTex = toTexture(map, true);
-  mapTex.anisotropy = 8;
+  mapTex.anisotropy = 16;
   return { map: mapTex, roughnessMap: toTexture(rough, false) };
 }
 
@@ -219,7 +220,9 @@ export function deckWoodTexture(): THREE.CanvasTexture {
     }
     ctx.globalAlpha = 1;
   }
-  return toTexture(ctx, true);
+  const deckTex = toTexture(ctx, true);
+  deckTex.anisotropy = 16;
+  return deckTex;
 }
 
 // ---------------------------------------------------------------------------

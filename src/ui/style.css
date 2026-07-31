@@ -247,6 +247,83 @@ button.ui-btn.danger:hover {
   color: #8d8478;
 }
 
+/* ---- sun panel ---- */
+.sun-panel {
+  position: absolute;
+  left: 12px;
+  top: 110px;
+  width: 236px;
+  background: var(--ivory);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 8px 10px;
+  font-size: 12px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sun-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 13px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.sun-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sun-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sun-input {
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: #fff;
+  color: var(--ink);
+  min-width: 0;
+  flex: 1;
+}
+
+.sun-slider {
+  width: 100%;
+  accent-color: var(--brass);
+}
+
+.cloud-slider {
+  flex: 1;
+}
+
+.sun-pct {
+  font-size: 11px;
+  color: #8d8478;
+  min-width: 30px;
+  text-align: right;
+}
+
+.sun-info {
+  font-size: 11px;
+  color: #8d8478;
+}
+
 /* ---- placed items panel ---- */
 .items-panel {
   position: absolute;
@@ -485,5 +562,10 @@ button.ui-btn.danger:hover {
   }
   .items-list {
     max-height: 26vh;
+  }
+  .sun-panel {
+    left: 8px;
+    top: 150px;
+    width: 200px;
   }
 }

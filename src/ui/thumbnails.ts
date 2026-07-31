@@ -31,6 +31,13 @@ const chair = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/200
   <rect x="12" y="10" width="24" height="6" rx="2" fill="#B57A40"/>
 </svg>`;
 
+const lantern = (stroke: string, hh: number) => `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M24 ${10 - hh} L15 ${17 - hh} L33 ${17 - hh} Z" fill="${stroke}"/>
+  <rect x="16" y="${17 - hh}" width="16" height="${24 + hh}" stroke="${stroke}" stroke-width="2.2" fill="none"/>
+  <rect x="14" y="${41}" width="20" height="3" fill="${stroke}"/>
+  <ellipse cx="24" cy="${33}" rx="2.6" ry="4" fill="#FFB84D"/>
+</svg>`;
+
 export const THUMBNAILS: Record<ItemType, string> = {
   table,
   tableSq,
@@ -38,6 +45,10 @@ export const THUMBNAILS: Record<ItemType, string> = {
   chair,
   clothA: cloth('#F2EBDD'),
   clothB: cloth('#E4D5BB'),
+  lantern18: lantern('#3A3A3A', 0),
+  lantern24: lantern('#3A3A3A', 3),
+  lantern30: lantern('#3A3A3A', 6),
+  lantern36: lantern('#8D8478', 8),
   figureW,
   figureM,
 };

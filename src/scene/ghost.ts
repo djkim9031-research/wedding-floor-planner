@@ -9,10 +9,13 @@ import {
   TABLE_TOPS,
   TABLE_TOP_MAX,
   TABLE_TOP_T,
+  LANTERN_SPECS,
   isFigure,
+  isLantern,
   isTable,
   i2m,
 } from '../constants';
+import { tableTopUnder } from './itemMeshes';
 import { DEG } from '../core/geometry';
 import type { GhostState, ItemType, PlacedItem } from '../types';
 
@@ -69,6 +72,11 @@ function buildGhostMesh(type: ItemType): THREE.Group {
     );
     back.position.set(0, i2m((CHAIR_BACK_H + CHAIR_SEAT_H) / 2), i2m(-7.85));
     g.add(back);
+  } else if (isLantern(type)) {
+    const spec = LANTERN_SPECS[type];
+    const body = new THREE.Mesh(new THREE.BoxGeometry(i2m(w), i2m(spec.h), i2m(d)), mat);
+    body.position.y = i2m(spec.h / 2);
+    g.add(body);
   } else if (isFigure(type)) {
     const h = FIGURE_HEIGHTS[type as 'figureW' | 'figureM'];
     const body = new THREE.Mesh(new THREE.CapsuleGeometry(i2m(w / 2), i2m(h - w), 4, 10), mat);
@@ -154,7 +162,8 @@ export class GhostVisual {
       this.parent.add(this.mesh);
     }
     const { w, d } = ITEM_DIMS[ghost.type];
-    this.mesh.position.set(i2m(ghost.x), 0, i2m(ghost.z));
+    const gy = isLantern(ghost.type) ? tableTopUnder(items, ghost.x, ghost.z) : 0;
+    this.mesh.position.set(i2m(ghost.x), i2m(gy), i2m(ghost.z));
     this.mesh.rotation.y = ghost.yawDeg * DEG;
 
     const color = ghost.valid ? COLORS.valid : COLORS.invalid;

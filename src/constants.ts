@@ -88,10 +88,47 @@ export const DECK_POLY: Vec2[] = [
   { x: 551, z: 0 },
 ];
 
-/** The two 24" tree openings marked on the plan. */
-export const DECK_TREES: Vec2[] = [
-  { x: 5, z: -187 },
-  { x: 646, z: -187 },
+/** The single oak rising through the central deck (per the venue photos). */
+export const DECK_TREES: Vec2[] = [{ x: 287, z: -190 }];
+
+/** Where the stand-here camera may walk: room, deck, hallways, bathrooms,
+ * and the entry breezeway. */
+export const WALK_AREAS: Vec2[][] = [
+  ROOM_POLYGON,
+  DECK_POLY,
+  [
+    // middle + west hallway with the west bathroom suite
+    { x: -597, z: 599 },
+    { x: 174, z: 599 },
+    { x: 174, z: 659 },
+    { x: -597, z: 659 },
+  ],
+  [
+    { x: -597, z: 421 },
+    { x: -455, z: 421 },
+    { x: -455, z: 599 },
+    { x: -597, z: 599 },
+  ],
+  [
+    // east hallway + east bathroom
+    { x: 377, z: 605 },
+    { x: 694, z: 605 },
+    { x: 694, z: 659 },
+    { x: 377, z: 659 },
+  ],
+  [
+    { x: 490, z: 509 },
+    { x: 694, z: 509 },
+    { x: 694, z: 605 },
+    { x: 490, z: 605 },
+  ],
+  [
+    // entry breezeway + drop-off court
+    { x: 100, z: 659 },
+    { x: 445, z: 659 },
+    { x: 445, z: 2740 },
+    { x: 100, z: 2740 },
+  ],
 ];
 
 // ---------------------------------------------------------------------------
@@ -106,6 +143,10 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   chair: { w: 20, d: 20 },
   clothA: { w: 108, d: 156 },
   clothB: { w: 104, d: 144 },
+  lantern18: { w: 9, d: 9 },
+  lantern24: { w: 11, d: 11 },
+  lantern30: { w: 12, d: 12 },
+  lantern36: { w: 14, d: 14 },
   figureW: { w: 16, d: 11 },
   figureM: { w: 18, d: 12 },
 };
@@ -117,11 +158,28 @@ export const ITEM_LABELS: Record<ItemType, string> = {
   chair: 'Chair',
   clothA: 'Rental Linen',
   clothB: 'C&B Linen',
+  lantern18: 'Lantern · 18″',
+  lantern24: 'Lantern · 24″',
+  lantern30: 'Lantern · 30″',
+  lantern36: 'Lantern · 36″',
   figureW: 'Guest · 5′5″',
   figureM: 'Guest · 5′10″',
 };
 
 export const isFigure = (t: ItemType): boolean => t === 'figureW' || t === 'figureM';
+
+export type LanternType = 'lantern18' | 'lantern24' | 'lantern30' | 'lantern36';
+export const isLantern = (t: ItemType): t is LanternType => t.startsWith('lantern');
+
+/** DutchCrafters-style outdoor candle lanterns: square poly frame, open
+ * sides, pitched cap. A real candle is ~13 lumens — the point light is tuned
+ * to read as a dim, moody pool, not illumination. */
+export const LANTERN_SPECS: Record<LanternType, { h: number; colorHex: number; candela: number }> = {
+  lantern18: { h: 18, colorHex: 0x1f1f1f, candela: 3.2 },
+  lantern24: { h: 24, colorHex: 0x1f1f1f, candela: 4.0 },
+  lantern30: { h: 30, colorHex: 0x1f1f1f, candela: 4.8 },
+  lantern36: { h: 36, colorHex: 0xf4f1e8, candela: 5.6 },
+};
 export const FIGURE_HEIGHTS: Record<'figureW' | 'figureM', number> = {
   figureW: 65, // 5'5"
   figureM: 70, // 5'10"

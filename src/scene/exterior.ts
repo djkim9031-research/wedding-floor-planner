@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { i2m, DECK_POLY, DECK_TREES, ROOM_W, ROOM_D } from '../constants';
+import { i2m, DECK_POLY, DECK_TREES, ROOM_W, ROOM_D, EAVE_Y } from '../constants';
 import { deckWoodTexture, skyTexture, valleyTexture } from './textures';
 
 type Geo = THREE.BufferGeometry;
@@ -43,6 +43,7 @@ export function buildExterior(): THREE.Group {
   shape.closePath();
   const deckGeo = new THREE.ExtrudeGeometry(shape, { depth: i2m(12), bevelEnabled: false });
   deckGeo.rotateX(Math.PI / 2); // shape (x,-z) + depth 12 down -> top at y=0
+  deckGeo.translate(0, -i2m(0.4), 0); // sit just below the interior floor: no knife-edge seam
   const deck = new THREE.Mesh(
     deckGeo,
     new THREE.MeshStandardMaterial({ map: deckTex, roughness: 0.85, metalness: 0 }),
@@ -224,12 +225,173 @@ export function buildExterior(): THREE.Group {
     }
   };
 
-  // the two oaks rise through the plan's deck openings; two more are scenery
+  // one oak rises through the central deck opening; the rest are scenery
   // beyond the railing
-  oak(1, DECK_TREES[0].x, DECK_TREES[0].z, 4, 1, -0.5, 260, -30);
-  oak(2, DECK_TREES[1].x, DECK_TREES[1].z, 27, -0.5, -0.9, 230, -20);
+  oak(2, DECK_TREES[0].x, DECK_TREES[0].z, 18, -0.5, -0.9, 260, -30);
   oak(3, 870, -180, 9, 0.6, -0.8, 250, -60);
   oak(4, -320, -380, 6, 0.3, -1, 300, -110);
+  oak(1, 240, -620, 4, 1, -0.5, 280, -90);
+
+  // -------------------------------------------------------------------------
+  // South campus — hip-roofed wings flanking the breezeway, entry court with
+  // the drop-off circle, dry-grass ground so the massing sits on something.
+  // The court sits one terrace (10") below the wing grade.
+  // -------------------------------------------------------------------------
+  const grass = merged(
+    [box(-1500, 1900, -3, -1, 600, 2160), box(-1500, 1900, -13, -11, 2160, 3150)],
+    new THREE.MeshStandardMaterial({ color: 0xc9bfa3, roughness: 1, metalness: 0 }),
+  );
+  grass.receiveShadow = true;
+  group.add(grass);
+
+  // terrace edge where the grade steps down to the court
+  const ledge = merged(
+    [box(-1500, 70, -13, -0.9, 2154, 2162), box(475, 1900, -13, -0.9, 2154, 2162)],
+    new THREE.MeshStandardMaterial({ color: 0x8d8579, roughness: 0.95, metalness: 0 }),
+  );
+  ledge.castShadow = true;
+  ledge.receiveShadow = true;
+  group.add(ledge);
+
+  // wings: stucco boxes to the eave + coarse hip roofs, 45° hips in plan
+  const wingWallG: Geo[] = [];
+  const winG: Geo[] = [];
+  const hipPos: number[] = [];
+  const quad = (a: number[], b: number[], c: number[], d: number[]) => {
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const up = u[2] * v[0] - u[0] * v[2] >= 0; // keep face normals pointing up
+    const t = up ? [a, b, c, a, c, d] : [a, d, c, a, c, b];
+    for (const p of t) hipPos.push(i2m(p[0]), i2m(p[1]), i2m(p[2]));
+  };
+  const hip = (x0: number, x1: number, z0: number, z1: number) => {
+    wingWallG.push(box(x0, x1, -2, EAVE_Y, z0, z1));
+    const ov = 20;
+    const zc = (z0 + z1) / 2;
+    const ins = (z1 - z0) / 2;
+    const e0 = [x0 - ov, 106, z0 - ov];
+    const e1 = [x1 + ov, 106, z0 - ov];
+    const e2 = [x1 + ov, 106, z1 + ov];
+    const e3 = [x0 - ov, 106, z1 + ov];
+    const r0 = [x0 + ins, 200, zc];
+    const r1 = [x1 - ins, 200, zc];
+    quad(e0, e1, r1, r0);
+    quad(e3, e2, r1, r0);
+    quad(e3, e0, r0, r0);
+    quad(e1, e2, r1, r1);
+  };
+  hip(-900, 100, 800, 1450);
+  hip(445, 1350, 800, 1450);
+  hip(-760, 90, 1560, 2100); // second pair past the courtyard break
+  hip(455, 1250, 1560, 2100);
+
+  // a few dark openings on the walk-facing walls
+  for (const wz of [900, 1030, 1160, 1290]) {
+    winG.push(box(99.4, 100.6, 40, 88, wz, wz + 52));
+    winG.push(box(444.4, 445.6, 40, 88, wz, wz + 52));
+  }
+  for (const wz of [1650, 1780, 1910]) {
+    winG.push(box(89.4, 90.6, 40, 88, wz, wz + 52));
+    winG.push(box(454.4, 455.6, 40, 88, wz, wz + 52));
+  }
+
+  const wingWalls = merged(wingWallG, new THREE.MeshStandardMaterial({ color: 0xede8dd, roughness: 0.95, metalness: 0 }));
+  wingWalls.castShadow = true;
+  wingWalls.receiveShadow = true;
+  const hipGeo = new THREE.BufferGeometry();
+  hipGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(hipPos), 3));
+  hipGeo.computeVertexNormals();
+  const wingRoofs = new THREE.Mesh(
+    hipGeo,
+    new THREE.MeshStandardMaterial({ color: 0x8b7365, roughness: 0.98, metalness: 0 }),
+  );
+  wingRoofs.castShadow = true;
+  wingRoofs.receiveShadow = true;
+  const wins = merged(winG, new THREE.MeshStandardMaterial({ color: 0x3a3a38, roughness: 0.4, metalness: 0.1 }));
+  group.add(wingWalls, wingRoofs, wins);
+
+  // drop-off circle with a planted center island
+  const asphalt = new THREE.Mesh(
+    new THREE.CylinderGeometry(i2m(260), i2m(260), i2m(1.2), 48).translate(i2m(272.5), i2m(-11.1), i2m(2480)),
+    new THREE.MeshStandardMaterial({ color: 0x6f6c68, roughness: 0.97, metalness: 0 }),
+  );
+  asphalt.receiveShadow = true;
+  group.add(asphalt);
+
+  const curbMat = new THREE.MeshStandardMaterial({ color: 0xb3ac9f, roughness: 0.9, metalness: 0 });
+  const gap = 1.7; // curb ring opens where the walk feeds in from the north
+  const curbGeo = new THREE.TorusGeometry(i2m(262), i2m(2.4), 6, 48, Math.PI * 2 - gap);
+  curbGeo.rotateZ(-Math.PI / 2 + gap / 2);
+  curbGeo.rotateX(Math.PI / 2);
+  curbGeo.translate(i2m(272.5), i2m(-10.4), i2m(2480));
+  const curb = new THREE.Mesh(curbGeo, curbMat);
+  curb.castShadow = true;
+  curb.receiveShadow = true;
+  const islandCurb = new THREE.Mesh(
+    new THREE.TorusGeometry(i2m(92), i2m(2.6), 6, 40).rotateX(Math.PI / 2).translate(i2m(272.5), i2m(-10.2), i2m(2480)),
+    curbMat,
+  );
+  islandCurb.castShadow = true;
+  islandCurb.receiveShadow = true;
+  const soil = new THREE.Mesh(
+    new THREE.CylinderGeometry(i2m(90), i2m(90), i2m(2), 40).translate(i2m(272.5), i2m(-10), i2m(2480)),
+    new THREE.MeshStandardMaterial({ color: 0x6b5b49, roughness: 1, metalness: 0 }),
+  );
+  soil.receiveShadow = true;
+  group.add(curb, islandCurb, soil);
+
+  const southRnd = mulberry32(0xb42);
+  for (const [sx, sz] of [
+    [210, 2445],
+    [330, 2430],
+    [225, 2525],
+    [320, 2520],
+  ] as const) {
+    blob(southRnd, sx, 3, sz, 20, foliageColors[(southRnd() * 3) | 0]);
+  }
+
+  // breezeway planters along the post lines; the entry pair carries palms
+  const bwPlanterG: Geo[] = [];
+  const bwPlanter = (px: number, pz: number, y0: number, shrub: boolean) => {
+    const g = new THREE.CylinderGeometry(i2m(13), i2m(10), i2m(30), 4, 1);
+    g.rotateY(Math.PI / 4);
+    g.translate(i2m(px), i2m(y0 + 15), i2m(pz));
+    bwPlanterG.push(g);
+    if (shrub) blob(southRnd, px, y0 + 40, pz, 15, foliageColors[(southRnd() * 3) | 0]);
+  };
+  for (const [px, pz] of [
+    [150, 946],
+    [395, 946],
+    [395, 1234],
+    [150, 1522],
+    [395, 1810],
+    [150, 2098],
+  ] as const) {
+    bwPlanter(px, pz, -0.75, true);
+  }
+  for (const [px, pz] of [
+    [140, 2205],
+    [405, 2205],
+  ] as const) {
+    bwPlanter(px, pz, -9.75, false);
+    barkG.push(new THREE.CylinderGeometry(i2m(3), i2m(4.5), i2m(75), 6).translate(i2m(px), i2m(48), i2m(pz)));
+    blob(southRnd, px, 92, pz, 17, '#4E6B3C');
+    blob(southRnd, px, 82, pz, 13, '#57743F');
+  }
+  const bwPlanters = merged(
+    bwPlanterG,
+    new THREE.MeshStandardMaterial({ color: 0x6b4f38, roughness: 0.5, metalness: 0.45 }),
+  );
+  bwPlanters.castShadow = true;
+  bwPlanters.receiveShadow = true;
+  group.add(bwPlanters);
+
+  // island oak + scenery oaks flanking the wings
+  oak(21, 272.5, 2480, 6, 0.5, 1, 250, -40);
+  oak(22, -680, 740, 8, -0.6, 0.5, 290, -60);
+  oak(23, 950, 730, 6, 0.8, 0.3, 270, -50);
+  oak(24, -520, 2320, 10, -0.8, 0.6, 300, -70);
+  oak(25, 1080, 2260, 7, 0.7, 0.8, 260, -70);
 
   const bark = merged(barkG, new THREE.MeshStandardMaterial({ color: 0x5b4a3e, roughness: 0.95, metalness: 0 }));
   bark.castShadow = true;
@@ -247,7 +409,13 @@ export function buildExterior(): THREE.Group {
 // Sky dome, valley backdrop and fog.
 // ---------------------------------------------------------------------------
 
-export function applyAtmosphere(scene: THREE.Scene): void {
+export interface Atmosphere {
+  skyMat: THREE.MeshBasicMaterial;
+  valleyMat: THREE.MeshBasicMaterial;
+  fog: THREE.Fog;
+}
+
+export function applyAtmosphere(scene: THREE.Scene): Atmosphere {
   scene.fog = new THREE.Fog(0xe8eef2, 45, 160);
 
   const cx = i2m(ROOM_W / 2);
@@ -275,4 +443,10 @@ export function applyAtmosphere(scene: THREE.Scene): void {
   valley.position.set(cx, 4, cz);
   valley.renderOrder = -1;
   scene.add(valley);
+
+  return {
+    skyMat: sky.material as THREE.MeshBasicMaterial,
+    valleyMat: valley.material as THREE.MeshBasicMaterial,
+    fog: scene.fog as THREE.Fog,
+  };
 }
