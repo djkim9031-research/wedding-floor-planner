@@ -130,8 +130,8 @@ export const WALK_AREAS: Vec2[][] = [
     // entry breezeway + drop-off court
     { x: 100, z: 659 },
     { x: 445, z: 659 },
-    { x: 445, z: 2740 },
-    { x: 100, z: 2740 },
+    { x: 445, z: 2280 },
+    { x: 100, z: 2280 },
   ],
 ];
 
@@ -144,15 +144,15 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   table: { w: 47.5, d: 31.5 },
   tableSq: { w: 35.5, d: 35.5 },
   tableQ: { w: 72, d: 36 },
-  chair: { w: 20, d: 20 },
+  chair: { w: 20, d: 17 },
   clothA: { w: 108, d: 156 },
   clothB: { w: 104, d: 144 },
   lantern18: { w: 9, d: 9 },
   lantern24: { w: 11, d: 11 },
   lantern30: { w: 12, d: 12 },
   lantern36: { w: 14, d: 14 },
-  hedge: { w: 48, d: 14 },
-  screen: { w: 66, d: 16 },
+  hedge: { w: 48, d: 10 },
+  screen: { w: 48, d: 21 },
   setting: { w: 16, d: 12 },
   figureW: { w: 16, d: 11 },
   figureM: { w: 18, d: 12 },
@@ -179,10 +179,12 @@ export const ITEM_LABELS: Record<ItemType, string> = {
 export const isFigure = (t: ItemType): boolean => t === 'figureW' || t === 'figureM';
 
 export type LanternType = 'lantern18' | 'lantern24' | 'lantern30' | 'lantern36';
-/** free-standing privacy pieces: solid, they block sunlight */
+/** free-standing privacy pieces: solid, they block sunlight.
+ * Bright rentals: Artificial Hedge 48×10×96 (10" black planter base);
+ * Ivory Sausalito Screen 48×21×90 (walnut caster base, fabric panel). */
 export const isBarrier = (t: ItemType): boolean => t === 'hedge' || t === 'screen';
-export const HEDGE_H = 90;
-export const SCREEN_H = 84;
+export const HEDGE_H = 96;
+export const SCREEN_H = 90;
 export const isLantern = (t: ItemType): t is LanternType => t.startsWith('lantern');
 
 /** DutchCrafters-style outdoor candle lanterns: square poly frame, open
@@ -213,11 +215,10 @@ export const TABLE_TOPS: Record<TableType, number> = {
 export const TABLE_TOP_MAX = 30.5;
 export const TABLE_TOP_T = 1.5; // rendered top slab thickness
 
-// Chair proportions derive from the oak dining table: two chairs must fit
-// between its legs along the 47.5" side (47.5 − 2×2.5 = 42.5 ⇒ ≤21.25" wide),
-// and the seat clears the 29.5" tabletop by the usual ~11.5".
+// Oak Bistro Chair: 20"L × 17"D × 35"H. Two fit between the oak table's legs
+// (47.5 − 2×2.5 = 42.5 ⇒ ≤21.25" wide); seat clears the 29.5" top by ~11.5".
 export const CHAIR_SEAT_H = TABLE_TOPS.table - 11.5; // 18"
-export const CHAIR_BACK_H = CHAIR_SEAT_H + 16; // 34" back top
+export const CHAIR_BACK_H = 35; // overall height
 export const LEG_SIZE = 2.5; // square legs, set at the corners
 export const EYE_HEIGHT = 60; // stand-here camera height
 

@@ -79,7 +79,7 @@ function buildChair(): THREE.Group {
   const wood = tableMaterial('chair');
   const g = new THREE.Group();
   const seatW = 19;
-  const seatD = 17.5;
+  const seatD = 15.5;
   const seat = new THREE.Mesh(new THREE.BoxGeometry(i2m(seatW), i2m(1.8), i2m(seatD)), wood);
   seat.position.set(0, i2m(CHAIR_SEAT_H - 0.9), i2m(0.75));
   seat.castShadow = seat.receiveShadow = true;
@@ -247,64 +247,64 @@ function buildLantern(type: LanternType): THREE.Group {
   return g;
 }
 
-/** Artificial hedge wall: leafy noisy face over a slim frame; blocks sun. */
+/** Bright "Artificial Hedge": 48×10×96 — black wood planter box (48×10×10)
+ * with a double-sided green hedge wall above. Blocks sun. */
 function buildHedge(): THREE.Group {
   const { w, d } = ITEM_DIMS.hedge;
   const g = new THREE.Group();
   const leaf = new THREE.MeshStandardMaterial({ color: 0x44543a, roughness: 0.95, flatShading: true });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(i2m(w - 2), i2m(HEDGE_H - 4), i2m(d - 4), 12, 18, 2), leaf);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(i2m(w - 1), i2m(HEDGE_H - 11), i2m(d - 2), 12, 20, 2), leaf);
   const pos = body.geometry.getAttribute('position') as THREE.BufferAttribute;
   for (let k = 0; k < pos.count; k++) {
     const x = pos.getX(k);
     const y = pos.getY(k);
     const z = pos.getZ(k);
     const h = Math.sin(x * 61.7 + y * 43.3 + z * 89.1) * 0.5 + Math.sin(x * 17.9 - y * 23.7) * 0.5;
-    const sfc = 1 + 0.06 * h;
-    pos.setXYZ(k, x * sfc, y * sfc, z + Math.sign(z) * i2m(1.2) * Math.abs(h));
+    const sfc = 1 + 0.05 * h;
+    pos.setXYZ(k, x * sfc, y * sfc, z + Math.sign(z) * i2m(1.4) * Math.abs(h)); // leafy on both faces
   }
   body.geometry.computeVertexNormals();
-  body.position.y = i2m(4 + (HEDGE_H - 4) / 2);
+  body.position.y = i2m(10 + (HEDGE_H - 11) / 2);
   body.castShadow = body.receiveShadow = true;
   g.add(body);
-  const base = new THREE.Mesh(
-    new THREE.BoxGeometry(i2m(w), i2m(4), i2m(d)),
-    new THREE.MeshStandardMaterial({ color: 0x3c3c3c, roughness: 0.7, metalness: 0.3 }),
+  const planter = new THREE.Mesh(
+    new THREE.BoxGeometry(i2m(w), i2m(10), i2m(d)),
+    new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.75, metalness: 0.05 }),
   );
-  base.position.y = i2m(2);
-  base.castShadow = true;
-  g.add(base);
+  planter.position.y = i2m(5);
+  planter.castShadow = planter.receiveShadow = true;
+  g.add(planter);
   return g;
 }
 
-/** Ivory Sausalito screen: three gently angled linen panels in a wood frame. */
+/** Bright "Ivory Sausalito Screen": 48×21×90 — weighted walnut base
+ * (48×21×21) on casters, single ivory fabric panel (48×2) rising to 90". */
 function buildScreen(): THREE.Group {
   const g = new THREE.Group();
-  const fabric = new THREE.MeshStandardMaterial({ color: 0xf4efe3, roughness: 0.9, side: THREE.DoubleSide });
-  const frame = new THREE.MeshStandardMaterial({ color: 0xb8ab97, roughness: 0.7 });
-  const panelW = 22;
-  const angle = 0.28;
-  for (const [k, sx] of [[-1, -1], [0, 0], [1, 1]] as const) {
-    const p = new THREE.Group();
-    const cloth = new THREE.Mesh(new THREE.BoxGeometry(i2m(panelW - 2.4), i2m(SCREEN_H - 6), i2m(1)), fabric);
-    cloth.position.y = i2m(3 + (SCREEN_H - 6) / 2);
-    cloth.castShadow = cloth.receiveShadow = true;
-    p.add(cloth);
-    for (const fy of [1.5, SCREEN_H - 1.5]) {
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(i2m(panelW), i2m(3), i2m(1.6)), frame);
-      bar.position.y = i2m(fy);
-      bar.castShadow = true;
-      p.add(bar);
-    }
-    for (const fx of [-1, 1]) {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(i2m(1.8), i2m(SCREEN_H), i2m(1.6)), frame);
-      post.position.set(i2m(fx * (panelW / 2 - 0.9)), i2m(SCREEN_H / 2), 0);
-      post.castShadow = true;
-      p.add(post);
-    }
-    p.position.x = i2m(sx * (panelW - 1.2) * Math.cos(angle));
-    p.rotation.y = k === 0 ? 0 : -sx * angle;
-    g.add(p);
+  const fabric = new THREE.MeshStandardMaterial({ color: 0xf4efe3, roughness: 0.9 });
+  const walnut = new THREE.MeshStandardMaterial({ color: 0x5a4633, roughness: 0.6 });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(i2m(48), i2m(18), i2m(21)), walnut);
+  base.position.y = i2m(3 + 9);
+  base.castShadow = base.receiveShadow = true;
+  g.add(base);
+  const casterGeo = new THREE.CylinderGeometry(i2m(1.5), i2m(1.5), i2m(1.6), 10);
+  casterGeo.rotateZ(Math.PI / 2);
+  const casterMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.5, metalness: 0.4 });
+  for (const [sx, sz] of [
+    [1, 1],
+    [1, -1],
+    [-1, -1],
+    [-1, 1],
+  ]) {
+    const caster = new THREE.Mesh(casterGeo, casterMat);
+    caster.position.set(i2m(sx * 20), i2m(1.5), i2m(sz * 7.5));
+    caster.castShadow = true;
+    g.add(caster);
   }
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(i2m(48), i2m(SCREEN_H - 15), i2m(2)), fabric);
+  panel.position.y = i2m(15 + (SCREEN_H - 15) / 2);
+  panel.castShadow = panel.receiveShadow = true;
+  g.add(panel);
   return g;
 }
 

@@ -238,7 +238,7 @@ export function buildExterior(): THREE.Group {
   // massing sits on something. The court sits one terrace (10") below grade.
   // -------------------------------------------------------------------------
   const grass = merged(
-    [box(-2100, 3400, -3, -1, 300, 2160), box(-2100, 3400, -13, -11, 2160, 3150)],
+    [box(-2100, 3400, -3, -1, 300, 1700), box(-2100, 3400, -13, -11, 1700, 2700)],
     new THREE.MeshStandardMaterial({ color: 0xc9bfa3, roughness: 1, metalness: 0 }),
   );
   grass.receiveShadow = true;
@@ -246,7 +246,7 @@ export function buildExterior(): THREE.Group {
 
   // terrace edge where the grade steps down to the court
   const ledge = merged(
-    [box(-2100, 70, -13, -0.9, 2154, 2162), box(475, 3400, -13, -0.9, 2154, 2162)],
+    [box(-2100, 70, -13, -0.9, 1694, 1702), box(475, 3400, -13, -0.9, 1694, 1702)],
     new THREE.MeshStandardMaterial({ color: 0x8d8579, roughness: 0.95, metalness: 0 }),
   );
   ledge.castShadow = true;
@@ -295,27 +295,27 @@ export function buildExterior(): THREE.Group {
   // masses traced off the satellite; corners interpenetrate for a merged read
   hip(-2000, -610, 380, 760); // north-west arm
   hip(700, 2300, 380, 760); // north-east arm
-  hip(-2000, -730, 760, 1480); // west connector
-  hip(-2000, 120, 1480, 2260); // south band west, clear of the canopy posts
-  hip(405, 2300, 1480, 2260); // south band east
-  hip(1040, 2300, 760, 1480); // east connector
-  hip(2300, 3300, 300, 2200, 230); // far-east block, a touch taller
+  hip(-2000, -470, 760, 1290); // west connector
+  hip(-2000, 120, 1290, 1800); // south band west, clear of the canopy posts
+  hip(405, 2300, 1290, 1800); // south band east
+  hip(830, 2300, 760, 1290); // east connector
+  hip(2300, 3300, 300, 1900, 230); // far-east block, a touch taller
 
   // a few dark openings on the faces seen from the courts and breezeway
-  for (const wz of [900, 1030, 1160, 1290]) {
-    winG.push(box(-730.6, -729.4, 40, 88, wz, wz + 52)); // west court, west wall
-    winG.push(box(1039.4, 1040.6, 40, 88, wz, wz + 52)); // east court, east wall
+  for (const wz of [900, 1030, 1160]) {
+    winG.push(box(-470.6, -469.4, 40, 88, wz, wz + 52)); // west court, west wall
+    winG.push(box(829.4, 830.6, 40, 88, wz, wz + 52)); // east court, east wall
   }
-  for (const wx of [-650, -480, -310, -140, 20]) {
-    winG.push(box(wx, wx + 52, 40, 88, 1479.4, 1480.6)); // west court, south wall
+  for (const wx of [-430, -300, -170, -40]) {
+    winG.push(box(wx, wx + 52, 40, 88, 1289.4, 1290.6)); // west court, south wall
   }
-  for (const wx of [460, 630, 800, 970]) {
-    winG.push(box(wx, wx + 52, 40, 88, 1479.4, 1480.6)); // east court, south wall
+  for (const wx of [460, 600, 740]) {
+    winG.push(box(wx, wx + 52, 40, 88, 1289.4, 1290.6)); // east court, south wall
   }
-  for (const wx of [740, 880]) {
+  for (const wx of [740]) {
     winG.push(box(wx, wx + 52, 40, 88, 759.4, 760.6)); // east court, north wall
   }
-  for (const wz of [1600, 1760, 1920, 2080]) {
+  for (const wz of [1410, 1550, 1690]) {
     winG.push(box(119.4, 120.6, 40, 88, wz, wz + 52)); // breezeway, south half
     winG.push(box(404.4, 405.6, 40, 88, wz, wz + 52));
   }
@@ -337,7 +337,7 @@ export function buildExterior(): THREE.Group {
 
   // drop-off circle with a planted center island
   const asphalt = new THREE.Mesh(
-    new THREE.CylinderGeometry(i2m(260), i2m(260), i2m(1.2), 48).translate(i2m(272.5), i2m(-11.1), i2m(2480)),
+    new THREE.CylinderGeometry(i2m(260), i2m(260), i2m(1.2), 48).translate(i2m(272.5), i2m(-11.1), i2m(2020)),
     new THREE.MeshStandardMaterial({ color: 0x6f6c68, roughness: 0.97, metalness: 0 }),
   );
   asphalt.receiveShadow = true;
@@ -348,18 +348,18 @@ export function buildExterior(): THREE.Group {
   const curbGeo = new THREE.TorusGeometry(i2m(262), i2m(2.4), 6, 48, Math.PI * 2 - gap);
   curbGeo.rotateZ(-Math.PI / 2 + gap / 2);
   curbGeo.rotateX(Math.PI / 2);
-  curbGeo.translate(i2m(272.5), i2m(-10.4), i2m(2480));
+  curbGeo.translate(i2m(272.5), i2m(-10.4), i2m(2020));
   const curb = new THREE.Mesh(curbGeo, curbMat);
   curb.castShadow = true;
   curb.receiveShadow = true;
   const islandCurb = new THREE.Mesh(
-    new THREE.TorusGeometry(i2m(92), i2m(2.6), 6, 40).rotateX(Math.PI / 2).translate(i2m(272.5), i2m(-10.2), i2m(2480)),
+    new THREE.TorusGeometry(i2m(92), i2m(2.6), 6, 40).rotateX(Math.PI / 2).translate(i2m(272.5), i2m(-10.2), i2m(2020)),
     curbMat,
   );
   islandCurb.castShadow = true;
   islandCurb.receiveShadow = true;
   const soil = new THREE.Mesh(
-    new THREE.CylinderGeometry(i2m(90), i2m(90), i2m(2), 40).translate(i2m(272.5), i2m(-10), i2m(2480)),
+    new THREE.CylinderGeometry(i2m(90), i2m(90), i2m(2), 40).translate(i2m(272.5), i2m(-10), i2m(2020)),
     new THREE.MeshStandardMaterial({ color: 0x6b5b49, roughness: 1, metalness: 0 }),
   );
   soil.receiveShadow = true;
@@ -367,10 +367,10 @@ export function buildExterior(): THREE.Group {
 
   const southRnd = mulberry32(0xb42);
   for (const [sx, sz] of [
-    [210, 2445],
-    [330, 2430],
-    [225, 2525],
-    [320, 2520],
+    [210, 1985],
+    [330, 1970],
+    [225, 2065],
+    [320, 2060],
   ] as const) {
     blob(southRnd, sx, 3, sz, 20, foliageColors[(southRnd() * 3) | 0]);
   }
@@ -389,14 +389,14 @@ export function buildExterior(): THREE.Group {
     [395, 946],
     [395, 1234],
     [150, 1522],
-    [395, 1810],
-    [150, 2098],
+    [395, 1350],
+    [150, 1638],
   ] as const) {
     bwPlanter(px, pz, -0.75, true);
   }
   for (const [px, pz] of [
-    [140, 2205],
-    [405, 2205],
+    [140, 1745],
+    [405, 1745],
   ] as const) {
     bwPlanter(px, pz, -9.75, false);
     barkG.push(new THREE.CylinderGeometry(i2m(3), i2m(4.5), i2m(75), 6).translate(i2m(px), i2m(48), i2m(pz)));
@@ -408,7 +408,7 @@ export function buildExterior(): THREE.Group {
   // garden court east. Court planters ride the breezeway-planter merge.
   // -------------------------------------------------------------------------
   const pavers = merged(
-    [box(-730, 100, -2, -0.5, 815, 1440), box(375, 1040, -2, -0.5, 815, 1440)],
+    [box(-470, 100, -2, -0.5, 815, 1250), box(375, 830, -2, -0.5, 815, 1250)],
     new THREE.MeshStandardMaterial({ color: 0xcfc5b2, roughness: 0.95, metalness: 0 }),
   );
   pavers.receiveShadow = true;
@@ -417,10 +417,10 @@ export function buildExterior(): THREE.Group {
   // west court: white patio sets kept toward the west side
   const patioG: Geo[] = [];
   for (const [px, pz] of [
-    [-600, 940],
-    [-590, 1180],
-    [-420, 1060],
-    [-380, 1330],
+    [-400, 920],
+    [-360, 1160],
+    [-230, 1030],
+    [-160, 1180],
   ] as const) {
     patioG.push(new THREE.CylinderGeometry(i2m(24), i2m(24), i2m(29), 12).translate(i2m(px), i2m(14.5), i2m(pz)));
     for (const [dx, dz] of [
@@ -442,13 +442,13 @@ export function buildExterior(): THREE.Group {
   group.add(patio);
 
   // low hedge run along the west court's south edge
-  for (let hx = -690; hx <= 30; hx += 80) {
-    blob(southRnd, hx, 8, 1408, 16, foliageColors[1]);
+  for (let hx = -430; hx <= 50; hx += 80) {
+    blob(southRnd, hx, 8, 1218, 16, foliageColors[1]);
   }
 
   // east court: three planting beds, each with a few foliage blobs
   const beds = merged(
-    [box(440, 660, 0, 8, 890, 980), box(780, 1000, 0, 8, 890, 980), box(440, 660, 0, 8, 1280, 1370)],
+    [box(440, 660, 0, 8, 890, 980), box(680, 800, 0, 8, 890, 980), box(440, 660, 0, 8, 1130, 1220)],
     new THREE.MeshStandardMaterial({ color: 0x5c4a37, roughness: 1, metalness: 0 }),
   );
   beds.castShadow = true;
@@ -458,12 +458,12 @@ export function buildExterior(): THREE.Group {
     [480, 935],
     [555, 928],
     [625, 940],
-    [820, 935],
-    [895, 942],
-    [965, 930],
-    [485, 1325],
-    [560, 1332],
-    [630, 1320],
+    [705, 935],
+    [745, 942],
+    [780, 930],
+    [485, 1175],
+    [560, 1182],
+    [630, 1170],
   ] as const) {
     blob(southRnd, bx, 20, bz, 14, foliageColors[(southRnd() * 3) | 0]);
   }
@@ -471,8 +471,8 @@ export function buildExterior(): THREE.Group {
   // small central fountain: basin + pedestal, water discs on both
   const fountain = merged(
     [
-      new THREE.CylinderGeometry(i2m(40), i2m(44), i2m(14), 16).translate(i2m(707), i2m(7), i2m(1127)),
-      new THREE.CylinderGeometry(i2m(12), i2m(15), i2m(28), 12).translate(i2m(707), i2m(28), i2m(1127)),
+      new THREE.CylinderGeometry(i2m(40), i2m(44), i2m(14), 16).translate(i2m(600), i2m(7), i2m(1030)),
+      new THREE.CylinderGeometry(i2m(12), i2m(15), i2m(28), 12).translate(i2m(600), i2m(28), i2m(1030)),
     ],
     curbMat,
   );
@@ -480,8 +480,8 @@ export function buildExterior(): THREE.Group {
   fountain.receiveShadow = true;
   const water = merged(
     [
-      new THREE.CylinderGeometry(i2m(34), i2m(34), i2m(1.5), 16).translate(i2m(707), i2m(12), i2m(1127)),
-      new THREE.CylinderGeometry(i2m(16), i2m(16), i2m(1.5), 12).translate(i2m(707), i2m(42.5), i2m(1127)),
+      new THREE.CylinderGeometry(i2m(34), i2m(34), i2m(1.5), 16).translate(i2m(600), i2m(12), i2m(1030)),
+      new THREE.CylinderGeometry(i2m(16), i2m(16), i2m(1.5), 12).translate(i2m(600), i2m(42.5), i2m(1030)),
     ],
     new THREE.MeshStandardMaterial({ color: 0x5f8fa8, roughness: 0.15, metalness: 0.1 }),
   );
@@ -489,9 +489,9 @@ export function buildExterior(): THREE.Group {
   group.add(fountain, water);
 
   // court planters: two on the patio court, one in the garden court
-  bwPlanter(-700, 855, -0.5, true);
+  bwPlanter(-440, 855, -0.5, true);
   bwPlanter(55, 855, -0.5, true);
-  bwPlanter(1000, 860, -0.5, true);
+  bwPlanter(790, 860, -0.5, true);
 
   const bwPlanters = merged(
     bwPlanterG,
@@ -502,11 +502,11 @@ export function buildExterior(): THREE.Group {
   group.add(bwPlanters);
 
   // island oak + scenery oaks flanking the wings
-  oak(21, 272.5, 2480, 6, 0.5, 1, 250, -40);
+  oak(21, 272.5, 2020, 6, 0.5, 1, 250, -40);
   oak(22, -430, 1150, 8, -0.6, 0.5, 290, -60);
-  oak(23, 900, 1300, 6, 0.8, 0.3, 270, -50);
-  oak(24, -520, 2320, 10, -0.8, 0.6, 300, -70);
-  oak(25, 1080, 2260, 7, 0.7, 0.8, 260, -70);
+  oak(23, 740, 1170, 6, 0.8, 0.3, 270, -50);
+  oak(24, -520, 1860, 10, -0.8, 0.6, 300, -70);
+  oak(25, 1080, 1800, 7, 0.7, 0.8, 260, -70);
 
   const bark = merged(barkG, new THREE.MeshStandardMaterial({ color: 0x5b4a3e, roughness: 0.95, metalness: 0 }));
   bark.castShadow = true;
@@ -516,6 +516,68 @@ export function buildExterior(): THREE.Group {
   );
   foliage.castShadow = true;
   group.add(bark, foliage);
+
+
+  // -------------------------------------------------------------------------
+  // Easter egg: a bunny and a squirrel playing by the deck oak.
+  // -------------------------------------------------------------------------
+  const critters = new THREE.Group();
+  const bunnyFur = new THREE.MeshStandardMaterial({ color: 0xa29384, roughness: 0.95 });
+  const bunnyWhite = new THREE.MeshStandardMaterial({ color: 0xf2ede4, roughness: 0.95 });
+  const squirrelFur = new THREE.MeshStandardMaterial({ color: 0x8a5636, roughness: 0.95 });
+  const squirrelTail = new THREE.MeshStandardMaterial({ color: 0x9c6a44, roughness: 0.98 });
+
+  const part = (
+    parent: THREE.Group,
+    mat: THREE.Material,
+    r: number,
+    x: number,
+    y: number,
+    z: number,
+    sx = 1,
+    sy = 1,
+    sz = 1,
+  ) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(i2m(r), 14, 12), mat);
+    m.position.set(i2m(x), i2m(y), i2m(z));
+    m.scale.set(sx, sy, sz);
+    m.castShadow = true;
+    parent.add(m);
+    return m;
+  };
+
+  // bunny, sitting up mid-game (~9" tall) — faces +z
+  const bunny = new THREE.Group();
+  part(bunny, bunnyFur, 4.2, 0, 4, 0, 1, 0.9, 1.25); // body
+  part(bunny, bunnyWhite, 3.1, 0, 3.4, 0.8, 0.95, 0.8, 1); // belly
+  part(bunny, bunnyFur, 2.5, 0, 8, 2.6); // head
+  part(bunny, bunnyWhite, 1.3, 0, 4.6, -5); // tail
+  for (const sx of [-1, 1]) {
+    const ear = part(bunny, bunnyFur, 1, sx * 1.2, 11.6, 1.6, 0.55, 2.4, 0.7);
+    ear.rotation.set(-0.15, 0, sx * 0.18);
+    part(bunny, bunnyFur, 1, sx * 1.7, 1.2, 2.8, 1, 0.6, 1.4); // front paws
+  }
+  bunny.position.set(i2m(258), -i2m(0.4), i2m(-170));
+  bunny.rotation.y = Math.PI + 0.5; // looking toward the squirrel
+  critters.add(bunny);
+
+  // squirrel, mid-pounce with the tail arced high (~7" + tail) — faces +z
+  const squirrel = new THREE.Group();
+  const sqBody = part(squirrel, squirrelFur, 3, 0, 3.4, 0, 1, 1, 1.35);
+  sqBody.rotation.x = -0.25; // pouncing forward
+  part(squirrel, squirrelFur, 2.1, 0, 6.2, 3.2); // head
+  for (const sx of [-1, 1]) {
+    part(squirrel, squirrelFur, 0.7, sx * 1.1, 8, 2.9, 0.8, 1.2, 0.6); // ears
+    part(squirrel, squirrelFur, 0.8, sx * 1.4, 1, 3.4, 1, 0.7, 1.3); // front paws
+  }
+  part(squirrel, squirrelTail, 1.9, 0, 3, -4.4, 0.8, 1, 0.9);
+  part(squirrel, squirrelTail, 2.5, 0, 7, -5.8, 0.85, 1.1, 0.85);
+  part(squirrel, squirrelTail, 2, 0, 10.6, -4.6, 0.75, 1, 0.75);
+  squirrel.position.set(i2m(310), -i2m(0.4), i2m(-206));
+  squirrel.rotation.y = Math.PI + 3.7; // facing back toward the bunny
+  critters.add(squirrel);
+
+  group.add(critters);
 
   return group;
 }

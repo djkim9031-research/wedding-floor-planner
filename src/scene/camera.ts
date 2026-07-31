@@ -9,7 +9,7 @@ const TARGET_MARGIN = i2m(60);
 const TX0 = i2m(0) - TARGET_MARGIN;
 const TX1 = i2m(545) + TARGET_MARGIN;
 const TZ0 = i2m(-498) - TARGET_MARGIN; // allow panning across the full Tree Deck
-const TZ1 = i2m(2740) + TARGET_MARGIN; // down the breezeway to the drop-off court
+const TZ1 = i2m(2280) + TARGET_MARGIN; // down the breezeway to the drop-off court
 
 export type RigMode = 'orbit' | 'stand';
 

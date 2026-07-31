@@ -90,24 +90,73 @@ export function sunPosition(dateStr: string, minutesLocal: number): SunState {
   };
 }
 
-/** Sunrise/sunset in venue-local minutes: −0.833° refraction horizon plus the
- * horizon dip from the site's 119 m elevation (≈0.32° — a couple of minutes
- * of extra sun at each end of the day). */
-export function sunTimes(dateStr: string): { sunrise: number | null; sunset: number | null } {
+/** Crossing times for a given solar zenith angle, venue-local minutes. */
+function crossingTimes(
+  dateStr: string,
+  zenithDeg: number,
+): { rise: number | null; set: number | null } {
   const [y, mo, d] = dateStr.split('-').map(Number);
   const tzMin = tzOffsetMinutes(dateStr);
   const doy = dayOfYear(y, mo, d);
   const { eqtime, decl } = solarBasics(doy, 12 - tzMin / 60);
   const lat = VENUE.lat * RAD;
-  const dip = 0.0293 * Math.sqrt(VENUE.elevM);
-  const cosH0 =
-    Math.cos((90.833 + dip) * RAD) / (Math.cos(lat) * Math.cos(decl)) - Math.tan(lat) * Math.tan(decl);
-  if (cosH0 < -1 || cosH0 > 1) return { sunrise: null, sunset: null };
+  const cosH0 = Math.cos(zenithDeg * RAD) / (Math.cos(lat) * Math.cos(decl)) - Math.tan(lat) * Math.tan(decl);
+  if (cosH0 < -1 || cosH0 > 1) return { rise: null, set: null };
   const ha0 = Math.acos(cosH0) / RAD;
   return {
-    sunrise: 720 - 4 * (VENUE.lon + ha0) - eqtime + tzMin,
-    sunset: 720 - 4 * (VENUE.lon - ha0) - eqtime + tzMin,
+    rise: 720 - 4 * (VENUE.lon + ha0) - eqtime + tzMin,
+    set: 720 - 4 * (VENUE.lon - ha0) - eqtime + tzMin,
   };
+}
+
+/** Sunrise/sunset (standard −0.833° almanac horizon, matching published
+ * tables; the site's 119 m elevation is deliberately NOT applied here). */
+export function sunTimes(dateStr: string): { sunrise: number | null; sunset: number | null } {
+  const t = crossingTimes(dateStr, 90.833);
+  return { sunrise: t.rise, sunset: t.set };
+}
+
+/** Twilight boundaries: civil (−6°), nautical (−12°), astronomical (−18°). */
+export function twilightTimes(dateStr: string): {
+  civilDawn: number | null;
+  civilDusk: number | null;
+  nauticalDusk: number | null;
+  astroDusk: number | null;
+} {
+  const civil = crossingTimes(dateStr, 96);
+  const naut = crossingTimes(dateStr, 102);
+  const astro = crossingTimes(dateStr, 108);
+  return { civilDawn: civil.rise, civilDusk: civil.set, nauticalDusk: naut.set, astroDusk: astro.set };
+}
+
+/** Apparent elevation of the Santa Cruz ridge to the west (~2°): the sun
+ * drops behind it ≈10 minutes before the almanac sunset (calibrated against
+ * the observed Oct 11 disappearance). Feathered across the WSW–NW arc. */
+export function horizonAltDeg(azTrueDeg: number): number {
+  const az = ((azTrueDeg % 360) + 360) % 360;
+  const rise = (a: number, b: number, x: number) => Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return 2.0 * rise(215, 240, az) * (1 - rise(300, 325, az));
+}
+
+/** Minute the sun actually vanishes behind the western ridge. */
+export function hillSetTime(dateStr: string): number | null {
+  const t = sunTimes(dateStr).sunset;
+  if (t === null) return null;
+  let last: number | null = null;
+  for (let m = Math.round(t) - 75; m <= Math.round(t) + 5; m++) {
+    const p = sunPosition(dateStr, m);
+    if (p.altitudeDeg - horizonAltDeg(p.azimuthDeg) >= -0.833) last = m;
+  }
+  return last;
+}
+
+/** Twilight phase name for an altitude. */
+export function phaseName(altitudeDeg: number): string {
+  if (altitudeDeg >= 0) return 'day';
+  if (altitudeDeg >= -6) return 'civil twilight';
+  if (altitudeDeg >= -12) return 'nautical twilight';
+  if (altitudeDeg >= -18) return 'astronomical twilight';
+  return 'night';
 }
 
 /** Unit vector pointing FROM the scene TOWARD the sun, model frame. */

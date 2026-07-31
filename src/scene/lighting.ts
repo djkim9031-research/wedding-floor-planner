@@ -44,10 +44,10 @@ export function setupLighting(
   sun.castShadow = true;
   sun.shadow.mapSize.setScalar(mobile ? 1024 : 2048);
   const cam = sun.shadow.camera;
-  cam.left = -22;
-  cam.right = 22;
-  cam.top = 22;
-  cam.bottom = -22;
+  cam.left = -24;
+  cam.right = 24;
+  cam.top = 24;
+  cam.bottom = -24;
   cam.near = 5;
   cam.far = 95;
   sun.shadow.bias = -0.0004;
@@ -116,11 +116,12 @@ export function setupLighting(
   const lerpHex = (a: number, b: number, t: number): THREE.Color =>
     colA.setHex(a).lerp(colB.setHex(b), THREE.MathUtils.clamp(t, 0, 1));
 
-  const setAtmo = (sky: THREE.Color, valley: THREE.Color, fog: number) => {
+  const fogCol = new THREE.Color();
+  const setAtmo = (sky: THREE.Color, valley: THREE.Color, fog: THREE.Color) => {
     if (!atmo) return;
     atmo.skyMat.color.copy(sky);
     atmo.valleyMat.color.copy(valley);
-    atmo.fog.color.setHex(fog);
+    atmo.fog.color.copy(fog);
   };
 
   const applySun = (input: SunInput | null): void => {
@@ -135,7 +136,7 @@ export function setupLighting(
       for (const s of spots) s.intensity = 50;
       for (const p of porch) p.intensity = 0;
       sceneEnv.environmentIntensity = 0.35;
-      setAtmo(colA.setHex(0xffffff).clone(), colB.setHex(0xffffff).clone(), 0xe8eef2);
+      setAtmo(colA.setHex(0xffffff).clone(), colB.setHex(0xffffff).clone(), fogCol.setHex(0xe8eef2));
       disc.visible = false;
       arrow.visible = false;
       invalidateShadows();
@@ -148,24 +149,34 @@ export function setupLighting(
     const h = Math.max(alt, 1) * DEG; // keep the light above the horizon plane
     const dir = new THREE.Vector3(Math.sin(a) * Math.cos(h), Math.sin(h), -Math.cos(a) * Math.cos(h));
 
-    const night = alt < -6;
-    const twilight = alt >= -6 && alt < 0;
-
-    if (night || twilight) {
-      // moody evening: no direct sun, gentle warm interior + porch glow
-      const t = night ? 0 : (alt + 6) / 6; // 0 deep night → 1 at horizon
+    if (alt < 0) {
+      // smooth twilight ladder: sunset → civil (−6°) → nautical (−12°) →
+      // astronomical (−18°) → night; every quantity interpolates between
+      // keyframes so the evening fades naturally
+      const KEYS = [
+        { a: 0, hemi: 0xf0a45c, hemiI: 0.42, sky: 0xa06a44, valley: 0x8a6a52, fog: 0xd8bfa5, spot: 60, porch: 12, env: 0.22 },
+        { a: -6, hemi: 0x4a5a86, hemiI: 0.34, sky: 0x4a5064, valley: 0x3c4152, fog: 0x2a3145, spot: 85, porch: 26, env: 0.15 },
+        { a: -12, hemi: 0x2a3658, hemiI: 0.26, sky: 0x232c47, valley: 0x242938, fog: 0x17203a, spot: 85, porch: 26, env: 0.12 },
+        { a: -18, hemi: 0x1b2440, hemiI: 0.22, sky: 0x141d33, valley: 0x1c2434, fog: 0x0e1626, spot: 85, porch: 26, env: 0.12 },
+      ];
+      const aa = Math.max(alt, -18);
+      let k = 0;
+      while (k < KEYS.length - 2 && aa < KEYS[k + 1].a) k++;
+      const k0 = KEYS[k];
+      const k1 = KEYS[k + 1];
+      const t = THREE.MathUtils.clamp((k0.a - aa) / (k0.a - k1.a), 0, 1);
       sun.visible = false;
-      hemi.color.copy(lerpHex(0x1b2440, 0x4a5a86, t).clone());
+      hemi.color.copy(lerpHex(k0.hemi, k1.hemi, t).clone());
       hemi.groundColor.setHex(0x14100c);
-      hemi.intensity = 0.22 + 0.18 * t;
-      for (const s of spots) s.intensity = 85;
-      for (const p of porch) p.intensity = 26;
-      sceneEnv.environmentIntensity = 0.12;
-      setAtmo(
-        lerpHex(0x141d33, 0x4a5064, t).clone(),
-        lerpHex(0x1c2434, 0x3c4152, t).clone(),
-        night ? 0x0e1626 : 0x2a3145,
-      );
+      hemi.intensity = THREE.MathUtils.lerp(k0.hemiI, k1.hemiI, t);
+      const spotI = THREE.MathUtils.lerp(k0.spot, k1.spot, t);
+      for (const s of spots) s.intensity = spotI;
+      const porchI = THREE.MathUtils.lerp(k0.porch, k1.porch, t);
+      for (const p of porch) p.intensity = porchI;
+      sceneEnv.environmentIntensity = THREE.MathUtils.lerp(k0.env, k1.env, t);
+      const sky = lerpHex(k0.sky, k1.sky, t).clone();
+      const val = lerpHex(k0.valley, k1.valley, t).clone();
+      setAtmo(sky, val, fogCol.copy(lerpHex(k0.fog, k1.fog, t)));
       disc.visible = false;
       arrow.visible = false;
       invalidateShadows();
@@ -194,9 +205,10 @@ export function setupLighting(
     hemi.color.copy(lerpHex(0xbfd9f5, 0xf0a45c, golden).clone().lerp(colB.setHex(0xaab2bc), c * 0.7));
     hemi.groundColor.setHex(0x8a6b4c);
     hemi.intensity = 0.5 + 0.12 * (1 - golden) + 0.4 * c;
-    for (const s of spots) s.intensity = 50;
-    for (const p of porch) p.intensity = 0;
-    sceneEnv.environmentIntensity = 0.3 - 0.08 * c;
+    const duskFade = THREE.MathUtils.clamp(1 - alt / 6, 0, 1);
+    for (const s of spots) s.intensity = 50 + 10 * duskFade;
+    for (const p of porch) p.intensity = 12 * duskFade;
+    sceneEnv.environmentIntensity = 0.3 - 0.08 * c - 0.08 * duskFade;
 
     const skyTint = lerpHex(0xffffff, 0xffb066, golden)
       .clone()
@@ -205,7 +217,7 @@ export function setupLighting(
     setAtmo(
       skyTint,
       lerpHex(0xffffff, 0xe0b894, golden).clone().multiplyScalar(0.72).lerp(colB.setHex(0x777d85), c * 0.7),
-      c > 0.5 ? 0x9b9ea3 : golden > 0.5 ? 0xd8bfa5 : 0xc9d2dc,
+      fogCol.setHex(c > 0.5 ? 0x9b9ea3 : golden > 0.5 ? 0xd8bfa5 : 0xc9d2dc),
     );
 
     disc.visible = true;

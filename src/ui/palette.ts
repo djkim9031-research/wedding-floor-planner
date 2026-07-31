@@ -1,4 +1,4 @@
-import { CHAIR_SEAT_H, ITEM_DIMS, ITEM_LABELS, LANTERN_SPECS, TABLE_TOPS, isLantern, isTable } from '../constants';
+import { CHAIR_SEAT_H, HEDGE_H, ITEM_DIMS, ITEM_LABELS, LANTERN_SPECS, SCREEN_H, TABLE_TOPS, isLantern, isTable } from '../constants';
 import type { ItemType } from '../types';
 import type { PlacementFSM } from '../interact/placementFSM';
 import type { PointerController } from '../interact/pointer';
@@ -82,9 +82,9 @@ export function buildPalette(
         : isLantern(type)
           ? `${dims.w}" sq · ${LANTERN_SPECS[type].h}"h · candle`
           : type === 'hedge'
-            ? `${dims.w}" × ${dims.d}" · 90"h`
+            ? `${dims.w}" × ${dims.d}" · ${HEDGE_H}"h`
             : type === 'screen'
-              ? `${dims.w}" × ${dims.d}" · 84"h`
+              ? `${dims.w}" × ${dims.d}" · ${SCREEN_H}"h`
               : type === 'setting'
                 ? 'Lucca plates + glasses'
           : type === 'figureW' || type === 'figureM'

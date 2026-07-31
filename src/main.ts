@@ -11,7 +11,7 @@ import { Overlays } from './scene/overlays';
 import { createSceneHost } from './scene/scene';
 import * as persist from './state/persist';
 import * as store from './state/store';
-import { sunPosition } from './scene/sun';
+import { horizonAltDeg, sunPosition } from './scene/sun';
 import { buildItemsPanel } from './ui/itemsPanel';
 import { buildPalette } from './ui/palette';
 import { buildStatusPanel } from './ui/statusPanel';
@@ -77,7 +77,8 @@ const sunPanel = buildSunPanel(container, (s) => {
   }
   const pos = sunPosition(s.date, s.minutes);
   host.applySun({
-    altitudeDeg: pos.altitudeDeg,
+    // ridge-effective altitude: the western mountains swallow the sun early
+    altitudeDeg: pos.altitudeDeg - horizonAltDeg(pos.azimuthDeg),
     azimuthModelDeg: pos.azimuthModelDeg,
     clouds: s.clouds ? s.cloudPct / 100 : 0,
   });
@@ -245,8 +246,8 @@ if (params.get('cam') === 'close') {
   rig.camera.position.set(7.1, 44, 50);
   rig.controls.target.set(7.1, 0, 18);
 } else if (params.get('cam') === 'entry') {
-  rig.camera.position.set(6.92, 2.4, 60.5);
-  rig.controls.target.set(6.92, 2.0, 44);
+  rig.camera.position.set(6.92, 2.4, 48.8);
+  rig.controls.target.set(6.92, 2.0, 33);
 } else if (params.get('cam') === 'hall') {
   rig.camera.position.set(7.6, 1.6, 12.6);
   rig.controls.target.set(3.3, 1.1, 16.3);

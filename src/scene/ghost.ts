@@ -65,14 +65,14 @@ function buildGhostMesh(type: ItemType): THREE.Group {
       g.add(leg);
     }
   } else if (type === 'chair') {
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(i2m(19), i2m(1.8), i2m(17.5)), mat);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(i2m(19), i2m(1.8), i2m(15.5)), mat);
     seat.position.set(0, i2m(CHAIR_SEAT_H - 0.9), i2m(0.75));
     g.add(seat);
     const back = new THREE.Mesh(
       new THREE.BoxGeometry(i2m(18), i2m(CHAIR_BACK_H - CHAIR_SEAT_H), i2m(1.5)),
       mat,
     );
-    back.position.set(0, i2m((CHAIR_BACK_H + CHAIR_SEAT_H) / 2), i2m(-7.85));
+    back.position.set(0, i2m((CHAIR_BACK_H + CHAIR_SEAT_H) / 2), i2m(-7.35));
     g.add(back);
   } else if (type === 'hedge' || type === 'screen') {
     const h = type === 'hedge' ? HEDGE_H : SCREEN_H;

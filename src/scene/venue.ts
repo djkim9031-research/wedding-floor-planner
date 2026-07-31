@@ -669,7 +669,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   const BW_X0 = 100;
   const BW_X1 = 445;
   const BW_Z0 = 662;
-  const BW_Z1 = 2260;
+  const BW_Z1 = 1800;
   const BW_HALF = RIDGE_X - BW_X0;
   const bwRoofY = (x: number) => EAVE_Y + (BW_HALF - Math.abs(x - RIDGE_X)) * SLOPE;
   const BW_RIDGE = bwRoofY(RIDGE_X);
@@ -734,9 +734,9 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   };
   const pavers = merged(
     [
-      paverSurf(76, 469, 659, 2148, -0.75),
-      paverSurf(76, 469, 2148, 2166, -5.25),
-      paverSurf(76, 469, 2166, 2295, -9.75),
+      paverSurf(76, 469, 659, 1688, -0.75),
+      paverSurf(76, 469, 1688, 1706, -5.25),
+      paverSurf(76, 469, 1706, 1835, -9.75),
     ],
     new THREE.MeshStandardMaterial({ map: paverTex, roughness: 0.9, metalness: 0 }),
   );
@@ -746,9 +746,9 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   // slab masses give the grade change its risers
   const plinth = merged(
     [
-      box(76, 469, -12, -0.8, 659, 2148),
-      box(76, 469, -12, -5.3, 2148, 2166),
-      box(76, 469, -20, -9.8, 2166, 2295),
+      box(76, 469, -12, -0.8, 659, 1688),
+      box(76, 469, -12, -5.3, 1688, 1706),
+      box(76, 469, -20, -9.8, 1706, 1835),
     ],
     new THREE.MeshStandardMaterial({ color: 0xaaa294, roughness: 0.95, metalness: 0 }),
   );
@@ -759,7 +759,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   // two rows of 8" posts on the paver level
   const bwPostG: Geo[] = [];
   for (const px of [150, 395]) {
-    for (let pz = 730; pz <= 2170; pz += 144) bwPostG.push(box(px - 4, px + 4, -0.75, EAVE_Y, pz - 4, pz + 4));
+    for (let pz = 730; pz <= 1740; pz += 144) bwPostG.push(box(px - 4, px + 4, -0.75, EAVE_Y, pz - 4, pz + 4));
   }
   const bwPosts = merged(bwPostG, whiteMat);
   bwPosts.castShadow = true;
@@ -769,11 +769,11 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   // handrails at the grade change
   const railG: Geo[] = [];
   for (const rx of [160, 272.5, 385]) {
-    railG.push(box(rx - 0.6, rx + 0.6, -0.75, 32, 2139, 2140.2));
-    railG.push(box(rx - 0.6, rx + 0.6, -9.75, 23, 2173, 2174.2));
+    railG.push(box(rx - 0.6, rx + 0.6, -0.75, 32, 1679, 1680.2));
+    railG.push(box(rx - 0.6, rx + 0.6, -9.75, 23, 1713, 1714.2));
     const rail = new THREE.BoxGeometry(i2m(1.2), i2m(2), i2m(37));
     rail.rotateX(Math.atan2(9, 34));
-    rail.translate(i2m(rx), i2m(27.5), i2m(2156.5));
+    rail.translate(i2m(rx), i2m(27.5), i2m(1696.5));
     railG.push(rail);
   }
   const rails = merged(railG, new THREE.MeshStandardMaterial({ color: 0x9aa0a5, roughness: 0.35, metalness: 0.85 }));
@@ -795,8 +795,8 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   bwGlassG.push(bwSlopedBox(252.5, 266.5, 0.5, BW_Z0, BW_Z1, 1));
   bwGlassG.push(bwSlopedBox(278.5, 292.5, 0.5, BW_Z0, BW_Z1, 1));
 
-  const GROUP_E: [number, number] = [1360, 1660]; // east slope, venue side
-  const GROUP_W: [number, number] = [1520, 1820]; // west slope, entrance side
+  const GROUP_E: [number, number] = [1165, 1380]; // east slope, venue side
+  const GROUP_W: [number, number] = [1275, 1495]; // west slope, entrance side
 
   const slopeSeg = (xa: number, xb: number, z0: number, z1: number) => {
     if (z1 <= z0) return;
@@ -923,13 +923,13 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   );
   // hung centered on the spine, just under the canopy at the entrance
   const SIGN_Y = 150; // canopy ridge ≈172; sign top rods reach the fascia
-  signBoard.position.set(i2m(272.5), i2m(SIGN_Y), i2m(2256));
+  signBoard.position.set(i2m(272.5), i2m(SIGN_Y), i2m(1796));
   signBoard.castShadow = true;
-  signFace.position.set(i2m(272.5), i2m(SIGN_Y), i2m(2257.2));
+  signFace.position.set(i2m(272.5), i2m(SIGN_Y), i2m(1797.2));
   group.add(signBoard, signFace);
   const rodG: Geo[] = [];
   for (const rx of [272.5 - 26, 272.5 + 26]) {
-    rodG.push(box(rx - 0.5, rx + 0.5, SIGN_Y + 12, SIGN_Y + 22, 2255.5, 2256.5));
+    rodG.push(box(rx - 0.5, rx + 0.5, SIGN_Y + 12, SIGN_Y + 22, 1795.5, 1796.5));
   }
   const rods = merged(rodG, new THREE.MeshStandardMaterial({ color: 0x4a3826, roughness: 0.5, metalness: 0.4 }));
   group.add(rods);
