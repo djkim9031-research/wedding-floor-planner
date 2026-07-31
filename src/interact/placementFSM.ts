@@ -120,14 +120,14 @@ export class PlacementFSM {
       store.select(g.sourceId);
       this.setState('selected');
     } else {
-      const item = store.placeItem(g.type, pose);
-      if (isTable(g.type) && this.state === 'placing' && !g.parked) {
-        // Sims-style re-arm: keep placing more tables
+      store.placeItem(g.type, pose);
+      if ((isTable(g.type) || g.type === 'chair') && this.state === 'placing' && !g.parked) {
+        // Sims-style re-arm: keep placing more of the same
         store.setGhost(this.computeGhost(g.type, g.x, g.z));
       } else {
+        // selection happens only by clicking the item or its list row
         store.setGhost(null);
-        store.select(item.id);
-        this.setState('selected');
+        this.setState('idle');
       }
     }
     this.onGestureLock(false);

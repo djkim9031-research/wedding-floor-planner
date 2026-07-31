@@ -218,6 +218,89 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   stuccoG.push(box(174, 377, STOREFRONT_HEAD_Y, EAVE_Y, 659, 665));
 
   // -------------------------------------------------------------------------
+  // Annex walls — south hallways + bathrooms, open-top (no annex roof).
+  // West hall 35'1"x6'6" (the north alcove gives the depth), middle hall
+  // 29'2"x5'1", east hall 27'7"x4'3"; W suite 11'10"x14'4", E bath 17'9"x7'9".
+  // -------------------------------------------------------------------------
+  const sWindow = (a: number, b: number) => {
+    stuccoG.push(box(a, b, 0, WINDOW_SILL_Y, 659, 665));
+    stuccoG.push(box(a, b, DOOR_HEAD_Y, EAVE_Y, 659, 665));
+    const mid = (a + b) / 2;
+    pane('x', 662, a, mid, WINDOW_SILL_Y, DOOR_HEAD_Y);
+    pane('x', 662, mid, b, WINDOW_SILL_Y, DOOR_HEAD_Y);
+  };
+
+  // south facade z 659-665, one line from the west cap to the vestibule cheeks
+  stuccoG.push(box(-597, -526, 0, EAVE_Y, 659, 665));
+  stuccoG.push(box(-526, -490, DOOR_HEAD_Y, EAVE_Y, 659, 665)); // closed service door
+  whiteG.push(box(-526, -524.5, 0, DOOR_HEAD_Y, 660, 664));
+  whiteG.push(box(-491.5, -490, 0, DOOR_HEAD_Y, 660, 664));
+  whiteG.push(box(-524.5, -491.5, 82.5, DOOR_HEAD_Y, 660, 664));
+  whiteG.push(box(-524.5, -491.5, 0, 82.5, 661.1, 662.9)); // leaf
+  stuccoG.push(box(-490, -480, 0, EAVE_Y, 659, 665));
+  sWindow(-480, -422);
+  stuccoG.push(box(-422, -414, 0, EAVE_Y, 659, 665));
+  sWindow(-414, -356);
+  stuccoG.push(box(-356, -348, 0, EAVE_Y, 659, 665));
+  sWindow(-348, -290);
+  stuccoG.push(box(-290, 20, 0, EAVE_Y, 659, 665));
+  sWindow(20, 92);
+  stuccoG.push(box(92, 98, 0, EAVE_Y, 659, 665));
+  sWindow(98, 170);
+  stuccoG.push(box(170, 174, 0, EAVE_Y, 659, 665));
+  stuccoG.push(box(377, 385, 0, EAVE_Y, 659, 665));
+  sWindow(385, 457);
+  stuccoG.push(box(457, 463, 0, EAVE_Y, 659, 665));
+  sWindow(463, 535);
+  stuccoG.push(box(535, 694, 0, EAVE_Y, 659, 665));
+
+  // west wing: cap, suite shell, hallway north line with its 16" alcove
+  stuccoG.push(box(-603, -597, 0, EAVE_Y, 415, 665)); // west wall, suite through facade
+  stuccoG.push(box(-597, -449, 0, EAVE_Y, 415, 421)); // suite north
+  stuccoG.push(box(-455, -449, 0, EAVE_Y, 421, 599)); // suite east
+  stuccoG.push(box(-597, -500, 0, EAVE_Y, 593, 599)); // suite south / hall north
+  stuccoG.push(box(-464, -455, 0, EAVE_Y, 593, 599));
+  stuccoG.push(box(-500, -464, DOOR_HEAD_Y, EAVE_Y, 593, 599)); // suite doorway
+  whiteG.push(box(-500, -498.5, 0, DOOR_HEAD_Y, 594, 598));
+  whiteG.push(box(-465.5, -464, 0, DOOR_HEAD_Y, 594, 598));
+  whiteG.push(box(-498.5, -465.5, 82.5, DOOR_HEAD_Y, 594, 598));
+  stuccoG.push(box(-449, -434, 0, EAVE_Y, 593, 599));
+  stuccoG.push(box(-440, -302, 0, EAVE_Y, 577, 583)); // alcove back
+  stuccoG.push(box(-440, -434, 0, EAVE_Y, 583, 593)); // alcove cheeks
+  stuccoG.push(box(-308, -302, 0, EAVE_Y, 583, 593));
+  stuccoG.push(box(-302, 59, 0, EAVE_Y, 593, 599)); // hall north to the room's SW leg
+
+  // west/middle divider with doorway
+  stuccoG.push(box(-176, -170, 0, EAVE_Y, 599, 608));
+  stuccoG.push(box(-176, -170, 0, EAVE_Y, 644, 659));
+  stuccoG.push(box(-176, -170, DOOR_HEAD_Y, EAVE_Y, 608, 644));
+  whiteG.push(box(-175, -171, 0, DOOR_HEAD_Y, 608, 609.5));
+  whiteG.push(box(-175, -171, 0, DOOR_HEAD_Y, 642.5, 644));
+  whiteG.push(box(-175, -171, 82.5, DOOR_HEAD_Y, 609.5, 642.5));
+
+  // east wing: bath shell; its east wall doubles as the hallway cap + door
+  stuccoG.push(box(490, 700, 0, EAVE_Y, 503, 509)); // bath north
+  stuccoG.push(box(694, 700, 0, EAVE_Y, 509, 615)); // bath east / hall cap
+  stuccoG.push(box(694, 700, DOOR_HEAD_Y, EAVE_Y, 615, 651)); // cap doorway
+  stuccoG.push(box(694, 700, 0, EAVE_Y, 651, 665));
+  whiteG.push(box(695, 699, 0, DOOR_HEAD_Y, 615, 616.5));
+  whiteG.push(box(695, 699, 0, DOOR_HEAD_Y, 649.5, 651));
+  whiteG.push(box(695, 699, 82.5, DOOR_HEAD_Y, 616.5, 649.5));
+  whiteG.push(box(696.1, 697.9, 0, 82.5, 616.5, 649.5)); // leaf
+  stuccoG.push(box(490, 654, 0, EAVE_Y, 599, 605)); // bath south, doorway at the east end
+  stuccoG.push(box(690, 694, 0, EAVE_Y, 599, 605));
+  stuccoG.push(box(654, 690, DOOR_HEAD_Y, EAVE_Y, 599, 605));
+  whiteG.push(box(654, 655.5, 0, DOOR_HEAD_Y, 600, 604));
+  whiteG.push(box(688.5, 690, 0, DOOR_HEAD_Y, 600, 604));
+  whiteG.push(box(655.5, 688.5, 82.5, DOOR_HEAD_Y, 600, 604));
+
+  // stall partitions + vanity counter
+  whiteG.push(box(-503, -455, 0, 57, 472, 474.5));
+  whiteG.push(box(-503, -455, 0, 57, 517, 519.5));
+  whiteG.push(box(490, 538, 0, 57, 549, 551.5));
+  whiteG.push(box(640, 694, 28, 34, 509, 531));
+
+  // -------------------------------------------------------------------------
   // Baseboards (4" x 0.75", interior faces of solid walls only).
   // -------------------------------------------------------------------------
   const bb = 0.75;
@@ -232,6 +315,28 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   baseG.push(box(371, 484, 0, 4, 599 - bb, 599));
   baseG.push(box(180, 180 + bb, 0, 4, 605, 659));
   baseG.push(box(371 - bb, 371, 0, 4, 605, 659));
+  // annex hallways
+  baseG.push(box(-597, -500, 0, 4, 599, 599 + bb));
+  baseG.push(box(-464, -434, 0, 4, 599, 599 + bb));
+  baseG.push(box(-434, -308, 0, 4, 583, 583 + bb));
+  baseG.push(box(-302, -176, 0, 4, 599, 599 + bb));
+  baseG.push(box(-170, 59, 0, 4, 599, 599 + bb));
+  baseG.push(box(59, 174 - bb, 0, 4, 605, 605 + bb));
+  baseG.push(box(-597, -597 + bb, 0, 4, 599, 659));
+  baseG.push(box(-597, -526, 0, 4, 659 - bb, 659));
+  baseG.push(box(-490, -176, 0, 4, 659 - bb, 659));
+  baseG.push(box(-170, 174, 0, 4, 659 - bb, 659));
+  baseG.push(box(-176 - bb, -176, 0, 4, 599, 608));
+  baseG.push(box(-176 - bb, -176, 0, 4, 644, 659));
+  baseG.push(box(-170, -170 + bb, 0, 4, 599, 608));
+  baseG.push(box(-170, -170 + bb, 0, 4, 644, 659));
+  baseG.push(box(174 - bb, 174, 0, 4, 605, 659));
+  baseG.push(box(377, 377 + bb, 0, 4, 605, 659));
+  baseG.push(box(377, 654, 0, 4, 605, 605 + bb));
+  baseG.push(box(690, 694, 0, 4, 605, 605 + bb));
+  baseG.push(box(377, 694, 0, 4, 659 - bb, 659));
+  baseG.push(box(694 - bb, 694, 0, 4, 605, 615));
+  baseG.push(box(694 - bb, 694, 0, 4, 651, 659));
 
   // -------------------------------------------------------------------------
   // Columns + post-and-beam.
@@ -447,6 +552,98 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
     o.receiveShadow = false;
   });
   group.add(roof);
+
+  // -------------------------------------------------------------------------
+  // Annex floors — hallway wood continues the room floor; baths get 12" tile.
+  // -------------------------------------------------------------------------
+  const rectShape = (x0: number, x1: number, z0: number, z1: number) => {
+    const s = new THREE.Shape();
+    s.moveTo(i2m(x0), i2m(-z0));
+    s.lineTo(i2m(x1), i2m(-z0));
+    s.lineTo(i2m(x1), i2m(-z1));
+    s.lineTo(i2m(x0), i2m(-z1));
+    return s;
+  };
+  const hallFloorGeo = new THREE.ShapeGeometry([
+    rectShape(-597, -170, 593, 659),
+    rectShape(-434, -308, 583, 593), // alcove
+    rectShape(-170, 174, 599, 659),
+    rectShape(377, 700, 599, 659),
+  ]);
+  hallFloorGeo.rotateX(-Math.PI / 2);
+  const hallFloor = new THREE.Mesh(hallFloorGeo, floor.material);
+  hallFloor.receiveShadow = true;
+
+  const tileCanvas = document.createElement('canvas');
+  tileCanvas.width = 64;
+  tileCanvas.height = 64;
+  const tileCtx = tileCanvas.getContext('2d')!;
+  tileCtx.fillStyle = '#E8E6E1';
+  tileCtx.fillRect(0, 0, 64, 64);
+  tileCtx.fillStyle = '#DDD9D2';
+  tileCtx.fillRect(0, 0, 32, 32);
+  tileCtx.fillRect(32, 32, 32, 32);
+  const tileTex = new THREE.CanvasTexture(tileCanvas);
+  tileTex.colorSpace = THREE.SRGBColorSpace;
+  tileTex.wrapS = THREE.RepeatWrapping;
+  tileTex.wrapT = THREE.RepeatWrapping;
+  tileTex.repeat.set(1 / i2m(24), 1 / i2m(24)); // canvas holds 2x2 checks -> 12" tiles
+
+  const bathFloorGeo = new THREE.ShapeGeometry([rectShape(-597, -455, 421, 593), rectShape(490, 694, 509, 599)]);
+  bathFloorGeo.rotateX(-Math.PI / 2);
+  const bathFloor = new THREE.Mesh(
+    bathFloorGeo,
+    new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.5, metalness: 0 }),
+  );
+  bathFloor.receiveShadow = true;
+  group.add(hallFloor, bathFloor);
+
+  // -------------------------------------------------------------------------
+  // Bath fixtures — suite: 3 sinks west wall, 3 stalled toilets east wall;
+  // east bath: 2 stalled toilets, 2 urinals, double vanity.
+  // -------------------------------------------------------------------------
+  const fixtureG: Geo[] = [];
+  const bx = (a: number, b: number, y0: number, y1: number, c: number, d: number) =>
+    box(Math.min(a, b), Math.max(a, b), y0, y1, Math.min(c, d), Math.max(c, d));
+  const ecyl = (rx: number, rz: number, y0: number, y1: number, cx: number, cz: number): Geo => {
+    const g = new THREE.CylinderGeometry(1, 1, 1, 14);
+    g.scale(i2m(rx), i2m(y1 - y0), i2m(rz));
+    g.translate(i2m(cx), i2m((y0 + y1) / 2), i2m(cz));
+    return g;
+  };
+  // wx = wall face, d = +1 facing east / -1 facing west
+  const toilet = (wx: number, d: number, cz: number) => {
+    fixtureG.push(bx(wx + 0.5 * d, wx + 7 * d, 16, 33, cz - 9.5, cz + 9.5)); // tank
+    fixtureG.push(bx(wx, wx + 7.5 * d, 33, 35, cz - 10, cz + 10)); // lid
+    fixtureG.push(ecyl(9, 7, 5, 15, wx + 15 * d, cz)); // bowl
+    fixtureG.push(ecyl(9.5, 7.5, 15, 16.5, wx + 14.5 * d, cz)); // seat
+  };
+  const sink = (wx: number, d: number, cz: number) => {
+    fixtureG.push(bx(wx, wx + 12 * d, 29, 35, cz - 9, cz + 9)); // wall-hung body
+    fixtureG.push(ecyl(4.5, 6.5, 35, 36.5, wx + 6.5 * d, cz)); // basin
+    fixtureG.push(bx(wx, wx + 1.5 * d, 35, 41, cz - 0.75, cz + 0.75)); // faucet
+    fixtureG.push(bx(wx + 1 * d, wx + 5.5 * d, 39.5, 41, cz - 0.75, cz + 0.75));
+  };
+  const urinal = (cx: number) => {
+    fixtureG.push(box(cx - 7, cx + 7, 24, 48, 592, 599));
+    fixtureG.push(box(cx - 5, cx + 5, 17, 26, 594, 599));
+  };
+  const vanitySink = (cx: number) => {
+    fixtureG.push(ecyl(6, 4.5, 34, 35.5, cx, 520)); // basin on the counter
+    fixtureG.push(box(cx - 0.75, cx + 0.75, 34, 40.5, 509.5, 511)); // faucet
+    fixtureG.push(box(cx - 0.75, cx + 0.75, 39, 40.5, 511, 515.5));
+  };
+  for (const cz of [455, 505, 550]) sink(-597, 1, cz);
+  for (const cz of [447, 496, 545]) toilet(-455, -1, cz);
+  for (const cz of [530, 575]) toilet(490, 1, cz);
+  for (const cx of [596, 628]) urinal(cx);
+  for (const cx of [656, 680]) vanitySink(cx);
+
+  const porcelainMat = new THREE.MeshStandardMaterial({ color: 0xfbfaf6, roughness: 0.3, metalness: 0 });
+  const fixtures = merged(fixtureG, porcelainMat);
+  fixtures.castShadow = true;
+  fixtures.receiveShadow = true;
+  group.add(fixtures);
 
   return { group, roof };
 }

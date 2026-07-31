@@ -3,17 +3,24 @@ import type { LayoutFile, PlacedItem } from '../types';
 const AUTOSAVE_KEY = 'wp:autosave';
 const LAYOUTS_KEY = 'wp:layouts';
 
+const TYPES = new Set([
+  'table',
+  'tableSq',
+  'tableQ',
+  'chair',
+  'clothA',
+  'clothB',
+  'figureW',
+  'figureM',
+]);
+
 function isValidItem(it: unknown): it is PlacedItem {
   if (typeof it !== 'object' || it === null) return false;
   const o = it as Record<string, unknown>;
+  if (o.type === 'figure') o.type = 'figureM'; // pre-two-figure saves
   return (
     typeof o.id === 'string' &&
-    (o.type === 'table' ||
-      o.type === 'tableSq' ||
-      o.type === 'tableQ' ||
-      o.type === 'clothA' ||
-      o.type === 'clothB' ||
-      o.type === 'figure') &&
+    TYPES.has(o.type as string) &&
     Number.isFinite(o.x) &&
     Number.isFinite(o.z) &&
     Number.isFinite(o.yawDeg)

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { i2m, DECK, ROOM_W, ROOM_D } from '../constants';
+import { i2m, DECK_POLY, DECK_TREES, ROOM_W, ROOM_D } from '../constants';
 import { deckWoodTexture, skyTexture, valleyTexture } from './textures';
 
 type Geo = THREE.BufferGeometry;
@@ -31,27 +31,40 @@ export function buildExterior(): THREE.Group {
   const group = new THREE.Group();
 
   // -------------------------------------------------------------------------
-  // Deck slab, top flush with the interior floor at y=0.
+  // Deck slab from the traced Tree Deck outline, top flush with the floor.
   // -------------------------------------------------------------------------
   const deckTex = deckWoodTexture();
-  deckTex.repeat.set((DECK.x1 - DECK.x0) / 96, (DECK.z1 - DECK.z0) / 96);
+  deckTex.repeat.set(1 / i2m(96), 1 / i2m(96)); // ExtrudeGeometry UVs are in meters
+  const shape = new THREE.Shape();
+  DECK_POLY.forEach((p, k) => {
+    if (k === 0) shape.moveTo(i2m(p.x), -i2m(p.z));
+    else shape.lineTo(i2m(p.x), -i2m(p.z));
+  });
+  shape.closePath();
+  const deckGeo = new THREE.ExtrudeGeometry(shape, { depth: i2m(12), bevelEnabled: false });
+  deckGeo.rotateX(Math.PI / 2); // shape (x,-z) + depth 12 down -> top at y=0
   const deck = new THREE.Mesh(
-    box(DECK.x0, DECK.x1, -12, 0, DECK.z0, DECK.z1),
+    deckGeo,
     new THREE.MeshStandardMaterial({ map: deckTex, roughness: 0.85, metalness: 0 }),
   );
   deck.receiveShadow = true;
   group.add(deck);
 
   // -------------------------------------------------------------------------
-  // Cable railing on the three outer edges (none where the deck meets the room).
+  // Cable railing along the outer edges (none along the building faces).
   // -------------------------------------------------------------------------
   const woodMat = new THREE.MeshStandardMaterial({ color: 0x7a4f38, roughness: 0.8, metalness: 0 });
-  const posts: { x: number; z: number }[] = [];
   const edgeRuns: [number, number, number, number][] = [
-    [DECK.x0 + 2, -2, DECK.x0 + 2, DECK.z0 + 2], // west
-    [DECK.x0 + 2, DECK.z0 + 2, DECK.x1 - 2, DECK.z0 + 2], // north
-    [DECK.x1 - 2, DECK.z0 + 2, DECK.x1 - 2, -2], // east
+    [-4, -2, -176, -2], // west overhang in front of the building
+    [-176, -2, -176, -288], // west flank
+    [-176, -288, 25, -496], // NW chamfer
+    [25, -496, 546, -496], // top edge
+    [546, -496, 735, -288], // NE chamfer
+    [735, -288, 735, 143], // east flank
+    [735, 143, 593, 143], // wrap south end
+    [593, 143, 553, 77], // wrap inner diagonal
   ];
+  const posts: { x: number; z: number }[] = [];
   for (const [x0, z0, x1, z1] of edgeRuns) {
     const len = Math.hypot(x1 - x0, z1 - z0);
     const n = Math.max(1, Math.round(len / 72));
@@ -73,25 +86,38 @@ export function buildExterior(): THREE.Group {
   postIM.castShadow = true;
   group.add(postIM);
 
+  // caps + cables share one transform: build along +x, yaw into place
+  const alongRun = (g: Geo, x0: number, z0: number, x1: number, z1: number) => {
+    g.rotateY(Math.atan2(-(z1 - z0), x1 - x0));
+    g.translate(i2m((x0 + x1) / 2), 0, i2m((z0 + z1) / 2));
+    return g;
+  };
   const capG: Geo[] = [];
-  for (const [x0, z0, x1, z1] of edgeRuns) {
-    capG.push(box(Math.min(x0, x1) - 3, Math.max(x0, x1) + 3, 38, 41, Math.min(z0, z1) - 3, Math.max(z0, z1) + 3));
-  }
-  group.add(merged(capG, woodMat));
-
   const cableG: Geo[] = [];
   for (const [x0, z0, x1, z1] of edgeRuns) {
     const len = Math.hypot(x1 - x0, z1 - z0);
+    const cap = new THREE.BoxGeometry(i2m(len + 6), i2m(3), i2m(6));
+    cap.translate(0, i2m(39.5), 0);
+    capG.push(alongRun(cap, x0, z0, x1, z1));
     for (let row = 0; row < 9; row++) {
-      const y = 6 + row * 3.5;
-      const g = new THREE.CylinderGeometry(i2m(0.22), i2m(0.22), i2m(len), 5);
-      if (z0 === z1) g.rotateZ(Math.PI / 2); // run along x
-      else g.rotateX(Math.PI / 2); // run along z
-      g.translate(i2m((x0 + x1) / 2), i2m(y), i2m((z0 + z1) / 2));
-      cableG.push(g);
+      const cable = new THREE.CylinderGeometry(i2m(0.22), i2m(0.22), i2m(len), 5);
+      cable.rotateZ(Math.PI / 2);
+      cable.translate(0, i2m(6 + row * 3.5), 0);
+      cableG.push(alongRun(cable, x0, z0, x1, z1));
     }
   }
+  group.add(merged(capG, woodMat));
   group.add(merged(cableG, new THREE.MeshStandardMaterial({ color: 0x8b8f94, roughness: 0.35, metalness: 0.9 })));
+
+  // wood curbs around the two plan-marked tree openings
+  const curbG: Geo[] = [];
+  for (const t of DECK_TREES) {
+    curbG.push(box(t.x - 15, t.x + 15, 0, 2.5, t.z - 15, t.z - 12));
+    curbG.push(box(t.x - 15, t.x + 15, 0, 2.5, t.z + 12, t.z + 15));
+    curbG.push(box(t.x - 15, t.x - 12, 0, 2.5, t.z - 12, t.z + 12));
+    curbG.push(box(t.x + 12, t.x + 15, 0, 2.5, t.z - 12, t.z + 12));
+  }
+  group.add(merged(curbG, woodMat));
 
   // -------------------------------------------------------------------------
   // Bronze planters (tapered square = 4-segment cylinder), each with a shrub.
@@ -128,8 +154,9 @@ export function buildExterior(): THREE.Group {
   const planterG: Geo[] = [];
   const planterSpots: [number, number][] = [
     [-70, -36],
-    [150, -262],
+    [150, -420],
     [620, -40],
+    [700, 110],
   ];
   for (const [px, pz] of planterSpots) {
     const g = new THREE.CylinderGeometry(i2m(13), i2m(10), i2m(30), 4, 1);
@@ -197,10 +224,12 @@ export function buildExterior(): THREE.Group {
     }
   };
 
-  oak(1, 5, -185, 4, 1, -0.5, 260, -30);
-  oak(2, 310, -150, 27, -0.5, -0.9, 230, -20);
-  oak(3, 445, -100, 9, 0.6, -0.8, 250, -20);
-  oak(4, 620, -360, 6, -0.3, -1, 300, -100);
+  // the two oaks rise through the plan's deck openings; two more are scenery
+  // beyond the railing
+  oak(1, DECK_TREES[0].x, DECK_TREES[0].z, 4, 1, -0.5, 260, -30);
+  oak(2, DECK_TREES[1].x, DECK_TREES[1].z, 27, -0.5, -0.9, 230, -20);
+  oak(3, 870, -180, 9, 0.6, -0.8, 250, -60);
+  oak(4, -320, -380, 6, 0.3, -1, 300, -110);
 
   const bark = merged(barkG, new THREE.MeshStandardMaterial({ color: 0x5b4a3e, roughness: 0.95, metalness: 0 }));
   bark.castShadow = true;

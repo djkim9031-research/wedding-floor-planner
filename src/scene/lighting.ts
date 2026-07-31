@@ -25,10 +25,10 @@ export function setupLighting(
   sun.castShadow = true;
   sun.shadow.mapSize.setScalar(mobile ? 1024 : 2048);
   const cam = sun.shadow.camera;
-  cam.left = -19;
-  cam.right = 19;
-  cam.top = 19;
-  cam.bottom = -19;
+  cam.left = -22;
+  cam.right = 22;
+  cam.top = 22;
+  cam.bottom = -22;
   cam.near = 5;
   cam.far = 70;
   sun.shadow.bias = -0.0004;

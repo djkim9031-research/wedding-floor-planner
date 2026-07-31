@@ -69,8 +69,30 @@ export const DOOR_HEAD_Y = 84;
 export const WINDOW_SILL_Y = 36;
 export const STOREFRONT_HEAD_Y = 96;
 
-// Deck (north of the room, flush with interior floor)
-export const DECK = { x0: -120, x1: 665, z0: -288, z1: 0 };
+// Tree Deck (north of the room, flush with interior floor) — bbox of the
+// true outline below
+export const DECK = { x0: -178, x1: 737, z0: -498, z1: 145 };
+
+/** Tree Deck outline traced from the venue plan (clockwise, closes along the
+ * building face at z=0; the tail past z=0 is the strip wrapping the room's
+ * east storefront). */
+export const DECK_POLY: Vec2[] = [
+  { x: -178, z: 0 },
+  { x: -178, z: -290 },
+  { x: 27, z: -498 },
+  { x: 548, z: -498 },
+  { x: 737, z: -290 },
+  { x: 737, z: 145 },
+  { x: 591, z: 145 },
+  { x: 551, z: 75 },
+  { x: 551, z: 0 },
+];
+
+/** The two 24" tree openings marked on the plan. */
+export const DECK_TREES: Vec2[] = [
+  { x: 5, z: -187 },
+  { x: 646, z: -187 },
+];
 
 // ---------------------------------------------------------------------------
 // Items
@@ -81,18 +103,28 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   table: { w: 47.5, d: 31.5 },
   tableSq: { w: 35.5, d: 35.5 },
   tableQ: { w: 72, d: 36 },
+  chair: { w: 20, d: 20 },
   clothA: { w: 108, d: 156 },
   clothB: { w: 104, d: 144 },
-  figure: { w: 20, d: 12 },
+  figureW: { w: 16, d: 11 },
+  figureM: { w: 18, d: 12 },
 };
 
 export const ITEM_LABELS: Record<ItemType, string> = {
   table: 'Oak Table',
   tableSq: 'Square Oak Table',
   tableQ: 'QCC Table',
+  chair: 'Chair',
   clothA: 'Rental Linen',
   clothB: 'C&B Linen',
-  figure: 'Scale Figure',
+  figureW: 'Guest · 5′5″',
+  figureM: 'Guest · 5′10″',
+};
+
+export const isFigure = (t: ItemType): boolean => t === 'figureW' || t === 'figureM';
+export const FIGURE_HEIGHTS: Record<'figureW' | 'figureM', number> = {
+  figureW: 65, // 5'5"
+  figureM: 70, // 5'10"
 };
 
 export const TABLE_TYPES = ['table', 'tableSq', 'tableQ'] as const;
@@ -108,8 +140,13 @@ export const TABLE_TOPS: Record<TableType, number> = {
 };
 export const TABLE_TOP_MAX = 30.5;
 export const TABLE_TOP_T = 1.5; // rendered top slab thickness
+
+// Chair proportions derive from the oak dining table: two chairs must fit
+// between its legs along the 47.5" side (47.5 − 2×2.5 = 42.5 ⇒ ≤21.25" wide),
+// and the seat clears the 29.5" tabletop by the usual ~11.5".
+export const CHAIR_SEAT_H = TABLE_TOPS.table - 11.5; // 18"
+export const CHAIR_BACK_H = CHAIR_SEAT_H + 16; // 34" back top
 export const LEG_SIZE = 2.5; // square legs, set at the corners
-export const FIGURE_HEIGHT = 66; // 5'6" scale silhouette
 export const EYE_HEIGHT = 60; // stand-here camera height
 
 // ---------------------------------------------------------------------------

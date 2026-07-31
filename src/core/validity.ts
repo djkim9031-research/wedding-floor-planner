@@ -1,14 +1,15 @@
-import { COLUMNS, ITEM_DIMS, PENETRATION_EPS, ROOM_POLYGON, isTable } from '../constants';
+import { COLUMNS, ITEM_DIMS, PENETRATION_EPS, ROOM_POLYGON, isFigure, isTable } from '../constants';
 import type { ItemType, PlacedItem, Pose } from '../types';
 import { aabbToOBB, obbFromPose, obbIntersectsOBB, pointInPolygon, segmentIntersectsOBB, obbCorners } from './geometry';
 
 /**
  * Placement rules:
  *  - every item must sit fully inside the room polygon (no wall crossings)
- *  - nothing overlaps the two structural columns (except the figure, which is
- *    a visual aid only)
+ *  - nothing overlaps the two structural columns (except figures, which are
+ *    visual aids only)
  *  - tables must not interpenetrate other tables (flush contact is fine)
- *  - cloths may overlap tables, cloths, and the figure freely
+ *  - chairs must not interpenetrate other chairs, but may tuck under tables
+ *  - cloths may overlap tables, chairs, cloths, and figures freely
  */
 export function isPoseValid(type: ItemType, pose: Pose, items: PlacedItem[], selfId?: string): boolean {
   const obb = obbFromPose(pose, ITEM_DIMS[type]);
@@ -23,7 +24,7 @@ export function isPoseValid(type: ItemType, pose: Pose, items: PlacedItem[], sel
     if (segmentIntersectsOBB(a, b, obb)) return false;
   }
 
-  if (type === 'figure') return true;
+  if (isFigure(type)) return true;
 
   for (const col of COLUMNS) {
     if (obbIntersectsOBB(obb, aabbToOBB(col.cx, col.cz, col.size, col.size), PENETRATION_EPS)) {
@@ -31,11 +32,12 @@ export function isPoseValid(type: ItemType, pose: Pose, items: PlacedItem[], sel
     }
   }
 
-  if (isTable(type)) {
-    for (const it of items) {
-      if (it.id === selfId || !isTable(it.type)) continue;
-      if (obbIntersectsOBB(obb, obbFromPose(it, ITEM_DIMS[it.type]), PENETRATION_EPS)) return false;
-    }
+  const collidesWith = (other: ItemType): boolean =>
+    isTable(type) ? isTable(other) : type === 'chair' ? other === 'chair' : false;
+
+  for (const it of items) {
+    if (it.id === selfId || !collidesWith(it.type)) continue;
+    if (obbIntersectsOBB(obb, obbFromPose(it, ITEM_DIMS[it.type]), PENETRATION_EPS)) return false;
   }
 
   return true;

@@ -153,6 +153,13 @@ export class ClothManager {
     this.notifySettled();
   }
 
+  /** Hide a cloth's settled mesh while its flat ghost is being dragged. */
+  setHidden(id: string | null): void {
+    for (const [instId, inst] of this.instances) {
+      inst.sim.mesh.visible = instId !== id;
+    }
+  }
+
   /** Settled report when available, analytic prediction while still falling. */
   getReport(id: string): DrapeReport | null {
     const inst = this.instances.get(id);

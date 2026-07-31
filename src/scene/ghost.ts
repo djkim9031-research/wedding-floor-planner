@@ -1,11 +1,15 @@
 import * as THREE from 'three';
 import {
+  CHAIR_BACK_H,
+  CHAIR_SEAT_H,
   COLORS,
+  FIGURE_HEIGHTS,
   ITEM_DIMS,
   LEG_SIZE,
   TABLE_TOPS,
   TABLE_TOP_MAX,
   TABLE_TOP_T,
+  isFigure,
   isTable,
   i2m,
 } from '../constants';
@@ -55,9 +59,20 @@ function buildGhostMesh(type: ItemType): THREE.Group {
       );
       g.add(leg);
     }
-  } else if (type === 'figure') {
-    const body = new THREE.Mesh(new THREE.BoxGeometry(i2m(w), i2m(66), i2m(d)), mat);
-    body.position.y = i2m(33);
+  } else if (type === 'chair') {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(i2m(19), i2m(1.8), i2m(17.5)), mat);
+    seat.position.set(0, i2m(CHAIR_SEAT_H - 0.9), i2m(0.75));
+    g.add(seat);
+    const back = new THREE.Mesh(
+      new THREE.BoxGeometry(i2m(18), i2m(CHAIR_BACK_H - CHAIR_SEAT_H), i2m(1.5)),
+      mat,
+    );
+    back.position.set(0, i2m((CHAIR_BACK_H + CHAIR_SEAT_H) / 2), i2m(-7.85));
+    g.add(back);
+  } else if (isFigure(type)) {
+    const h = FIGURE_HEIGHTS[type as 'figureW' | 'figureM'];
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(i2m(w / 2), i2m(h - w), 4, 10), mat);
+    body.position.y = i2m(h / 2);
     g.add(body);
   } else {
     // cloth: a floating translucent sheet at drop height

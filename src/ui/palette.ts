@@ -1,10 +1,19 @@
-import { ITEM_DIMS, ITEM_LABELS, TABLE_TOPS, isTable } from '../constants';
+import { CHAIR_SEAT_H, ITEM_DIMS, ITEM_LABELS, TABLE_TOPS, isTable } from '../constants';
 import type { ItemType } from '../types';
 import type { PlacementFSM } from '../interact/placementFSM';
 import type { PointerController } from '../interact/pointer';
 import { THUMBNAILS } from './thumbnails';
 
-const CARD_TYPES: ItemType[] = ['table', 'tableSq', 'tableQ', 'clothA', 'clothB', 'figure'];
+const CARD_TYPES: ItemType[] = [
+  'table',
+  'tableSq',
+  'tableQ',
+  'chair',
+  'clothA',
+  'clothB',
+  'figureW',
+  'figureM',
+];
 
 export function buildPalette(
   root: HTMLElement,
@@ -21,9 +30,11 @@ export function buildPalette(
     const dims = ITEM_DIMS[type];
     const dimText = isTable(type)
       ? `${dims.w}" × ${dims.d}" · ${TABLE_TOPS[type]}"h`
-      : type === 'figure'
-        ? `5'6" guest`
-        : `${dims.w}" × ${dims.d}"`;
+      : type === 'chair'
+        ? `${dims.w}" × ${dims.d}" · ${CHAIR_SEAT_H}" seat`
+        : type === 'figureW' || type === 'figureM'
+          ? 'scale reference'
+          : `${dims.w}" × ${dims.d}"`;
     card.innerHTML = `${THUMBNAILS[type]}<span class="card-name">${ITEM_LABELS[type]}</span><span class="card-dims">${dimText}</span>`;
 
     card.addEventListener('pointerdown', (e: PointerEvent) => {

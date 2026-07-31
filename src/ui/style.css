@@ -247,6 +247,85 @@ button.ui-btn.danger:hover {
   color: #8d8478;
 }
 
+/* ---- placed items panel ---- */
+.items-panel {
+  position: absolute;
+  right: 12px;
+  top: 110px;
+  width: 226px;
+  background: var(--ivory);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 8px 10px;
+  font-size: 12.5px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.items-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--serif);
+  font-weight: 600;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.items-head .ui-btn {
+  font-size: 11.5px;
+  min-height: 28px;
+  padding: 4px 8px;
+}
+
+.items-list {
+  overflow-y: auto;
+  max-height: calc(100vh - 460px);
+  min-height: 40px;
+  margin-top: 4px;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 7px;
+}
+
+.item-row.selected {
+  background: rgba(176, 141, 87, 0.16);
+}
+
+.item-label {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  flex: 1;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-label:hover {
+  background: rgba(176, 141, 87, 0.1);
+}
+
+.item-row .row-del {
+  flex: 0 0 auto;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 2px 6px;
+}
+
 /* ---- status / drape panel ---- */
 .status-panel {
   position: absolute;
@@ -397,5 +476,14 @@ button.ui-btn.danger:hover {
     bottom: 108px;
     width: 210px;
     font-size: 12px;
+  }
+  .items-panel {
+    right: 8px;
+    top: 150px;
+    width: 170px;
+    font-size: 12px;
+  }
+  .items-list {
+    max-height: 26vh;
   }
 }

@@ -1,4 +1,12 @@
-export type ItemType = 'table' | 'tableSq' | 'tableQ' | 'clothA' | 'clothB' | 'figure';
+export type ItemType =
+  | 'table'
+  | 'tableSq'
+  | 'tableQ'
+  | 'chair'
+  | 'clothA'
+  | 'clothB'
+  | 'figureW'
+  | 'figureM';
 
 export interface Vec2 {
   x: number;

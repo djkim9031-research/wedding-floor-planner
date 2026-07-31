@@ -8,7 +8,7 @@ const ROOM_CENTER = new THREE.Vector3(i2m(272.5), 0, i2m(300));
 const TARGET_MARGIN = i2m(60);
 const TX0 = i2m(0) - TARGET_MARGIN;
 const TX1 = i2m(545) + TARGET_MARGIN;
-const TZ0 = i2m(-120) - TARGET_MARGIN; // allow panning onto the deck
+const TZ0 = i2m(-498) - TARGET_MARGIN; // allow panning across the full Tree Deck
 const TZ1 = i2m(659) + TARGET_MARGIN;
 
 export type RigMode = 'orbit' | 'stand';
