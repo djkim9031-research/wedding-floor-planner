@@ -177,6 +177,21 @@ if (presetName) {
 if (params.get('demo') === 'qcc') {
   store.placeItem('tableQ', { x: 272.5, z: 300, yawDeg: 0 });
   store.placeItem('clothA', { x: 272.5, z: 300, yawDeg: 0 });
+} else if (params.get('demo') === 'dinner') {
+  // the planned rental setup: 3-table block, cloth, bistro chairs, settings,
+  // lanterns, and a privacy hedge + screen
+  store.applyPreset('Crate & Barrel');
+  for (const z of [268.5, 300, 331.5]) {
+    store.placeItem('chair', { x: 240, z, yawDeg: 270 });
+    store.placeItem('chair', { x: 305, z, yawDeg: 90 });
+    store.placeItem('setting', { x: 254, z, yawDeg: 270 });
+    store.placeItem('setting', { x: 291, z, yawDeg: 90 });
+  }
+  store.placeItem('lantern18', { x: 272.5, z: 284, yawDeg: 0 });
+  store.placeItem('lantern18', { x: 272.5, z: 316, yawDeg: 0 });
+  store.placeItem('hedge', { x: 460, z: 160, yawDeg: 315 });
+  store.placeItem('screen', { x: 120, z: 420, yawDeg: 30 });
+  store.placeItem('figureW', { x: 350, z: 250, yawDeg: 220 });
 } else if (params.get('demo') === 'lanterns') {
   store.placeItem('table', { x: 272.5, z: 300, yawDeg: 0 });
   store.placeItem('clothB', { x: 272.5, z: 300, yawDeg: 0 });

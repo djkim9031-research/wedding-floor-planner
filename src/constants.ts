@@ -147,6 +147,9 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   lantern24: { w: 11, d: 11 },
   lantern30: { w: 12, d: 12 },
   lantern36: { w: 14, d: 14 },
+  hedge: { w: 48, d: 14 },
+  screen: { w: 66, d: 16 },
+  setting: { w: 16, d: 12 },
   figureW: { w: 16, d: 11 },
   figureM: { w: 18, d: 12 },
 };
@@ -155,13 +158,16 @@ export const ITEM_LABELS: Record<ItemType, string> = {
   table: 'Oak Table',
   tableSq: 'Square Oak Table',
   tableQ: 'QCC Table',
-  chair: 'Chair',
+  chair: 'Oak Bistro Chair',
   clothA: 'Rental Linen',
   clothB: 'C&B Linen',
   lantern18: 'Lantern · 18″',
   lantern24: 'Lantern · 24″',
   lantern30: 'Lantern · 30″',
   lantern36: 'Lantern · 36″',
+  hedge: 'Artificial Hedge',
+  screen: 'Sausalito Screen',
+  setting: 'Place Setting',
   figureW: 'Guest · 5′5″',
   figureM: 'Guest · 5′10″',
 };
@@ -169,6 +175,10 @@ export const ITEM_LABELS: Record<ItemType, string> = {
 export const isFigure = (t: ItemType): boolean => t === 'figureW' || t === 'figureM';
 
 export type LanternType = 'lantern18' | 'lantern24' | 'lantern30' | 'lantern36';
+/** free-standing privacy pieces: solid, they block sunlight */
+export const isBarrier = (t: ItemType): boolean => t === 'hedge' || t === 'screen';
+export const HEDGE_H = 90;
+export const SCREEN_H = 84;
 export const isLantern = (t: ItemType): t is LanternType => t.startsWith('lantern');
 
 /** DutchCrafters-style outdoor candle lanterns: square poly frame, open

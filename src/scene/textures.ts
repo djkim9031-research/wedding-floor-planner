@@ -182,7 +182,8 @@ export function deckWoodTexture(): THREE.CanvasTexture {
   const ctx = makeCanvas(S, S);
   const rows = 18; // ≈5.3" boards
   const h = S / rows;
-  const palette = ['#8A5A42', '#7E5039', '#96654B', '#77462F', '#8F5E45'];
+  // oiled redwood per the deck photos: warm, saturated red-brown
+  const palette = ['#A0603F', '#96573A', '#AB6B48', '#8B4E33', '#A26443'];
 
   ctx.fillStyle = '#17100B';
   ctx.fillRect(0, 0, S, S);
@@ -212,10 +213,10 @@ export function deckWoodTexture(): THREE.CanvasTexture {
       }
       ctx.globalAlpha = 1;
     }
-    // sun-silvered smears
+    // sun-warmed smears
     for (let i = 0; i < 4; i++) {
-      ctx.fillStyle = 'rgba(205,195,180,1)';
-      ctx.globalAlpha = 0.04 + rnd() * 0.06;
+      ctx.fillStyle = 'rgba(222,176,130,1)';
+      ctx.globalAlpha = 0.03 + rnd() * 0.05;
       ctx.fillRect(rnd() * S, y + 1, 30 + rnd() * 90, h - 2);
     }
     ctx.globalAlpha = 1;

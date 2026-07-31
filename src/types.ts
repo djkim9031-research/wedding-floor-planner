@@ -9,6 +9,9 @@ export type ItemType =
   | 'lantern24'
   | 'lantern30'
   | 'lantern36'
+  | 'hedge'
+  | 'screen'
+  | 'setting'
   | 'figureW'
   | 'figureM';
 

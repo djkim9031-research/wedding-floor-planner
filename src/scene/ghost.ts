@@ -9,7 +9,9 @@ import {
   TABLE_TOPS,
   TABLE_TOP_MAX,
   TABLE_TOP_T,
+  HEDGE_H,
   LANTERN_SPECS,
+  SCREEN_H,
   isFigure,
   isLantern,
   isTable,
@@ -72,6 +74,15 @@ function buildGhostMesh(type: ItemType): THREE.Group {
     );
     back.position.set(0, i2m((CHAIR_BACK_H + CHAIR_SEAT_H) / 2), i2m(-7.85));
     g.add(back);
+  } else if (type === 'hedge' || type === 'screen') {
+    const h = type === 'hedge' ? HEDGE_H : SCREEN_H;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(i2m(w), i2m(h), i2m(d)), mat);
+    body.position.y = i2m(h / 2);
+    g.add(body);
+  } else if (type === 'setting') {
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(i2m(6), i2m(6), i2m(1.2), 18), mat);
+    disc.position.y = i2m(0.6);
+    g.add(disc);
   } else if (isLantern(type)) {
     const spec = LANTERN_SPECS[type];
     const body = new THREE.Mesh(new THREE.BoxGeometry(i2m(w), i2m(spec.h), i2m(d)), mat);
@@ -162,7 +173,10 @@ export class GhostVisual {
       this.parent.add(this.mesh);
     }
     const { w, d } = ITEM_DIMS[ghost.type];
-    const gy = isLantern(ghost.type) ? tableTopUnder(items, ghost.x, ghost.z) : 0;
+    const gy =
+      isLantern(ghost.type) || ghost.type === 'setting'
+        ? tableTopUnder(items, ghost.x, ghost.z)
+        : 0;
     this.mesh.position.set(i2m(ghost.x), i2m(gy), i2m(ghost.z));
     this.mesh.rotation.y = ghost.yawDeg * DEG;
 

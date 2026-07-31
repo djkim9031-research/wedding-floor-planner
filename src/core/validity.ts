@@ -1,4 +1,4 @@
-import { COLUMNS, ITEM_DIMS, PENETRATION_EPS, ROOM_POLYGON, isFigure, isTable } from '../constants';
+import { COLUMNS, ITEM_DIMS, PENETRATION_EPS, ROOM_POLYGON, isBarrier, isFigure, isTable } from '../constants';
 import type { ItemType, PlacedItem, Pose } from '../types';
 import { aabbToOBB, obbFromPose, obbIntersectsOBB, pointInPolygon, segmentIntersectsOBB, obbCorners } from './geometry';
 
@@ -32,9 +32,16 @@ export function isPoseValid(type: ItemType, pose: Pose, items: PlacedItem[], sel
     }
   }
 
+  // lanterns/settings are decor (may sit on tabletops); hedges and screens
+  // are solid and must not run through tables or each other
   const collidesWith = (other: ItemType): boolean =>
-    isTable(type) ? isTable(other) : type === 'chair' ? other === 'chair' : false;
-  // lanterns are decor: no item collisions, and they may sit on tabletops
+    isTable(type)
+      ? isTable(other) || isBarrier(other)
+      : type === 'chair'
+        ? other === 'chair'
+        : isBarrier(type)
+          ? isBarrier(other) || isTable(other)
+          : false;
 
   for (const it of items) {
     if (it.id === selfId || !collidesWith(it.type)) continue;

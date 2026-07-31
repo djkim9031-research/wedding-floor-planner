@@ -38,6 +38,27 @@ const lantern = (stroke: string, hh: number) => `<svg viewBox="0 0 48 48" fill="
   <ellipse cx="24" cy="${33}" rx="2.6" ry="4" fill="#FFB84D"/>
 </svg>`;
 
+const hedge = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="8" y="10" width="32" height="30" rx="4" fill="#47573A"/>
+  <circle cx="15" cy="16" r="3.4" fill="#526344"/><circle cx="26" cy="13" r="3.8" fill="#3E5233"/>
+  <circle cx="35" cy="18" r="3.2" fill="#526344"/><circle cx="19" cy="26" r="4" fill="#3E5233"/>
+  <circle cx="31" cy="29" r="3.6" fill="#526344"/><circle cx="14" cy="35" r="3.2" fill="#3E5233"/>
+  <rect x="10" y="40" width="28" height="3" fill="#6B6258"/>
+</svg>`;
+
+const screenIcon = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M8 14 L18 11 L18 41 L8 44 Z" fill="#F2EDE2" stroke="#B8AD9C" stroke-width="1.4"/>
+  <rect x="18" y="11" width="12" height="30" fill="#FAF6EC" stroke="#B8AD9C" stroke-width="1.4"/>
+  <path d="M30 11 L40 14 L40 44 L30 41 Z" fill="#F2EDE2" stroke="#B8AD9C" stroke-width="1.4"/>
+</svg>`;
+
+const setting = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="22" cy="27" r="12" fill="#F3EFE6" stroke="#C9C2B4" stroke-width="1.6"/>
+  <circle cx="22" cy="27" r="7.5" fill="#EDE8DC"/>
+  <path d="M38 15 q4 3 0 7 l-1 12 h-2 l-1-12 q-4-4 0-7 Z" fill="#9FB6C4" fill-opacity="0.75"/>
+  <rect x="6" y="18" width="6" height="18" rx="1" fill="#F7F4EC" stroke="#C9C2B4"/>
+</svg>`;
+
 export const THUMBNAILS: Record<ItemType, string> = {
   table,
   tableSq,
@@ -49,6 +70,9 @@ export const THUMBNAILS: Record<ItemType, string> = {
   lantern24: lantern('#3A3A3A', 3),
   lantern30: lantern('#3A3A3A', 6),
   lantern36: lantern('#8D8478', 8),
+  hedge,
+  screen: screenIcon,
+  setting,
   figureW,
   figureM,
 };

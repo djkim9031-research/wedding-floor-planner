@@ -4,8 +4,10 @@ import {
   CHAIR_SEAT_H,
   COLORS,
   FIGURE_HEIGHTS,
+  HEDGE_H,
   ITEM_DIMS,
   LANTERN_SPECS,
+  SCREEN_H,
   LEG_SIZE,
   TABLE_TOPS,
   TABLE_TOP_T,
@@ -83,14 +85,31 @@ function buildChair(): THREE.Group {
   seat.castShadow = seat.receiveShadow = true;
   g.add(seat);
 
-  const back = new THREE.Mesh(
-    new THREE.BoxGeometry(i2m(seatW - 1), i2m(CHAIR_BACK_H - CHAIR_SEAT_H), i2m(1.5)),
-    wood,
-  );
-  back.position.set(0, i2m((CHAIR_BACK_H + CHAIR_SEAT_H) / 2), i2m(-(seatD / 2) + 0.4));
-  back.rotation.x = -0.09;
-  back.castShadow = true;
-  g.add(back);
+  // bistro back: two stiles, rounded top rail, X cross slats
+  const backZ = -(seatD / 2) + 0.4;
+  const backH = CHAIR_BACK_H - CHAIR_SEAT_H;
+  const stileGeo = new THREE.BoxGeometry(i2m(1.4), i2m(backH), i2m(1.4));
+  for (const sx of [-1, 1]) {
+    const stile = new THREE.Mesh(stileGeo, wood);
+    stile.position.set(i2m(sx * (seatW / 2 - 1.2)), i2m((CHAIR_BACK_H + CHAIR_SEAT_H) / 2), i2m(backZ));
+    stile.rotation.x = -0.09;
+    stile.castShadow = true;
+    g.add(stile);
+  }
+  const rail = new THREE.Mesh(new THREE.CylinderGeometry(i2m(0.9), i2m(0.9), i2m(seatW - 1.2), 8), wood);
+  rail.rotation.z = Math.PI / 2;
+  rail.position.set(0, i2m(CHAIR_BACK_H - 0.9), i2m(backZ - 0.55));
+  rail.castShadow = true;
+  g.add(rail);
+  const crossGeo = new THREE.BoxGeometry(i2m(1.2), i2m(Math.hypot(seatW - 3, backH - 4)), i2m(0.8));
+  for (const sx of [-1, 1]) {
+    const cross = new THREE.Mesh(crossGeo, wood);
+    cross.position.set(0, i2m((CHAIR_BACK_H + CHAIR_SEAT_H) / 2 - 0.6), i2m(backZ));
+    cross.rotation.x = -0.09;
+    cross.rotation.z = sx * Math.atan2(seatW - 3, backH - 4);
+    cross.castShadow = true;
+    g.add(cross);
+  }
 
   const legGeom = new THREE.BoxGeometry(i2m(1.6), i2m(CHAIR_SEAT_H - 1.8), i2m(1.6));
   for (const [sx, sz] of [
@@ -228,6 +247,114 @@ function buildLantern(type: LanternType): THREE.Group {
   return g;
 }
 
+/** Artificial hedge wall: leafy noisy face over a slim frame; blocks sun. */
+function buildHedge(): THREE.Group {
+  const { w, d } = ITEM_DIMS.hedge;
+  const g = new THREE.Group();
+  const leaf = new THREE.MeshStandardMaterial({ color: 0x44543a, roughness: 0.95, flatShading: true });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(i2m(w - 2), i2m(HEDGE_H - 4), i2m(d - 4), 12, 18, 2), leaf);
+  const pos = body.geometry.getAttribute('position') as THREE.BufferAttribute;
+  for (let k = 0; k < pos.count; k++) {
+    const x = pos.getX(k);
+    const y = pos.getY(k);
+    const z = pos.getZ(k);
+    const h = Math.sin(x * 61.7 + y * 43.3 + z * 89.1) * 0.5 + Math.sin(x * 17.9 - y * 23.7) * 0.5;
+    const sfc = 1 + 0.06 * h;
+    pos.setXYZ(k, x * sfc, y * sfc, z + Math.sign(z) * i2m(1.2) * Math.abs(h));
+  }
+  body.geometry.computeVertexNormals();
+  body.position.y = i2m(4 + (HEDGE_H - 4) / 2);
+  body.castShadow = body.receiveShadow = true;
+  g.add(body);
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(i2m(w), i2m(4), i2m(d)),
+    new THREE.MeshStandardMaterial({ color: 0x3c3c3c, roughness: 0.7, metalness: 0.3 }),
+  );
+  base.position.y = i2m(2);
+  base.castShadow = true;
+  g.add(base);
+  return g;
+}
+
+/** Ivory Sausalito screen: three gently angled linen panels in a wood frame. */
+function buildScreen(): THREE.Group {
+  const g = new THREE.Group();
+  const fabric = new THREE.MeshStandardMaterial({ color: 0xf4efe3, roughness: 0.9, side: THREE.DoubleSide });
+  const frame = new THREE.MeshStandardMaterial({ color: 0xb8ab97, roughness: 0.7 });
+  const panelW = 22;
+  const angle = 0.28;
+  for (const [k, sx] of [[-1, -1], [0, 0], [1, 1]] as const) {
+    const p = new THREE.Group();
+    const cloth = new THREE.Mesh(new THREE.BoxGeometry(i2m(panelW - 2.4), i2m(SCREEN_H - 6), i2m(1)), fabric);
+    cloth.position.y = i2m(3 + (SCREEN_H - 6) / 2);
+    cloth.castShadow = cloth.receiveShadow = true;
+    p.add(cloth);
+    for (const fy of [1.5, SCREEN_H - 1.5]) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(i2m(panelW), i2m(3), i2m(1.6)), frame);
+      bar.position.y = i2m(fy);
+      bar.castShadow = true;
+      p.add(bar);
+    }
+    for (const fx of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(i2m(1.8), i2m(SCREEN_H), i2m(1.6)), frame);
+      post.position.set(i2m(fx * (panelW / 2 - 0.9)), i2m(SCREEN_H / 2), 0);
+      post.castShadow = true;
+      p.add(post);
+    }
+    p.position.x = i2m(sx * (panelW - 1.2) * Math.cos(angle));
+    p.rotation.y = k === 0 ? 0 : -sx * angle;
+    g.add(p);
+  }
+  return g;
+}
+
+/** One guest's rented setting: Lucca stoneware (10.75" dinner, 8" salad,
+ * 6" B&B), water goblet, Nattie red-wine glass, Aspen stemless, linen napkin.
+ * Glass is transparent and catches sun/candle light; plates shade softly. */
+function buildSetting(): THREE.Group {
+  const g = new THREE.Group();
+  const stoneware = new THREE.MeshStandardMaterial({ color: 0xefe9dc, roughness: 0.55 });
+  const glass = new THREE.MeshPhysicalMaterial({
+    color: 0xf2f7fa,
+    transparent: true,
+    opacity: 0.22,
+    roughness: 0.05,
+    metalness: 0,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const plate = (r: number, x: number, z: number, y: number, h = 0.9) => {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(i2m(r), i2m(r * 0.82), i2m(h), 20), stoneware);
+    m.position.set(i2m(x), i2m(y + h / 2), i2m(z));
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+  };
+  plate(10.75 / 2, -1.5, 0, 0); // dinner
+  plate(8 / 2, -1.5, 0, 0.9); // salad on top
+  plate(6 / 2, -1.5, -8.2, 0, 0.7); // B&B above the dinner plate
+  const stem = (x: number, z: number, bowlR: number, bowlH: number, stemH: number) => {
+    const s1 = new THREE.Mesh(new THREE.CylinderGeometry(i2m(0.22), i2m(1.2), i2m(stemH), 10), glass);
+    s1.position.set(i2m(x), i2m(stemH / 2), i2m(z));
+    g.add(s1);
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(i2m(bowlR * 0.94), i2m(bowlR * 0.62), i2m(bowlH), 14), glass);
+    bowl.position.set(i2m(x), i2m(stemH + bowlH / 2), i2m(z));
+    g.add(bowl);
+  };
+  stem(5.4, -6.6, 1.75, 3.6, 2.6); // water goblet 12 oz
+  stem(7.6, -3.4, 1.6, 4.4, 3.4); // Nattie 18 oz
+  const stemless = new THREE.Mesh(new THREE.CylinderGeometry(i2m(1.55), i2m(1.15), i2m(4.4), 14), glass);
+  stemless.position.set(i2m(8.3), i2m(2.2), i2m(0.6));
+  g.add(stemless);
+  const napkin = new THREE.Mesh(
+    new THREE.BoxGeometry(i2m(3.4), i2m(0.5), i2m(8.4)),
+    new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.85 }),
+  );
+  napkin.position.set(i2m(-8.6), i2m(0.25), i2m(0));
+  napkin.castShadow = napkin.receiveShadow = true;
+  g.add(napkin);
+  return g;
+}
+
 /** Tallest tabletop under a floor point (0 = open floor) — lanterns mount on it. */
 export function tableTopUnder(items: PlacedItem[], x: number, z: number): number {
   let top = 0;
@@ -248,6 +375,9 @@ function getTemplate(type: ItemType): THREE.Group {
     if (isTable(type)) template = buildTableTemplate(type);
     else if (type === 'chair') template = buildChair();
     else if (isLantern(type)) template = buildLantern(type);
+    else if (type === 'hedge') template = buildHedge();
+    else if (type === 'screen') template = buildScreen();
+    else if (type === 'setting') template = buildSetting();
     else template = buildHuman(type as 'figureW' | 'figureM');
     templates.set(type, template);
   }
@@ -294,7 +424,16 @@ export class ItemMeshes {
   sync(items: PlacedItem[]): void {
     const wanted = new Map(
       items
-        .filter((it) => isTable(it.type) || it.type === 'chair' || isFigure(it.type) || isLantern(it.type))
+        .filter(
+          (it) =>
+            isTable(it.type) ||
+            it.type === 'chair' ||
+            it.type === 'hedge' ||
+            it.type === 'screen' ||
+            it.type === 'setting' ||
+            isFigure(it.type) ||
+            isLantern(it.type),
+        )
         .map((it) => [it.id, it]),
     );
     for (const [id, mesh] of this.meshes) {
@@ -329,7 +468,8 @@ export class ItemMeshes {
           this.outlines.set(id, outline);
         }
       }
-      const mountY = isLantern(it.type) ? tableTopUnder(items, it.x, it.z) : 0;
+      const mountY =
+        isLantern(it.type) || it.type === 'setting' ? tableTopUnder(items, it.x, it.z) : 0;
       mesh.position.set(i2m(it.x), i2m(mountY), i2m(it.z));
       mesh.rotation.y = it.yawDeg * DEG;
       mesh.visible = id !== this.hiddenId;

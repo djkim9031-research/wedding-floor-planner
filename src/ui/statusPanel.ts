@@ -127,7 +127,11 @@ export function buildStatusPanel(
         ? ` · ${fmtInches(TABLE_TOPS[sel.type])}"h`
         : isLantern(sel.type)
           ? ` · ${LANTERN_SPECS[sel.type].h}"h · ~13 lm`
-          : '';
+          : sel.type === 'hedge'
+            ? ' · 90"h'
+            : sel.type === 'screen'
+              ? ' · 84"h'
+              : '';
       let html = `<h3>${ITEM_LABELS[sel.type]}</h3>
         <div class="sub">${fmtInches(dims.w)}" × ${fmtInches(dims.d)}"${height} · ${Math.round(sel.yawDeg)}°</div>`;
       if (isCloth(sel.type)) {

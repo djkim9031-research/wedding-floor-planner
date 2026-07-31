@@ -182,20 +182,26 @@ export function setupLighting(
           : lerpHex(0xffd9a8, 0xfff2dc, (alt - 25) / 40);
     sun.color.copy(warm).lerp(colB.setHex(0xe6e6e6), c * 0.7);
     const altBoost = THREE.MathUtils.clamp(alt / 30, 0.45, 1.15);
-    sun.intensity = 2.6 * altBoost * (1 - 0.85 * c);
+    // dramatic reading: hot direct beam over a subdued ambient, so the sun's
+    // pools and window patterns clearly dominate the scene
+    sun.intensity = 3.4 * altBoost * (1 - 0.88 * c);
     sun.position.copy(center).addScaledVector(dir, 40);
 
     hemi.color.copy(lerpHex(0xbfd4ee, 0xaab2bc, c).clone());
-    hemi.groundColor.setHex(0x8a6b4c);
-    hemi.intensity = 0.45 + 0.45 * c; // overcast = flatter, more ambient
+    hemi.groundColor.setHex(0x6d543c);
+    hemi.intensity = 0.26 + 0.52 * c; // overcast = flatter, more ambient
     for (const s of spots) s.intensity = 50;
     for (const p of porch) p.intensity = 0;
-    sceneEnv.environmentIntensity = 0.35 - 0.1 * c;
+    sceneEnv.environmentIntensity = 0.2 - 0.06 * c;
 
-    const skyTint = lerpHex(0xffffff, 0x99a1ab, c * 0.85).clone();
+    const skyTint = lerpHex(0xffffff, 0x99a1ab, c * 0.85).clone().multiplyScalar(0.6);
     const duskTint = alt < 10 ? lerpHex(0xffc9a0, 0xffffff, alt / 10) : colA.setHex(0xffffff);
     skyTint.multiply(duskTint);
-    setAtmo(skyTint, lerpHex(0xffffff, 0x8e959e, c * 0.8).clone(), c > 0.5 ? 0xd4d7db : 0xe8eef2);
+    setAtmo(
+      skyTint,
+      lerpHex(0xffffff, 0x8e959e, c * 0.8).clone().multiplyScalar(0.55),
+      c > 0.5 ? 0x8f9296 : 0x9aa0a8,
+    );
 
     disc.visible = true;
     disc.material.opacity = 0.95 - 0.75 * c;

@@ -15,6 +15,9 @@ const CARD_TYPES: ItemType[] = [
   'lantern24',
   'lantern30',
   'lantern36',
+  'hedge',
+  'screen',
+  'setting',
   'figureW',
   'figureM',
 ];
@@ -38,6 +41,12 @@ export function buildPalette(
         ? `${dims.w}" × ${dims.d}" · ${CHAIR_SEAT_H}" seat`
         : isLantern(type)
           ? `${dims.w}" sq · ${LANTERN_SPECS[type].h}"h · candle`
+          : type === 'hedge'
+            ? `${dims.w}" × ${dims.d}" · 90"h`
+            : type === 'screen'
+              ? `${dims.w}" × ${dims.d}" · 84"h`
+              : type === 'setting'
+                ? 'Lucca plates + glasses'
           : type === 'figureW' || type === 'figureM'
             ? 'scale reference'
             : `${dims.w}" × ${dims.d}"`;
