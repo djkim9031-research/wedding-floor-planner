@@ -878,17 +878,11 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   const bwBars = merged(bwBarG, whiteMat);
   bwBars.castShadow = true;
   const bwWhite = merged(bwWhiteG, whiteMat);
-  roof.add(bwReedMesh, bwTopMesh, bwGlassMesh, bwBars, bwWhite);
+  group.add(bwReedMesh, bwTopMesh, bwGlassMesh, bwBars, bwWhite);
 
   // -------------------------------------------------------------------------
-  // "2400" monument flanking the drop-off, uplit at the base.
+  // "2400" sign hung under the canopy at the breezeway entrance.
   // -------------------------------------------------------------------------
-  const monMat = new THREE.MeshStandardMaterial({ color: 0xe7e0d0, roughness: 0.92, metalness: 0 });
-  const mon = new THREE.Mesh(box(500, 590, -12, 23, 2280, 2288), monMat);
-  mon.castShadow = true;
-  mon.receiveShadow = true;
-  group.add(mon);
-
   const monC = document.createElement('canvas');
   monC.width = 512;
   monC.height = 192;
@@ -919,30 +913,37 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   }
   const monTex = new THREE.CanvasTexture(monC);
   monTex.colorSpace = THREE.SRGBColorSpace;
-  const plaque = new THREE.Mesh(
-    new THREE.PlaneGeometry(i2m(80), i2m(30)),
+  const signBoard = new THREE.Mesh(
+    new THREE.BoxGeometry(i2m(72), i2m(24), i2m(2)),
+    new THREE.MeshStandardMaterial({ color: 0xe7e0d0, roughness: 0.85, metalness: 0.05 }),
+  );
+  const signFace = new THREE.Mesh(
+    new THREE.PlaneGeometry(i2m(68), i2m(22)),
     new THREE.MeshStandardMaterial({ map: monTex, roughness: 0.85, metalness: 0.1 }),
   );
-  plaque.position.set(i2m(545), i2m(7), i2m(2288.15));
-  group.add(plaque);
-
-  const upG: Geo[] = [];
-  for (const ux of [515, 545, 575]) {
-    const g = new THREE.CylinderGeometry(i2m(2.2), i2m(2.2), i2m(1.5), 10);
-    g.translate(i2m(ux), i2m(-10.2), i2m(2291));
-    upG.push(g);
+  // hung centered on the spine, just under the canopy at the entrance
+  const SIGN_Y = 150; // canopy ridge ≈172; sign top rods reach the fascia
+  signBoard.position.set(i2m(272.5), i2m(SIGN_Y), i2m(2256));
+  signBoard.castShadow = true;
+  signFace.position.set(i2m(272.5), i2m(SIGN_Y), i2m(2257.2));
+  group.add(signBoard, signFace);
+  const rodG: Geo[] = [];
+  for (const rx of [272.5 - 26, 272.5 + 26]) {
+    rodG.push(box(rx - 0.5, rx + 0.5, SIGN_Y + 12, SIGN_Y + 22, 2255.5, 2256.5));
   }
-  const uplights = merged(
-    upG,
-    new THREE.MeshStandardMaterial({
-      color: 0x30281e,
-      emissive: 0xffd9a8,
-      emissiveIntensity: 1.6,
-      roughness: 0.4,
-      metalness: 0,
-    }),
-  );
-  group.add(uplights);
+  const rods = merged(rodG, new THREE.MeshStandardMaterial({ color: 0x4a3826, roughness: 0.5, metalness: 0.4 }));
+  group.add(rods);
+
+  // shingle roofs over the annex wings (per the satellite) — in the roof
+  // group so the ceiling toggle still opens the dollhouse view
+  const shingle = new THREE.MeshStandardMaterial({ color: 0x8b7365, roughness: 0.95, metalness: 0 });
+  const annexRoofG: Geo[] = [];
+  annexRoofG.push(box(-615, 186, 106, 112, 407, 671)); // west hallway + bathroom suite
+  annexRoofG.push(box(371, 706, 106, 112, 491, 671)); // east hallway + bathroom
+  const annexRoof = merged(annexRoofG, shingle);
+  annexRoof.castShadow = true;
+  annexRoof.receiveShadow = true;
+  roof.add(annexRoof);
 
   return { group, roof };
 }
