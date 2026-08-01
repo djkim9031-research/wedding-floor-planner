@@ -1,13 +1,14 @@
 import { ITEM_DIMS, ITEM_LABELS, TABLE_TOPS, setCustomClothDims, type TableType } from '../constants';
 import type { ClothType } from '../cloth/constants';
 import { THUMBNAILS } from '../ui/thumbnails';
-import { CreatorController, minClothDims, tableCentroid } from './creatorController';
+import { CreatorController, minClothDims, tableCentroid, type CreatorItemType } from './creatorController';
 
 export interface CreatorPanel {
   refresh(): void;
 }
 
-const TABLE_CARDS: TableType[] = ['table', 'tableSq', 'tableQ'];
+const TABLE_CARDS: CreatorItemType[] = ['table', 'tableSq', 'tableQ'];
+const EXTRA_CARDS: CreatorItemType[] = ['chair', 'setting'];
 const CLOTH_CARDS: ClothType[] = ['clothA', 'clothB', 'clothC'];
 const OFFSET_RANGE = 72;
 
@@ -30,6 +31,7 @@ export function buildCreatorPanel(
       (scroll or R rotates, Del removes). Drop a linen — it centers itself on the
       group; slide it from there.</div>
     <div class="creator-cards" data-k="tables"></div>
+    <div class="creator-cards" data-k="extras"></div>
     <div class="creator-cards" data-k="cloths"></div>
     <div class="creator-sec" data-k="customSec">
       <label>Custom linen size</label>
@@ -59,6 +61,7 @@ export function buildCreatorPanel(
 
   const el = <T extends HTMLElement>(k: string): T => col.querySelector(`[data-k="${k}"]`) as T;
   const cardsTables = el<HTMLDivElement>('tables');
+  const cardsExtras = el<HTMLDivElement>('extras');
   const cardsCloths = el<HTMLDivElement>('cloths');
   const cw = el<HTMLInputElement>('cw');
   const cd = el<HTMLInputElement>('cd');
@@ -75,7 +78,7 @@ export function buildCreatorPanel(
 
   const card = (
     parent: HTMLElement,
-    type: TableType | ClothType,
+    type: CreatorItemType | ClothType,
     onClick: () => void,
   ): HTMLButtonElement => {
     const b = document.createElement('button');
@@ -87,6 +90,7 @@ export function buildCreatorPanel(
     return b;
   };
   const tableBtns = TABLE_CARDS.map((t) => card(cardsTables, t, () => controller.armTable(t)));
+  EXTRA_CARDS.forEach((t) => card(cardsExtras, t, () => controller.armTable(t)));
   const clothBtns = CLOTH_CARDS.map((t) =>
     card(cardsCloths, t, () => {
       const already = controller.state.clothType === t;

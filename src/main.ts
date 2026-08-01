@@ -266,6 +266,12 @@ if (creatorParam === 'demo' || creatorParam === 'place-demo' || creatorParam ===
         c.state.tables.push({ id: `q${x}`, type: 'table', x, z: 0, yawDeg: 90 });
       }
       c.setCloth('clothB', null);
+      c.state.extras.push(
+        { id: 'qc1', type: 'chair', x: -20, z: -34, yawDeg: 0 },
+        { id: 'qc2', type: 'chair', x: 20, z: 34, yawDeg: 180 },
+        { id: 'qs1', type: 'setting', x: -20, z: -14, yawDeg: 0 },
+        { id: 'qs2', type: 'setting', x: 20, z: 14, yawDeg: 180 },
+      );
       c.setOffset(8, 0); // slide east so the elevations show the asymmetry
       if (creatorParam === 'place-demo') {
         setTimeout(() => {

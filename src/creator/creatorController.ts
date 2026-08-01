@@ -10,8 +10,13 @@ import { ItemMeshes } from '../scene/itemMeshes';
 import type { GhostState, PlacedItem, Pose } from '../types';
 import { STUDIO_RECT } from './studioScene';
 
+export type CreatorItemType = TableType | 'chair' | 'setting';
+
 export interface CreatorState {
   tables: PlacedItem[];
+  /** chairs + settings — placed AFTER the cloth so it never drapes over them
+   * and settings ride the settled fabric */
+  extras: PlacedItem[];
   clothType: ClothType | null;
   clothDims: { w: number; d: number } | null;
   offset: { dx: number; dz: number };
@@ -62,9 +67,9 @@ export function minClothDims(tables: PlacedItem[]): { w: number; d: number } | n
  * core math and the real cloth sim; renders through its own ItemMeshes +
  * ClothManager attached to the studio scene. */
 export class CreatorController {
-  readonly state: CreatorState = { tables: [], clothType: null, clothDims: null, offset: { dx: 0, dz: 0 } };
+  readonly state: CreatorState = { tables: [], extras: [], clothType: null, clothDims: null, offset: { dx: 0, dz: 0 } };
   /** armed console item (Sims-style ghost) */
-  private ghostType: TableType | null = null;
+  private ghostType: CreatorItemType | null = null;
   private ghostYaw = 0;
   private ghostPos: { x: number; z: number } | null = null;
   private snappedActive = false;
@@ -82,9 +87,25 @@ export class CreatorController {
     this.meshes = new ItemMeshes(itemsGroup);
     this.cloths = new ClothManager(itemsGroup);
     this.ghost = new GhostVisual(overlayGroup);
+    // settings dropped after the linen ride its settled surface
+    this.cloths.onSettled(() => {
+      const items = this.items();
+      this.meshes.sync(items, (it) => this.cloths.mountLift(it, items));
+      this.onChange();
+    });
   }
 
-  /** tables + the centroid-locked cloth, in drape order (cloth last). */
+  private all(): PlacedItem[] {
+    return [...this.state.tables, ...this.state.extras];
+  }
+
+  private findItem(id: string): PlacedItem | undefined {
+    return this.all().find((it) => it.id === id);
+  }
+
+  /** tables, then the centroid-locked cloth, then chairs/settings — the
+   * order IS the stacking: the linen drapes the tables only, and later
+   * settings sit on the fabric. */
   items(): PlacedItem[] {
     const out: PlacedItem[] = [...this.state.tables];
     if (this.state.clothType && this.state.tables.length) {
@@ -100,6 +121,7 @@ export class CreatorController {
           : {}),
       });
     }
+    out.push(...this.state.extras);
     return out;
   }
 
@@ -116,14 +138,14 @@ export class CreatorController {
   sync(): void {
     const items = this.items();
     this.cloths.sync(items);
-    this.meshes.sync(items);
+    this.meshes.sync(items, (it) => this.cloths.mountLift(it, items));
     this.meshes.setSelected(this.selectedId ? [this.selectedId] : [], items);
     this.onChange();
   }
 
   // ---- console ----
 
-  armTable(type: TableType): void {
+  armTable(type: CreatorItemType): void {
     this.ghostType = type;
     this.ghostYaw = 0;
     this.selectedId = null;
@@ -146,14 +168,14 @@ export class CreatorController {
   pointerMove(p: { x: number; z: number } | null): void {
     if (!p) return;
     if (this.dragId) {
-      const t = this.state.tables.find((it) => it.id === this.dragId);
+      const t = this.findItem(this.dragId);
       if (t) {
-        const pose = this.snapPose(t.type as TableType, {
+        const pose = this.snapPose(t.type as CreatorItemType, {
           x: p.x + this.grabOffset.x,
           z: p.z + this.grabOffset.z,
           yawDeg: t.yawDeg,
         }, t.id);
-        if (this.poseOk(t.type as TableType, pose, t.id)) {
+        if (this.poseOk(t.type as CreatorItemType, pose, t.id)) {
           t.x = pose.x;
           t.z = pose.z;
           t.yawDeg = pose.yawDeg;
@@ -172,7 +194,7 @@ export class CreatorController {
     if (this.ghostType) return; // handled on click/up
     if (hitId && hitId !== 'creator-cloth') {
       this.selectedId = hitId;
-      const t = this.state.tables.find((it) => it.id === hitId);
+      const t = this.findItem(hitId);
       if (t && p) this.grabOffset = { x: t.x - p.x, z: t.z - p.z };
       this.dragId = hitId;
       this.sync();
@@ -190,7 +212,9 @@ export class CreatorController {
     if (!this.ghostType || !p) return;
     const pose = this.snapPose(this.ghostType, { x: p.x, z: p.z, yawDeg: this.ghostYaw });
     if (!this.poseOk(this.ghostType, pose)) return;
-    this.state.tables.push({ id: `ct${++this.seq}`, type: this.ghostType, ...pose });
+    const item = { id: `ct${++this.seq}`, type: this.ghostType, ...pose };
+    if (isTable(this.ghostType)) this.state.tables.push(item);
+    else this.state.extras.push(item);
     this.refreshGhost(); // stay armed, Sims-style
     this.sync();
   }
@@ -201,10 +225,10 @@ export class CreatorController {
       this.refreshGhost();
       return;
     }
-    const t = this.state.tables.find((it) => it.id === this.selectedId);
+    const t = this.findItem(this.selectedId ?? '');
     if (!t) return;
     const pose = { x: t.x, z: t.z, yawDeg: normalizeDeg(t.yawDeg + deg) };
-    if (this.poseOk(t.type as TableType, pose, t.id)) {
+    if (this.poseOk(t.type as CreatorItemType, pose, t.id)) {
       t.yawDeg = pose.yawDeg;
       this.sync();
     }
@@ -213,6 +237,7 @@ export class CreatorController {
   deleteSelected(): void {
     if (!this.selectedId) return;
     this.state.tables = this.state.tables.filter((it) => it.id !== this.selectedId);
+    this.state.extras = this.state.extras.filter((it) => it.id !== this.selectedId);
     this.selectedId = null;
     this.sync();
   }
@@ -228,8 +253,9 @@ export class CreatorController {
 
   /** 2D pick in the top view (inches). */
   pickAt(p: { x: number; z: number }): string | null {
-    for (let i = this.state.tables.length - 1; i >= 0; i--) {
-      const t = this.state.tables[i];
+    const all = this.all();
+    for (let i = all.length - 1; i >= 0; i--) {
+      const t = all[i];
       const { w, d } = ITEM_DIMS[t.type];
       const yaw = (-t.yawDeg * Math.PI) / 180;
       const dx = p.x - t.x;
@@ -251,7 +277,8 @@ export class CreatorController {
 
   // ---- internals ----
 
-  private snapPose(type: TableType, pose: Pose, selfId?: string): Pose {
+  private snapPose(type: CreatorItemType, pose: Pose, selfId?: string): Pose {
+    if (!isTable(type)) return pose; // magnet snapping is a table behavior
     const snapped = edgeSnap(
       type,
       pose,
@@ -263,8 +290,8 @@ export class CreatorController {
     return snapped ? snapped.pose : pose;
   }
 
-  private poseOk(type: TableType, pose: Pose, selfId?: string): boolean {
-    return isPoseValid(type, pose, this.state.tables, selfId, [STUDIO_RECT]);
+  private poseOk(type: CreatorItemType, pose: Pose, selfId?: string): boolean {
+    return isPoseValid(type, pose, this.all(), selfId, [STUDIO_RECT]);
   }
 
   private refreshGhost(): void {
