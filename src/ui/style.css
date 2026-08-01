@@ -760,8 +760,12 @@ button.ui-btn.danger:hover {
   flex: 1;
   accent-color: var(--brass);
 }
-.creator-hem .hem-val {
-  min-width: 48px;
+.creator-hem input[type='number'] {
+  width: 54px;
+  padding: 2px 4px;
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  background: #fffdf8;
+  font: inherit;
   text-align: right;
-  font-variant-numeric: tabular-nums;
 }

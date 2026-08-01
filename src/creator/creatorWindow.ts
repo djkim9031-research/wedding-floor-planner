@@ -43,7 +43,10 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
     labels[key] = el;
     viewsWrap.appendChild(el);
   }
-  const hems: Record<'N' | 'E' | 'S' | 'W', { row: HTMLDivElement; slider: HTMLInputElement; val: HTMLSpanElement }> = {} as never;
+  const hems: Record<
+    'N' | 'E' | 'S' | 'W',
+    { row: HTMLDivElement; slider: HTMLInputElement; num: HTMLInputElement }
+  > = {} as never;
   for (const key of ['N', 'E', 'S', 'W'] as const) {
     const row = document.createElement('div');
     row.className = 'creator-hem';
@@ -54,11 +57,16 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
     slider.min = '0';
     slider.max = '30';
     slider.step = '0.25';
-    const val = document.createElement('span');
-    val.className = 'hem-val';
-    row.append(cap, slider, val);
+    const num = document.createElement('input');
+    num.type = 'number';
+    num.min = '0';
+    num.step = '0.25';
+    num.title = 'hem height above the floor (in) — the opposite side follows';
+    const unit = document.createElement('span');
+    unit.textContent = '″';
+    row.append(cap, slider, num, unit);
     viewsWrap.appendChild(row);
-    hems[key] = { row, slider, val };
+    hems[key] = { row, slider, num };
   }
   modal.appendChild(viewsWrap);
   document.body.appendChild(overlay);
@@ -147,8 +155,10 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
       ui.row.style.display = hs ? 'flex' : 'none';
       if (!hs) continue;
       ui.slider.max = String(hs.h);
-      if (document.activeElement !== ui.slider) ui.slider.value = String(hs.gaps[key]);
-      ui.val.textContent = hs.gaps[key] <= 0.01 ? 'floor' : `${hs.gaps[key].toFixed(2)}" up`;
+      ui.num.max = String(hs.h);
+      const v = hs.gaps[key];
+      if (document.activeElement !== ui.slider) ui.slider.value = String(v);
+      if (document.activeElement !== ui.num) ui.num.value = v <= 0.01 ? '0' : v.toFixed(2);
     }
   };
 
@@ -171,6 +181,10 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
   };
   for (const key of ['N', 'E', 'S', 'W'] as const) {
     hems[key].slider.addEventListener('input', () => setHem(key, Number(hems[key].slider.value)));
+    hems[key].num.addEventListener('change', () => {
+      setHem(key, Number(hems[key].num.value) || 0);
+      hems[key].num.blur(); // let the refreshed (clamped) value show
+    });
   }
 
   controller.onChange = () => {
