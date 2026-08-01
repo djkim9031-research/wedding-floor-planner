@@ -42,31 +42,38 @@ export function installKeyboard(fsm: PlacementFSM, rig: CameraRig, actions: Keyb
     }
     if (mod) return;
 
-    // orbit view only — in stand mode the arrows keep walking the camera
-    if (e.key.startsWith('Arrow') && store.getState().selectedId && store.getState().viewMode !== 'stand') {
-      e.preventDefault(); // claim the page-scroll keys only when they move an item
+    // orbit view only — in stand mode arrows/WASD keep walking the camera
+    const st = store.getState();
+    const lower = e.key.toLowerCase();
+    const nudges: Record<string, [number, number]> = {
+      arrowup: [0, -1],
+      w: [0, -1],
+      arrowdown: [0, 1],
+      s: [0, 1],
+      arrowleft: [-1, 0],
+      a: [-1, 0],
+      arrowright: [1, 0],
+      d: [1, 0],
+    };
+    if (nudges[lower] && st.selectedIds.length && st.viewMode !== 'stand') {
+      e.preventDefault(); // claim the keys only when they move something
       const step = e.shiftKey ? 6 : 1;
-      if (e.key === 'ArrowUp') fsm.nudgeSelected(0, -step);
-      else if (e.key === 'ArrowDown') fsm.nudgeSelected(0, step);
-      else if (e.key === 'ArrowLeft') fsm.nudgeSelected(-step, 0);
-      else if (e.key === 'ArrowRight') fsm.nudgeSelected(step, 0);
+      fsm.nudgeSelected(nudges[lower][0] * step, nudges[lower][1] * step);
       return;
     }
 
     switch (e.key) {
       case 'r':
-        fsm.rotateBy(15);
-        break;
       case 'R':
-        fsm.rotateBy(-15);
+        fsm.rotateBy(15); // R clockwise, Q counter-clockwise (matches the creator)
         break;
       case 'q':
       case 'Q':
-        fsm.rotateBy(-5);
+        fsm.rotateBy(-15);
         break;
       case 'e':
       case 'E':
-        fsm.rotateBy(5);
+        fsm.rotateBy(5); // fine adjust: E / [ ] step 5°
         break;
       case '[':
         fsm.rotateBy(-5);
