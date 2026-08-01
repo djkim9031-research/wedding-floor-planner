@@ -281,6 +281,9 @@ if (params.get('cam') === 'close') {
 } else if (params.get('cam') === 'entry') {
   rig.camera.position.set(6.92, 2.4, 48.8);
   rig.controls.target.set(6.92, 2.0, 33);
+} else if (params.get('cam') === 'deckfloor') {
+  rig.camera.position.set(5.5, 2.2, -3.2);
+  rig.controls.target.set(7.5, 0, -5.2);
 } else if (params.get('cam') === 'hall') {
   rig.camera.position.set(7.6, 1.6, 12.6);
   rig.controls.target.set(3.3, 1.1, 16.3);

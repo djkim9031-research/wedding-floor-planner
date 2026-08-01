@@ -12,7 +12,7 @@ import {
   DOOR_HEAD_Y,
   STOREFRONT_HEAD_Y,
 } from '../constants';
-import { floorWoodTextures, reedTexture } from './textures';
+import { floorWoodTextures, plankPaverTextures, reedTexture } from './textures';
 
 type Geo = THREE.BufferGeometry;
 
@@ -378,7 +378,15 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   wood.roughnessMap.repeat.set(tile, tile);
   const floor = new THREE.Mesh(
     floorGeo,
-    new THREE.MeshStandardMaterial({ map: wood.map, roughnessMap: wood.roughnessMap, roughness: 1, metalness: 0 }),
+    new THREE.MeshStandardMaterial({
+      map: wood.map,
+      roughnessMap: wood.roughnessMap,
+      bumpMap: wood.bumpMap,
+      bumpScale: 0.012,
+      roughness: 1,
+      metalness: 0,
+      envMapIntensity: 1.9, // satin oak picks up the glass wall's sky sheen
+    }),
   );
   floor.receiveShadow = true;
   group.add(floor);
@@ -386,7 +394,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   // -------------------------------------------------------------------------
   // Materials + merged wall meshes.
   // -------------------------------------------------------------------------
-  const stuccoMat = new THREE.MeshStandardMaterial({ color: 0xf5f1e8, roughness: 0.93, metalness: 0 });
+  const stuccoMat = new THREE.MeshStandardMaterial({ color: 0xe6e0d1, roughness: 0.93, metalness: 0 });
   const baseMat = new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.5, metalness: 0 });
   const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf4efe6, roughness: 0.6, metalness: 0 });
   const glassMat = new THREE.MeshStandardMaterial({
@@ -697,33 +705,12 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
     return g;
   };
 
-  // terracotta pavers: running bond over a 64" tile at 4 px/in, sand joints
-  let pvSeed = 0x51ab;
-  const pvRnd = () => (pvSeed = (pvSeed * 48271) % 2147483647) / 2147483647;
-  const pvC = document.createElement('canvas');
-  pvC.width = 256;
-  pvC.height = 256;
-  const pv = pvC.getContext('2d')!;
-  pv.fillStyle = '#D3BE9B';
-  pv.fillRect(0, 0, 256, 256);
-  const pvTones = ['#A8674C', '#B5755A', '#9A5E44'];
-  for (let r = 0; r < 16; r++) {
-    const y = r * 16;
-    const off = r % 2 ? 16 : 0;
-    for (let x = off ? -16 : 0; x < (off ? 240 : 256); x += 32) {
-      pv.fillStyle = pvTones[(pvRnd() * 3) | 0];
-      pv.globalAlpha = 0.85 + pvRnd() * 0.15;
-      pv.fillRect(x + 1, y + 1, 30, 14);
-      if (x < 0) pv.fillRect(x + 257, y + 1, 30, 14); // seam brick, same tone
-    }
-  }
-  pv.globalAlpha = 1;
-  const paverTex = new THREE.CanvasTexture(pvC);
-  paverTex.colorSpace = THREE.SRGBColorSpace;
-  paverTex.wrapS = THREE.RepeatWrapping;
-  paverTex.wrapT = THREE.RepeatWrapping;
-  paverTex.repeat.set(1 / i2m(64), 1 / i2m(64));
-  paverTex.anisotropy = 4;
+  // linear plank pavers per the entry photos: mixed cream/greige/gray strips
+  // running along the walk, tight sand joints
+  const plank = plankPaverTextures();
+  const paverTex = plank.map;
+  paverTex.repeat.set(1 / i2m(96), 1 / i2m(96));
+  plank.roughnessMap.repeat.copy(paverTex.repeat);
 
   // walk drops 9" to the court over two shallow steps near the south end
   const paverSurf = (x0: number, x1: number, z0: number, z1: number, y: number): Geo => {
@@ -738,7 +725,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
       paverSurf(76, 469, 1688, 1706, -5.25),
       paverSurf(76, 469, 1706, 1835, -9.75),
     ],
-    new THREE.MeshStandardMaterial({ map: paverTex, roughness: 0.9, metalness: 0 }),
+    new THREE.MeshStandardMaterial({ map: paverTex, roughnessMap: plank.roughnessMap, roughness: 1, metalness: 0 }),
   );
   pavers.receiveShadow = true;
   group.add(pavers);

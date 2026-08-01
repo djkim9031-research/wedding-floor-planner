@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { i2m, DECK_POLY, DECK_TREES, ROOM_W, ROOM_D, EAVE_Y } from '../constants';
-import { bayPanoramaTexture, deckWoodTextures, skyTexture } from './textures';
+import { barkTexture, bayPanoramaTexture, deckWoodTextures, skyTexture, treetopRingTexture } from './textures';
 
 type Geo = THREE.BufferGeometry;
 
@@ -33,9 +33,10 @@ export function buildExterior(): THREE.Group {
   // -------------------------------------------------------------------------
   // Deck slab from the traced Tree Deck outline, top flush with the floor.
   // -------------------------------------------------------------------------
-  const { map: deckTex, roughnessMap: deckRough } = deckWoodTextures();
+  const { map: deckTex, roughnessMap: deckRough, bumpMap: deckBump } = deckWoodTextures();
   deckTex.repeat.set(1 / i2m(96), 1 / i2m(96)); // ExtrudeGeometry UVs are in meters
   deckRough.repeat.copy(deckTex.repeat);
+  deckBump.repeat.copy(deckTex.repeat);
   const shape = new THREE.Shape();
   DECK_POLY.forEach((p, k) => {
     if (k === 0) shape.moveTo(i2m(p.x), -i2m(p.z));
@@ -43,11 +44,22 @@ export function buildExterior(): THREE.Group {
   });
   shape.closePath();
   const deckGeo = new THREE.ExtrudeGeometry(shape, { depth: i2m(12), bevelEnabled: false });
-  deckGeo.rotateX(Math.PI / 2); // shape (x,-z) + depth 12 down -> top at y=0
-  deckGeo.translate(0, -i2m(0.4), 0); // sit just below the interior floor: no knife-edge seam
+  // rotate -90°: shape (x,-z) lands at world +z with the extrude cap facing UP
+  // (+90° mirrored the slab under the room floor — the deck read as missing)
+  deckGeo.rotateX(-Math.PI / 2);
+  deckGeo.translate(0, -i2m(12) - i2m(0.4), 0); // top just below the interior floor
+
   const deck = new THREE.Mesh(
     deckGeo,
-    new THREE.MeshStandardMaterial({ map: deckTex, roughnessMap: deckRough, roughness: 1, metalness: 0 }),
+    new THREE.MeshStandardMaterial({
+      map: deckTex,
+      roughnessMap: deckRough,
+      bumpMap: deckBump,
+      bumpScale: 0.02,
+      roughness: 1,
+      metalness: 0,
+      envMapIntensity: 0.5,
+    }),
   );
   deck.receiveShadow = true;
   group.add(deck);
@@ -125,7 +137,7 @@ export function buildExterior(): THREE.Group {
   // Bronze planters (tapered square = 4-segment cylinder), each with a shrub.
   // -------------------------------------------------------------------------
   const foliageG: Geo[] = [];
-  const foliageColors = ['#47573A', '#3E5233', '#526344'];
+  const foliageColors = ['#4C5A35', '#556340', '#47523A', '#5E6C44', '#66744A'];
 
   const blob = (rnd: () => number, cx: number, cy: number, cz: number, r: number, hex: string) => {
     const g = new THREE.IcosahedronGeometry(i2m(r), 1);
@@ -141,7 +153,10 @@ export function buildExterior(): THREE.Group {
       const h = fract(Math.sin(x * 127.1 + y * 311.7 + z * 74.7 + seed) * 43758.5453);
       const s = 0.78 + h * 0.45;
       pos.setXYZ(k, x * s, y * s * 0.82, z * s); // slightly squashed canopy
-      const sh = 0.82 + fract(h * 7.31) * 0.33;
+      // leaf-cluster value jitter + a vertical light gradient: crowns catch
+      // sky light, undersides fall into shade (reads as real canopy depth)
+      const vert = 0.78 + 0.42 * Math.min(1, Math.max(0, y / (i2m(r) * 1.6) + 0.5));
+      const sh = (0.82 + fract(h * 7.31) * 0.33) * vert;
       col[k * 3] = c.r * sh;
       col[k * 3 + 1] = c.g * sh;
       col[k * 3 + 2] = c.b * sh;
@@ -179,52 +194,85 @@ export function buildExterior(): THREE.Group {
 
   const oak = (seed: number, bx: number, bz: number, leanDeg: number, ldx: number, ldz: number, h: number, baseY: number) => {
     const rnd = mulberry32(seed);
-    const leanRun = Math.tan((leanDeg * Math.PI) / 180) * h;
     const dl = Math.hypot(ldx, ldz) || 1;
     const dx = ldx / dl;
     const dz = ldz / dl;
-    const P = (t: number, wob: number) =>
-      new THREE.Vector3(
-        i2m(bx + dx * leanRun * t * t + (rnd() - 0.5) * wob),
-        i2m(baseY + (h - baseY) * t),
-        i2m(bz + dz * leanRun * t * t + (rnd() - 0.5) * wob),
-      );
-    const pts = [P(0, 0), P(0.3, 8), P(0.6, 12), P(0.85, 14), P(1, 16)];
+    const px = -dz; // perpendicular, for serpentine sway
+    const pz = dx;
 
-    const tube = (curvePts: THREE.Vector3[], r: number, segs: number) => {
-      const curve = new THREE.CatmullRomCurve3(curvePts);
-      barkG.push(new THREE.TubeGeometry(curve, segs, i2m(r), 7, false));
+    const tips: THREE.Vector3[] = [];
+
+    // one serpentine limb: lean drift + lateral S-sway, tapered in 3 tubes
+    const limb = (
+      x0: number,
+      z0: number,
+      y0: number,
+      top: number,
+      lean: number,
+      swayAmp: number,
+      phase: number,
+      r0: number,
+    ) => {
+      const run = Math.tan((lean * Math.PI) / 180) * (top - y0);
+      const pt = (t: number) => {
+        const sway = Math.sin(t * Math.PI * 1.35 + phase) * swayAmp * t;
+        const wob = (rnd() - 0.5) * 7 * t;
+        return new THREE.Vector3(
+          i2m(x0 + dx * run * t * t + px * sway + wob),
+          i2m(y0 + (top - y0) * t),
+          i2m(z0 + dz * run * t * t + pz * sway + wob),
+        );
+      };
+      const pts = [pt(0), pt(0.18), pt(0.38), pt(0.58), pt(0.78), pt(1)];
+      const tube = (cp: THREE.Vector3[], r: number) => {
+        barkG.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cp), 10, i2m(r), 8, false));
+      };
+      tube(pts.slice(0, 3), r0);
+      tube(pts.slice(2, 5), r0 * 0.62);
+      tube(pts.slice(4), r0 * 0.4);
+
+      // arching branches off the upper third
+      const nBr = 2 + ((rnd() * 2) | 0);
+      for (let b = 0; b < nBr; b++) {
+        const from = pts[3 + ((rnd() * 2) | 0)].clone();
+        const dir = new THREE.Vector3((rnd() - 0.5) * 2, 0.25 + rnd() * 0.45, (rnd() - 0.5) * 2).normalize();
+        const len = i2m(70 + rnd() * 70);
+        const to = from.clone().addScaledVector(dir, len);
+        const mid = from.clone().lerp(to, 0.55).add(new THREE.Vector3(0, i2m(14), 0));
+        tube([from, mid, to], r0 * 0.28);
+        tips.push(to);
+      }
+      tips.push(pts[5]);
     };
-    tube(pts.slice(0, 3), 9, 8); // lower trunk
-    tube(pts.slice(2), 5.5, 8); // upper trunk
-    for (let b = 0; b < 2; b++) {
-      const from = pts[3].clone();
-      const dir = new THREE.Vector3(
-        (rnd() - 0.5) * 2,
-        0.35 + rnd() * 0.3,
-        (rnd() - 0.5) * 2,
-      ).normalize();
-      const to = from.clone().addScaledVector(dir, i2m(70 + rnd() * 50));
-      const mid = from.clone().lerp(to, 0.5).add(new THREE.Vector3(0, i2m(10), 0));
-      tube([from, mid, to], 3.5, 6);
+
+    // photo look: a dominant serpentine trunk + 1–2 companion trunks off
+    // the same root crown, splaying apart as they rise
+    limb(bx, bz, baseY, h, leanDeg, 26 + rnd() * 22, rnd() * Math.PI * 2, 10.5);
+    limb(bx + px * 9, bz + pz * 9, baseY, h * (0.72 + rnd() * 0.14), leanDeg * 0.55 + 7, 20 + rnd() * 16, rnd() * Math.PI * 2, 7.5);
+    if (rnd() < 0.7) {
+      limb(bx - px * 8, bz - pz * 8, baseY, h * (0.55 + rnd() * 0.12), -leanDeg * 0.4 - 6, 16 + rnd() * 14, rnd() * Math.PI * 2, 6);
     }
 
-    const top = pts[4];
-    const nBlobs = 2 + ((rnd() * 2) | 0);
-    for (let b = 0; b < nBlobs; b++) {
-      const ox = (rnd() - 0.5) * 150;
-      const oz = (rnd() - 0.5) * 150;
-      const oy = (rnd() - 0.5) * 60;
-      blob(
-        rnd,
-        top.x / i2m(1) + ox,
-        top.y / i2m(1) + 15 + oy,
-        top.z / i2m(1) + oz,
-        85 + rnd() * 45,
-        foliageColors[(rnd() * foliageColors.length) | 0],
-      );
+    // clumpy canopy gathered around the limb tips — many small clusters with
+    // sky holes between, instead of one lollipop blob
+    for (const tip of tips) {
+      const n = 3 + ((rnd() * 3) | 0);
+      for (let b = 0; b < n; b++) {
+        const ox = (rnd() - 0.5) * 95;
+        const oz = (rnd() - 0.5) * 95;
+        const oy = (rnd() - 0.35) * 42;
+        blob(
+          rnd,
+          tip.x / i2m(1) + ox,
+          tip.y / i2m(1) + 12 + oy,
+          tip.z / i2m(1) + oz,
+          30 + rnd() * 26,
+          foliageColors[(rnd() * foliageColors.length) | 0],
+        );
+      }
     }
   };
+
 
   // one oak rises through the central deck opening; the rest are scenery
   // beyond the railing
@@ -509,7 +557,9 @@ export function buildExterior(): THREE.Group {
   oak(24, -520, 1860, 10, -0.8, 0.6, 300, -70);
   oak(25, 1080, 1800, 7, 0.7, 0.8, 260, -70);
 
-  const bark = merged(barkG, new THREE.MeshStandardMaterial({ color: 0x5b4a3e, roughness: 0.95, metalness: 0 }));
+  const barkTex = barkTexture();
+  barkTex.repeat.set(2, 7);
+  const bark = merged(barkG, new THREE.MeshStandardMaterial({ map: barkTex, roughness: 0.95, metalness: 0 }));
   bark.castShadow = true;
   const foliage = merged(
     foliageG,
@@ -590,6 +640,7 @@ export function buildExterior(): THREE.Group {
 export interface Atmosphere {
   skyMat: THREE.MeshBasicMaterial;
   valleyMat: THREE.MeshBasicMaterial;
+  ringMat: THREE.MeshBasicMaterial;
   fog: THREE.Fog;
 }
 
@@ -622,9 +673,26 @@ export function applyAtmosphere(scene: THREE.Scene): Atmosphere {
   valley.renderOrder = -1;
   scene.add(valley);
 
+  // near treetop ring just past the knoll: crowns rise above deck level and
+  // parallax against the painted valley as the camera moves
+  const ring = new THREE.Mesh(
+    new THREE.CylinderGeometry(58, 58, 13, 96, 1, true),
+    new THREE.MeshBasicMaterial({
+      map: treetopRingTexture(),
+      side: THREE.BackSide,
+      transparent: true,
+      alphaTest: 0.35,
+      depthWrite: false,
+    }),
+  );
+  ring.position.set(cx, -0.8, cz);
+  ring.renderOrder = -1;
+  scene.add(ring);
+
   return {
     skyMat: sky.material as THREE.MeshBasicMaterial,
     valleyMat: valley.material as THREE.MeshBasicMaterial,
+    ringMat: ring.material as THREE.MeshBasicMaterial,
     fog: scene.fog as THREE.Fog,
   };
 }

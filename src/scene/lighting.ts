@@ -121,6 +121,7 @@ export function setupLighting(
     if (!atmo) return;
     atmo.skyMat.color.copy(sky);
     atmo.valleyMat.color.copy(valley);
+    atmo.ringMat.color.copy(valley).multiplyScalar(0.92); // near canopy a shade deeper
     atmo.fog.color.copy(fog);
   };
 
