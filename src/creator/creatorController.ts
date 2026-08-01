@@ -12,14 +12,20 @@ import { STUDIO_RECT } from './studioScene';
 
 export type CreatorItemType = TableType | 'chair' | 'setting';
 
+export interface CreatorCloth {
+  id: string;
+  type: ClothType;
+  dims?: { w: number; d: number };
+  /** offset of this cloth's centroid from the table-group centroid */
+  offset: { dx: number; dz: number };
+}
+
 export interface CreatorState {
   tables: PlacedItem[];
-  /** chairs + settings — placed AFTER the cloth so it never drapes over them
-   * and settings ride the settled fabric */
+  /** chairs + settings — placed AFTER the cloths so no linen drapes over
+   * them and settings ride the settled fabric */
   extras: PlacedItem[];
-  clothType: ClothType | null;
-  clothDims: { w: number; d: number } | null;
-  offset: { dx: number; dz: number };
+  cloths: CreatorCloth[];
 }
 
 /** Table-group centroid (inches); origin when no tables are down. */
@@ -67,7 +73,9 @@ export function minClothDims(tables: PlacedItem[]): { w: number; d: number } | n
  * core math and the real cloth sim; renders through its own ItemMeshes +
  * ClothManager attached to the studio scene. */
 export class CreatorController {
-  readonly state: CreatorState = { tables: [], extras: [], clothType: null, clothDims: null, offset: { dx: 0, dz: 0 } };
+  readonly state: CreatorState = { tables: [], extras: [], cloths: [] };
+  /** the cloth the offset/hem controls currently drive */
+  activeClothId: string | null = null;
   /** armed console item (Sims-style ghost) */
   private ghostType: CreatorItemType | null = null;
   private ghostYaw = 0;
@@ -103,26 +111,30 @@ export class CreatorController {
     return this.all().find((it) => it.id === id);
   }
 
-  /** tables, then the centroid-locked cloth, then chairs/settings — the
-   * order IS the stacking: the linen drapes the tables only, and later
-   * settings sit on the fabric. */
+  /** tables, then every centroid-locked cloth, then chairs/settings — the
+   * order IS the stacking: linens drape the tables only, and later settings
+   * sit on the fabric. */
   items(): PlacedItem[] {
     const out: PlacedItem[] = [...this.state.tables];
-    if (this.state.clothType && this.state.tables.length) {
+    if (this.state.tables.length) {
       const c = tableCentroid(this.state.tables);
-      out.push({
-        id: 'creator-cloth',
-        type: this.state.clothType,
-        x: c.x + this.state.offset.dx,
-        z: c.z + this.state.offset.dz,
-        yawDeg: 0,
-        ...(this.state.clothType === 'clothC' && this.state.clothDims
-          ? { dims: { ...this.state.clothDims } }
-          : {}),
-      });
+      for (const cl of this.state.cloths) {
+        out.push({
+          id: cl.id,
+          type: cl.type,
+          x: c.x + cl.offset.dx,
+          z: c.z + cl.offset.dz,
+          yawDeg: 0,
+          ...(cl.dims ? { dims: { ...cl.dims } } : {}),
+        });
+      }
     }
     out.push(...this.state.extras);
     return out;
+  }
+
+  activeCloth(): CreatorCloth | null {
+    return this.state.cloths.find((c) => c.id === this.activeClothId) ?? null;
   }
 
   /** design export for placeSet: poses relative to the table centroid. */
@@ -152,14 +164,48 @@ export class CreatorController {
     this.refreshGhost();
   }
 
-  setCloth(type: ClothType | null, dims: { w: number; d: number } | null): void {
-    this.state.clothType = type;
-    this.state.clothDims = type === 'clothC' ? dims : null;
+  addCloth(type: ClothType, dims: { w: number; d: number } | null): string {
+    const id = `cc${++this.seq}`;
+    this.state.cloths.push({
+      id,
+      type,
+      ...(type === 'clothC' && dims ? { dims: { ...dims } } : {}),
+      offset: { dx: 0, dz: 0 },
+    });
+    this.activeClothId = id;
+    this.selectedId = null;
+    this.sync();
+    return id;
+  }
+
+  removeItem(id: string): void {
+    this.state.tables = this.state.tables.filter((it) => it.id !== id);
+    this.state.extras = this.state.extras.filter((it) => it.id !== id);
+    this.state.cloths = this.state.cloths.filter((it) => it.id !== id);
+    if (this.activeClothId === id) {
+      const rest = this.state.cloths;
+      this.activeClothId = rest.length ? rest[rest.length - 1].id : null;
+    }
+    if (this.selectedId === id) this.selectedId = null;
     this.sync();
   }
 
+  /** row click: cloths bind the offset/hem controls, solids arm for dragging */
+  selectItem(id: string): void {
+    if (this.state.cloths.some((c) => c.id === id)) {
+      this.activeClothId = id;
+      this.selectedId = null;
+    } else {
+      this.selectedId = id;
+    }
+    this.sync();
+  }
+
+  /** offset applies to the active cloth */
   setOffset(dx: number, dz: number): void {
-    this.state.offset = { dx, dz };
+    const c = this.activeCloth();
+    if (!c) return;
+    c.offset = { dx, dz };
     this.sync();
   }
 
@@ -192,7 +238,7 @@ export class CreatorController {
 
   pointerDown(p: { x: number; z: number } | null, hitId: string | null): void {
     if (this.ghostType) return; // handled on click/up
-    if (hitId && hitId !== 'creator-cloth') {
+    if (hitId) {
       this.selectedId = hitId;
       const t = this.findItem(hitId);
       if (t && p) this.grabOffset = { x: t.x - p.x, z: t.z - p.z };
@@ -236,10 +282,7 @@ export class CreatorController {
 
   deleteSelected(): void {
     if (!this.selectedId) return;
-    this.state.tables = this.state.tables.filter((it) => it.id !== this.selectedId);
-    this.state.extras = this.state.extras.filter((it) => it.id !== this.selectedId);
-    this.selectedId = null;
-    this.sync();
+    this.removeItem(this.selectedId);
   }
 
   cancelGhost(): void {
@@ -251,9 +294,10 @@ export class CreatorController {
     return this.ghostType !== null;
   }
 
-  /** 2D pick in the top view (inches). */
+  /** 2D pick in the top view (inches): extras above tables; cloths are
+   * selected from the placed list, not the canvas. */
   pickAt(p: { x: number; z: number }): string | null {
-    const all = this.all();
+    const all = [...this.state.tables, ...this.state.extras];
     for (let i = all.length - 1; i >= 0; i--) {
       const t = all[i];
       const { w, d } = ITEM_DIMS[t.type];
@@ -268,7 +312,7 @@ export class CreatorController {
   }
 
   drapeReport() {
-    return this.cloths.getReport('creator-cloth');
+    return this.activeClothId ? this.cloths.getReport(this.activeClothId) : null;
   }
 
   dispose(): void {

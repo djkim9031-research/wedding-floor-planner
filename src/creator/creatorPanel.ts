@@ -33,6 +33,10 @@ export function buildCreatorPanel(
     <div class="creator-cards" data-k="tables"></div>
     <div class="creator-cards" data-k="extras"></div>
     <div class="creator-cards" data-k="cloths"></div>
+    <div class="creator-sec">
+      <label>Placed in this set</label>
+      <div class="items-list creator-list" data-k="list"></div>
+    </div>
     <div class="creator-sec" data-k="customSec">
       <label>Custom linen size</label>
       <div class="creator-row">
@@ -63,6 +67,7 @@ export function buildCreatorPanel(
   const cardsTables = el<HTMLDivElement>('tables');
   const cardsExtras = el<HTMLDivElement>('extras');
   const cardsCloths = el<HTMLDivElement>('cloths');
+  const listEl = el<HTMLDivElement>('list');
   const cw = el<HTMLInputElement>('cw');
   const cd = el<HTMLInputElement>('cd');
   const sx = el<HTMLInputElement>('sx');
@@ -93,11 +98,8 @@ export function buildCreatorPanel(
   EXTRA_CARDS.forEach((t) => card(cardsExtras, t, () => controller.armTable(t)));
   const clothBtns = CLOTH_CARDS.map((t) =>
     card(cardsCloths, t, () => {
-      const already = controller.state.clothType === t;
-      controller.setCloth(
-        already ? null : t,
-        t === 'clothC' ? { w: clamp(cw), d: clamp(cd) } : null,
-      );
+      // each click adds another linen of this type
+      controller.addCloth(t, t === 'clothC' ? { w: clamp(cw), d: clamp(cd) } : null);
     }),
   );
   void tableBtns;
@@ -111,42 +113,69 @@ export function buildCreatorPanel(
     cw.value = String(w);
     cd.value = String(d);
     setCustomClothDims(w, d);
-    if (controller.state.clothType === 'clothC') controller.setCloth('clothC', { w, d });
+    // resizing updates the ACTIVE custom linen (others keep their stamp)
+    const active = controller.activeCloth();
+    if (active?.type === 'clothC') {
+      active.dims = { w, d };
+      controller.sync();
+    }
     refresh();
   };
   cw.addEventListener('change', applyCustom);
   cd.addEventListener('change', applyCustom);
 
+  const curOffset = (): { dx: number; dz: number } => controller.activeCloth()?.offset ?? { dx: 0, dz: 0 };
   const setOffset = (dx: number, dz: number): void => {
     const cl = (v: number): number => Math.min(OFFSET_RANGE, Math.max(-OFFSET_RANGE, v));
     controller.setOffset(cl(dx), cl(dz));
   };
-  sx.addEventListener('input', () => setOffset(Number(sx.value), controller.state.offset.dz));
-  szEl.addEventListener('input', () => setOffset(controller.state.offset.dx, Number(szEl.value)));
-  nx.addEventListener('change', () => setOffset(Number(nx.value) || 0, controller.state.offset.dz));
-  nz.addEventListener('change', () => setOffset(controller.state.offset.dx, Number(nz.value) || 0));
+  sx.addEventListener('input', () => setOffset(Number(sx.value), curOffset().dz));
+  szEl.addEventListener('input', () => setOffset(curOffset().dx, Number(szEl.value)));
+  nx.addEventListener('change', () => setOffset(Number(nx.value) || 0, curOffset().dz));
+  nz.addEventListener('change', () => setOffset(curOffset().dx, Number(nz.value) || 0));
 
   el<HTMLButtonElement>('close').addEventListener('click', actions.close);
   placeBtn.addEventListener('click', actions.place);
 
   const refresh = (): void => {
     const st = controller.state;
-    const { dx, dz } = st.offset;
+    const active = controller.activeCloth();
+    const { dx, dz } = active?.offset ?? { dx: 0, dz: 0 };
     if (document.activeElement !== sx) sx.value = String(dx);
     if (document.activeElement !== szEl) szEl.value = String(dz);
     if (document.activeElement !== nx) nx.value = String(dx);
     if (document.activeElement !== nz) nz.value = String(dz);
-    const hasCloth = !!st.clothType && st.tables.length > 0;
+    const hasCloth = !!active && st.tables.length > 0;
     for (const input of [sx, szEl, nx, nz]) input.disabled = !hasCloth;
 
     clothBtns.forEach((b, i) => {
-      b.classList.toggle('active', st.clothType === CLOTH_CARDS[i]);
-      // keep the custom card's size label current
       if (CLOTH_CARDS[i] === 'clothC') {
         const small = b.querySelector('small');
         if (small) small.textContent = `${ITEM_DIMS.clothC.w}" × ${ITEM_DIMS.clothC.d}"`;
       }
     });
+
+    // placed list: click a row to re-adjust that item (cloths bind the
+    // offset/hem controls; solids highlight + drag in the bird's-eye)
+    listEl.innerHTML = '';
+    const counters = new Map<string, number>();
+    for (const it of controller.items()) {
+      const n = (counters.get(it.type) ?? 0) + 1;
+      counters.set(it.type, n);
+      const row = document.createElement('div');
+      const isActive = it.id === controller.selectedId || it.id === controller.activeClothId;
+      row.className = 'item-row' + (isActive ? ' selected' : '');
+      const label = document.createElement('button');
+      label.className = 'item-label';
+      label.textContent = `${ITEM_LABELS[it.type]} ${n}`;
+      label.addEventListener('click', () => controller.selectItem(it.id));
+      const del = document.createElement('button');
+      del.className = 'ui-btn danger row-del';
+      del.textContent = '✕';
+      del.addEventListener('click', () => controller.removeItem(it.id));
+      row.append(label, del);
+      listEl.appendChild(row);
+    }
 
     const min = minClothDims(st.tables);
     if (min) {
@@ -158,10 +187,11 @@ export function buildCreatorPanel(
     }
 
     const report = controller.drapeReport();
-    if (report && hasCloth) {
+    if (report && hasCloth && active) {
       const c = tableCentroid(st.tables);
+      const idx = st.cloths.findIndex((cl) => cl.id === active.id) + 1;
       drapeEl.innerHTML =
-        `<b>Linen centroid: ${fmtOff(dx)}", ${fmtOff(dz)}" from tables (${c.x.toFixed(0)}, ${c.z.toFixed(0)})</b><br>` +
+        `<b>${ITEM_LABELS[active.type]} ${idx}: ${fmtOff(dx)}", ${fmtOff(dz)}" from tables (${c.x.toFixed(0)}, ${c.z.toFixed(0)})</b><br>` +
         report.sides.map((s) => `<small>${s.label}: ${s.text}</small>`).join('<br>');
     } else {
       drapeEl.innerHTML = '';

@@ -265,14 +265,16 @@ if (creatorParam === 'demo' || creatorParam === 'place-demo' || creatorParam ===
       for (const x of [-31.5, 0, 31.5]) {
         c.state.tables.push({ id: `q${x}`, type: 'table', x, z: 0, yawDeg: 90 });
       }
-      c.setCloth('clothB', null);
+      c.addCloth('clothB', null);
+      c.setOffset(26, 0);
+      c.addCloth('clothB', null);
+      c.setOffset(-26, 0); // two linens, mirrored — the two-cloth scheme
       c.state.extras.push(
         { id: 'qc1', type: 'chair', x: -20, z: -34, yawDeg: 0 },
         { id: 'qc2', type: 'chair', x: 20, z: 34, yawDeg: 180 },
         { id: 'qs1', type: 'setting', x: -20, z: -14, yawDeg: 0 },
         { id: 'qs2', type: 'setting', x: 20, z: 14, yawDeg: 180 },
       );
-      c.setOffset(8, 0); // slide east so the elevations show the asymmetry
       if (creatorParam === 'place-demo') {
         setTimeout(() => {
           (document.querySelector('.creator-foot .ui-btn.primary') as HTMLButtonElement)?.click();

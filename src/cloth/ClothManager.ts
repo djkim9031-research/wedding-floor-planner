@@ -96,8 +96,12 @@ export class ClothManager {
       }
     }
 
+    let clothIndex = 0;
     for (const it of items) {
       if (!isCloth(it.type)) continue;
+      // overlapping linens: a hair of lift per stacking order keeps their
+      // coincident tabletop planes from z-fighting (0.12" — invisible)
+      const renderLift = clothIndex++ * 0.12;
       const pose: Pose = { x: it.x, z: it.z, yawDeg: it.yawDeg };
       const clothIdx = orderIdx.get(it.id)!;
       // only obstacles placed before this cloth are under its drape
@@ -110,10 +114,12 @@ export class ClothManager {
       if (!inst) {
         const sim = new ClothSim(makeClothSpec(it.type as ClothType, undefined, it.dims), pose, colliders);
         sim.mesh.userData.itemId = it.id; // pointer picking hook
+        sim.mesh.position.y = renderLift;
         this.group.add(sim.mesh);
         this.instances.set(it.id, { sim, notified: false, dirty: false });
         continue;
       }
+      inst.sim.mesh.position.y = renderLift;
       inst.sim.setColliders(colliders);
       const cur = inst.sim.pose;
       if (cur.x !== pose.x || cur.z !== pose.z || cur.yawDeg !== pose.yawDeg) {

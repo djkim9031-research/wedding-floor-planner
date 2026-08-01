@@ -130,11 +130,12 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
   } | null => {
     const st = controller.state;
     const b = tableBBox(st.tables);
-    if (!b || !st.clothType) return null;
-    const dims = st.clothType === 'clothC' && st.clothDims ? st.clothDims : ITEM_DIMS[st.clothType];
+    const active = controller.activeCloth();
+    if (!b || !active) return null;
+    const dims = active.dims ?? ITEM_DIMS[active.type];
     const c = tableCentroid(st.tables);
-    const cx = c.x + st.offset.dx;
-    const cz = c.z + st.offset.dz;
+    const cx = c.x + active.offset.dx;
+    const cz = c.z + active.offset.dz;
     const h = Math.max(...st.tables.map((t) => TABLE_TOPS[t.type as TableType]));
     const clampG = (drop: number): number => Math.min(h, Math.max(0, h - drop));
     return {
@@ -166,12 +167,13 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
   const setHem = (face: 'N' | 'E' | 'S' | 'W', gap: number): void => {
     const st = controller.state;
     const b = tableBBox(st.tables);
-    if (!b || !st.clothType) return;
-    const dims = st.clothType === 'clothC' && st.clothDims ? st.clothDims : ITEM_DIMS[st.clothType];
+    const active = controller.activeCloth();
+    if (!b || !active) return;
+    const dims = active.dims ?? ITEM_DIMS[active.type];
     const c = tableCentroid(st.tables);
     const h = Math.max(...st.tables.map((t) => TABLE_TOPS[t.type as TableType]));
     const drop = h - Math.min(h, Math.max(0, gap));
-    let { dx, dz } = st.offset;
+    let { dx, dz } = active.offset;
     if (face === 'E') dx = b.maxX + drop - dims.w / 2 - c.x;
     else if (face === 'W') dx = b.minX - drop + dims.w / 2 - c.x;
     else if (face === 'S') dz = b.maxZ + drop - dims.d / 2 - c.z;

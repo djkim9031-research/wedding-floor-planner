@@ -769,3 +769,7 @@ button.ui-btn.danger:hover {
   font: inherit;
   text-align: right;
 }
+
+.creator-list {
+  max-height: 150px;
+}
