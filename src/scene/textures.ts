@@ -441,9 +441,9 @@ export function skyTexture(): THREE.CanvasTexture {
   const rnd = mulberry32(0x5c1);
   const ctx = makeCanvas(W, H);
   const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, '#4E82C6');
-  g.addColorStop(0.35, '#7CA9DC');
-  g.addColorStop(0.62, '#B5CDE8');
+  g.addColorStop(0, '#4B90DE');
+  g.addColorStop(0.35, '#7FB8EF');
+  g.addColorStop(0.62, '#B8D6F4');
   g.addColorStop(0.8, '#DCE7F0');
   g.addColorStop(0.92, '#E9EBE9');
   g.addColorStop(1, '#EDE4D2');

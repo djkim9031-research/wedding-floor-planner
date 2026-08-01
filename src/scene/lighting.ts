@@ -390,7 +390,7 @@ export function setupLighting(
     const altBoost = THREE.MathUtils.clamp(alt / 30, 0.6, 1.15);
     // dramatic reading: hot direct beam over a subdued ambient, so the sun's
     // pools and window patterns clearly dominate the scene
-    sun.intensity = 3.4 * altBoost * (1 - 0.88 * c);
+    sun.intensity = 4.3 * altBoost * (1 - 0.88 * c);
     sun.position.copy(center).addScaledVector(dir, 40);
 
     // ambient follows the day cycle: sky-blue at midday, golden near the
@@ -407,7 +407,7 @@ export function setupLighting(
 
     const skyTint = lerpHex(0xffffff, 0xffb066, golden)
       .clone()
-      .multiplyScalar(0.98 - 0.22 * golden) // clear vivid blue at midday
+      .multiplyScalar(1.14 - 0.38 * golden) // bright clear blue at midday
       .lerp(colB.setHex(0x6f767e), c * 0.75);
     setAtmo(
       skyTint,
