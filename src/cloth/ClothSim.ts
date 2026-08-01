@@ -30,7 +30,7 @@ export class ClothSim {
   state: ClothState = 'settling';
   report: DrapeReport | null = null;
 
-  private readonly grid: ClothGrid;
+  readonly grid: ClothGrid;
   private readonly render: ClothRenderMesh;
   private readonly self: SelfCollider | null;
   private readonly frameStart: Float32Array;
@@ -166,26 +166,28 @@ export class ClothSim {
 
   private drop(pose: Pose, seed?: number): void {
     this.pose = pose;
-    // sample the center and the cloth's corners: a cloth centered past a table
-    // edge must still spawn above the tabletop, not inside it
+    // sample a coarse grid across the whole sheet: any obstacle anywhere under
+    // the cloth (a chair mid-span, a lantern near a corner) must set the spawn
+    // height, or the sheet materializes inside it
     const yawRad = (pose.yawDeg * Math.PI) / 180;
-    let top = topAt(this.colliders, pose.x, pose.z);
+    let top = 0;
     const hw = this.spec.w / 2;
     const hd = this.spec.d / 2;
     const cs = Math.cos(yawRad);
     const sn = Math.sin(yawRad);
-    for (const [sx, sz] of [
-      [1, 1],
-      [1, -1],
-      [-1, -1],
-      [-1, 1],
-    ]) {
-      const wx = pose.x + sx * hw * cs + sz * hd * sn;
-      const wz = pose.z - sx * hw * sn + sz * hd * cs;
-      const t = topAt(this.colliders, wx, wz);
-      if (t > top) top = t;
+    const nx = Math.max(2, Math.ceil(this.spec.w / 8));
+    const nz = Math.max(2, Math.ceil(this.spec.d / 8));
+    for (let ix = 0; ix <= nx; ix++) {
+      const lx = -hw + (ix / nx) * this.spec.w;
+      for (let iz = 0; iz <= nz; iz++) {
+        const lz = -hd + (iz / nz) * this.spec.d;
+        const wx = pose.x + lx * cs + lz * sn;
+        const wz = pose.z - lx * sn + lz * cs;
+        const t = topAt(this.colliders, wx, wz);
+        if (t > top) top = t;
+      }
     }
-    const baseY = (top > 0 ? top : 0) + DROP_HEIGHT;
+    const baseY = top + DROP_HEIGHT;
     initPositions(
       this.grid,
       pose,

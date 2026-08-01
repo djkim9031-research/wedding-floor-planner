@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { i2m, DECK_POLY, DECK_TREES, ROOM_W, ROOM_D, EAVE_Y } from '../constants';
-import { bayPanoramaTexture, deckWoodTexture, skyTexture } from './textures';
+import { bayPanoramaTexture, deckWoodTextures, skyTexture } from './textures';
 
 type Geo = THREE.BufferGeometry;
 
@@ -33,8 +33,9 @@ export function buildExterior(): THREE.Group {
   // -------------------------------------------------------------------------
   // Deck slab from the traced Tree Deck outline, top flush with the floor.
   // -------------------------------------------------------------------------
-  const deckTex = deckWoodTexture();
+  const { map: deckTex, roughnessMap: deckRough } = deckWoodTextures();
   deckTex.repeat.set(1 / i2m(96), 1 / i2m(96)); // ExtrudeGeometry UVs are in meters
+  deckRough.repeat.copy(deckTex.repeat);
   const shape = new THREE.Shape();
   DECK_POLY.forEach((p, k) => {
     if (k === 0) shape.moveTo(i2m(p.x), -i2m(p.z));
@@ -46,7 +47,7 @@ export function buildExterior(): THREE.Group {
   deckGeo.translate(0, -i2m(0.4), 0); // sit just below the interior floor: no knife-edge seam
   const deck = new THREE.Mesh(
     deckGeo,
-    new THREE.MeshStandardMaterial({ map: deckTex, roughness: 0.85, metalness: 0 }),
+    new THREE.MeshStandardMaterial({ map: deckTex, roughnessMap: deckRough, roughness: 1, metalness: 0 }),
   );
   deck.receiveShadow = true;
   group.add(deck);

@@ -14,12 +14,15 @@ export type FSMState = 'idle' | 'placing' | 'parked' | 'selected' | 'dragging' |
 export class PlacementFSM {
   state: FSMState = 'idle';
   freeRotate = false; // Shift held: 1° rotation, no angle quantize on the ring
+  /** list-locked item: every mouse drag / keyboard nudge targets it until Esc */
+  lockedId: string | null = null;
 
   /** camera enable/disable while a gesture owns the pointer */
   onGestureLock: (locked: boolean) => void = () => {};
   /** hide the original mesh while its ghost is dragged */
   onHideItem: (id: string | null) => void = () => {};
   onStateChange: (s: FSMState) => void = () => {};
+  onLockChange: (id: string | null) => void = () => {};
 
   private ghostYaw = 0;
   private snappedActive = false;
@@ -133,6 +136,24 @@ export class PlacementFSM {
     this.onGestureLock(false);
   }
 
+  /** Lock an item from the placed list: it stays the sole move target. */
+  lock(id: string): void {
+    if (this.state !== 'idle' && this.state !== 'selected') this.cancel();
+    store.select(id);
+    this.setState('selected');
+    if (this.lockedId !== id) {
+      this.lockedId = id;
+      this.onLockChange(id);
+    }
+  }
+
+  unlock(): void {
+    if (this.lockedId !== null) {
+      this.lockedId = null;
+      this.onLockChange(null);
+    }
+  }
+
   /** Cancel ghost (Esc / right-click / ✕). */
   cancel(): void {
     if (this.state === 'placing' || this.state === 'parked' || this.state === 'dragging' || this.state === 'rotating') {
@@ -141,6 +162,11 @@ export class PlacementFSM {
       this.setState(sel ? 'selected' : 'idle');
       this.onGestureLock(false);
     } else if (this.state === 'selected') {
+      if (this.lockedId) {
+        // first Esc releases the lock, the item stays selected
+        this.unlock();
+        return;
+      }
       this.abortGhost(); // safety net for any orphaned ghost
       store.select(null);
       this.setState('idle');
@@ -219,8 +245,21 @@ export class PlacementFSM {
     } else if (this.state === 'parked') {
       // taps on the floor move the parked ghost via pointerMove; nothing here
     } else if (this.state === 'selected') {
+      if (this.lockedId) return; // locked selection survives stray clicks
       store.select(null);
       this.setState('idle');
+    }
+  }
+
+  /** Arrow-key nudge of the selected item (inches, world axes). */
+  nudgeSelected(dx: number, dz: number): void {
+    if (this.ghost()) return; // a live ghost owns the pointer/keys
+    const { selectedId, items } = store.getState();
+    const item = items.find((it) => it.id === selectedId);
+    if (!item) return;
+    const pose = { x: item.x + dx, z: item.z + dz, yawDeg: item.yawDeg };
+    if (isPoseValid(item.type, pose, items, item.id)) {
+      store.moveItem(item.id, pose);
     }
   }
 
@@ -275,6 +314,7 @@ export class PlacementFSM {
     const id = store.getState().selectedId;
     if (!id) return;
     this.abortGhost();
+    if (this.lockedId === id) this.unlock();
     store.deleteItem(id);
     this.setState('idle');
   }

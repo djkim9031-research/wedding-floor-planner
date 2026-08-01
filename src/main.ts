@@ -88,6 +88,10 @@ const statusPanel = buildStatusPanel(container, fsm, {
   predict: predictDrape,
 });
 const itemsPanel = buildItemsPanel(container, fsm);
+fsm.onLockChange = (id) => {
+  itemsPanel.refresh();
+  if (id) toast('Locked 🔒 — drag anywhere or use the arrow keys; Esc unlocks');
+};
 
 installKeyboard(fsm, rig, {
   toggleRoof: () => {
@@ -122,6 +126,8 @@ store.subscribe((s, ev) => {
   switch (ev.kind) {
     case 'items':
     case 'load':
+      // a lock must not outlive its item (delete-all, undo, imports…)
+      if (fsm.lockedId && !s.items.some((it) => it.id === fsm.lockedId)) fsm.unlock();
       itemMeshes.sync(s.items);
       clothMgr.sync(s.items, ev.changedIds);
       overlays.update(s);
@@ -209,6 +215,14 @@ if (params.get('demo') === 'qcc') {
   store.placeItem('lantern30', { x: 210, z: 260, yawDeg: 0 });
   store.placeItem('lantern36', { x: 340, z: 345, yawDeg: 0 });
   store.placeItem('lantern24', { x: 240, z: 360, yawDeg: 0 });
+} else if (params.get('demo') === 'over') {
+  // QA: linens draping over non-table obstacles
+  store.placeItem('chair', { x: 243, z: 300, yawDeg: 0 });
+  store.placeItem('chair', { x: 265, z: 300, yawDeg: 0 });
+  store.placeItem('tableSq', { x: 320, z: 300, yawDeg: 0 });
+  store.placeItem('clothA', { x: 285, z: 300, yawDeg: 0 });
+  store.placeItem('hedge', { x: 430, z: 180, yawDeg: 0 });
+  store.placeItem('clothB', { x: 430, z: 180, yawDeg: 0 });
 } else if (params.get('demo') === 'chairs') {
   store.placeItem('table', { x: 272.5, z: 300, yawDeg: 0 });
   store.placeItem('chair', { x: 262, z: 278.25, yawDeg: 0 });
@@ -222,6 +236,25 @@ if (view === 'top') rig.toTopView();
 else if (view === 'stand') {
   rig.enterStand({ x: 272.5, z: 500 });
   store.setViewMode('stand');
+}
+if (params.get('qa') === 'probe') {
+  // headless QA: live cloth-height overlay over every mounted obstacle
+  const div = document.createElement('div');
+  div.style.cssText =
+    'position:fixed;top:60px;left:8px;z-index:99;background:#000c;color:#0f0;font:12px monospace;padding:8px;max-width:420px;white-space:pre-wrap;';
+  document.body.appendChild(div);
+  setInterval(() => {
+    const s = store.getState();
+    const out: string[] = [];
+    for (const it of s.items) {
+      if (it.type === 'clothA' || it.type === 'clothB') continue;
+      const m = clothMgr.debugMaxOver(it.x, it.z, 5);
+      out.push(`${it.type}@${it.x},${it.z}=${m.toFixed(1)}`);
+    }
+    out.unshift(clothMgr.debugStates());
+    document.title = 'PROBE ' + out.join(' ');
+    div.textContent = out.join('\n');
+  }, 1000);
 }
 if (params.get('qa') === 'move') {
   // capture aid: prove cloth re-drapes when a table under it is moved

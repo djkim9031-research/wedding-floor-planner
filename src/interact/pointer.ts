@@ -113,6 +113,17 @@ export class PointerController {
       return;
     }
 
+    // list-locked selection: every canvas drag moves the locked item — no
+    // camera orbit, no accidental grabs of other items — until Esc
+    if (this.fsm.lockedId && (state === 'idle' || state === 'selected')) {
+      this.down.itemId = this.fsm.lockedId;
+      this.down.claimed = true;
+      this.fsm.pointerDownItem(this.fsm.lockedId, floor);
+      this.rig.setGestureLock(true);
+      e.stopPropagation();
+      return;
+    }
+
     if (state === 'parked') {
       // drags near the ghost reposition it; elsewhere the camera stays live
       if (this.onParkedGhost(floor)) {

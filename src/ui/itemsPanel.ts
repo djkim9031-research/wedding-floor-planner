@@ -42,13 +42,22 @@ export function buildItemsPanel(root: HTMLElement, fsm: PlacementFSM): ItemsPane
       const n = (counters.get(it.type) ?? 0) + 1;
       counters.set(it.type, n);
       const row = document.createElement('div');
+      const locked = fsm.lockedId === it.id;
       row.className = 'item-row' + (it.id === s.selectedId ? ' selected' : '');
       const label = document.createElement('button');
       label.className = 'item-label';
-      label.textContent = `${ITEM_LABELS[it.type]} ${n}`;
+      label.textContent = `${ITEM_LABELS[it.type]} ${n}${locked ? ' 🔒' : ''}`;
+      label.title = locked
+        ? 'Locked — drag or use arrow keys to move it; Esc unlocks'
+        : 'Select and lock: only this item moves until Esc';
       label.addEventListener('click', () => {
-        if (fsm.state !== 'idle' && fsm.state !== 'selected') fsm.cancel();
-        store.select(it.id === store.getState().selectedId ? null : it.id);
+        if (fsm.lockedId === it.id) {
+          // clicking the locked row again releases it
+          fsm.unlock();
+          store.select(null);
+          return;
+        }
+        fsm.lock(it.id);
       });
       const del = document.createElement('button');
       del.className = 'ui-btn danger row-del';
@@ -56,6 +65,7 @@ export function buildItemsPanel(root: HTMLElement, fsm: PlacementFSM): ItemsPane
       del.title = `Delete ${ITEM_LABELS[it.type]} ${n}`;
       del.addEventListener('click', () => {
         if (fsm.state !== 'idle' && fsm.state !== 'selected') fsm.cancel();
+        if (fsm.lockedId === it.id) fsm.unlock();
         store.deleteItem(it.id);
       });
       row.append(label, del);

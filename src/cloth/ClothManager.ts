@@ -24,10 +24,13 @@ export class ClothManager {
   private readonly parent: THREE.Group;
   private readonly group: THREE.Group;
   private readonly instances = new Map<string, Instance>();
-  private readonly prevTables = new Map<string, PlacedItem>();
+  private readonly prevObstacles = new Map<string, PlacedItem>();
   private readonly cbs: SettledCb[] = [];
   private lastTables: PlacedItem[] = [];
   private acc = 0;
+  /** QA counters */
+  stepCalls = 0;
+  framesRun = 0;
 
   constructor(parent: THREE.Group) {
     this.parent = parent;
@@ -37,35 +40,35 @@ export class ClothManager {
   }
 
   /** Reconcile cloth instances with the placed items. `changedIds` narrows the
-   * invalidation fan-out to the tables that actually moved/appeared/vanished;
-   * omitted, changes are inferred from the previously seen table poses. */
+   * invalidation fan-out to the obstacles that actually moved/appeared/vanished;
+   * omitted, changes are inferred from the previously seen obstacle poses. */
   sync(items: PlacedItem[], changedIds?: string[]): void {
-    const tables = items.filter((it) => isTable(it.type));
-    const colliders = buildColliders(tables);
-    this.lastTables = tables;
+    // every non-cloth item is a drape obstacle now, not just tables
+    const obstacles = items.filter((it) => it.type !== 'clothA' && it.type !== 'clothB');
+    this.lastTables = obstacles.filter((it) => isTable(it.type));
 
     let changed: string[];
     if (changedIds) {
       changed = changedIds.filter(
-        (id) => this.prevTables.has(id) || tables.some((t) => t.id === id)
+        (id) => this.prevObstacles.has(id) || obstacles.some((t) => t.id === id)
       );
     } else {
       changed = [];
-      for (const t of tables) {
-        const p = this.prevTables.get(t.id);
+      for (const t of obstacles) {
+        const p = this.prevObstacles.get(t.id);
         if (!p || p.x !== t.x || p.z !== t.z || p.yawDeg !== t.yawDeg) changed.push(t.id);
       }
-      for (const id of this.prevTables.keys()) {
-        if (!tables.some((t) => t.id === id)) changed.push(id);
+      for (const id of this.prevObstacles.keys()) {
+        if (!obstacles.some((t) => t.id === id)) changed.push(id);
       }
     }
 
-    // old + new footprints of every changed table
+    // old + new footprints of every changed obstacle
     const changedObbs: OBB[] = [];
     for (const id of changed) {
-      const old = this.prevTables.get(id);
+      const old = this.prevObstacles.get(id);
       if (old) changedObbs.push(obbFromPose(old, ITEM_DIMS[old.type]));
-      const cur = tables.find((t) => t.id === id);
+      const cur = obstacles.find((t) => t.id === id);
       if (cur) changedObbs.push(obbFromPose(cur, ITEM_DIMS[cur.type]));
     }
 
@@ -82,6 +85,9 @@ export class ClothManager {
     for (const it of items) {
       if (it.type !== 'clothA' && it.type !== 'clothB') continue;
       const pose: Pose = { x: it.x, z: it.z, yawDeg: it.yawDeg };
+      // per-cloth collision world, culled to obstacles this cloth can reach
+      // (keeps the hot loop small in furnished rooms)
+      const colliders = buildColliders(this.nearObstacles(it.type, pose, obstacles));
       const inst = this.instances.get(it.id);
       if (!inst) {
         const sim = new ClothSim(makeClothSpec(it.type), pose, colliders);
@@ -96,19 +102,34 @@ export class ClothManager {
         inst.sim.replace(pose, colliders); // cloth itself moved → full re-drop
         inst.notified = false;
       } else if (changedObbs.length && this.overlapsAny(inst.sim, changedObbs)) {
-        inst.sim.invalidate(colliders); // table changed under it → re-settle in place
+        // obstacle changed under it → full re-drop: everything beneath the
+        // sheet must end up strictly under the drape (an in-place re-settle
+        // can't climb over an object taller than where the fabric lies)
+        inst.sim.replace(pose, colliders);
         inst.notified = false;
       }
     }
 
-    this.prevTables.clear();
-    for (const t of tables) {
-      this.prevTables.set(t.id, { ...t });
+    this.prevObstacles.clear();
+    for (const t of obstacles) {
+      this.prevObstacles.set(t.id, { ...t });
     }
+  }
+
+  /** Obstacles whose footprint a cloth of this size could possibly touch. */
+  private nearObstacles(type: 'clothA' | 'clothB', pose: Pose, obstacles: PlacedItem[]): PlacedItem[] {
+    const dims = ITEM_DIMS[type];
+    const reach = Math.hypot(dims.w, dims.d) / 2 + INVALIDATE_MARGIN;
+    return obstacles.filter((o) => {
+      const od = ITEM_DIMS[o.type];
+      const r = reach + Math.hypot(od.w, od.d) / 2;
+      return (pose.x - o.x) ** 2 + (pose.z - o.z) ** 2 <= r * r;
+    });
   }
 
   /** Fixed-step accumulator (clamped catch-up). True when any mesh changed. */
   step(dtSeconds: number): boolean {
+    this.stepCalls++;
     if (!this.isActive()) {
       this.acc = 0;
       return false;
@@ -117,6 +138,7 @@ export class ClothManager {
     let any = false;
     while (this.acc >= DT) {
       this.acc -= DT;
+      this.framesRun++;
       for (const inst of this.instances.values()) {
         if (inst.sim.stepFrame()) {
           inst.dirty = true;
@@ -171,6 +193,33 @@ export class ClothManager {
 
   onSettled(cb: SettledCb): void {
     this.cbs.push(cb);
+  }
+
+  /** QA: per-instance state summary. */
+  debugStates(): string {
+    const parts: string[] = [];
+    for (const [id, inst] of this.instances) {
+      const col = (inst.sim as unknown as { colliders: { n: number; topMax: number } }).colliders;
+      parts.push(
+        `${id.slice(0, 6)}:${inst.sim.state} slabs=${col.n} topMax=${col.topMax} coarse=${inst.sim.spec.coarse} t=${(inst.sim as unknown as { simTime: number }).simTime.toFixed(2)}`,
+      );
+    }
+    return `inst=${this.instances.size} steps=${this.stepCalls} frames=${this.framesRun} [${parts.join(',')}]`;
+  }
+
+  /** QA: tallest cloth particle within r inches of (x,z), −1 if none. */
+  debugMaxOver(x: number, z: number, r: number): number {
+    let m = -1;
+    for (const inst of this.instances.values()) {
+      const pos = inst.sim.grid.pos;
+      const count = inst.sim.grid.count;
+      for (let p = 0; p < count; p++) {
+        if (Math.abs(pos[p * 3] - x) < r && Math.abs(pos[p * 3 + 2] - z) < r) {
+          m = Math.max(m, pos[p * 3 + 1]);
+        }
+      }
+    }
+    return m;
   }
 
   dispose(): void {

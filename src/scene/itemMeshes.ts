@@ -332,6 +332,30 @@ function buildSetting(): THREE.Group {
   plate(10.75 / 2, -1.5, 0, 0); // dinner
   plate(8 / 2, -1.5, 0, 0.9); // salad on top
   plate(6 / 2, -1.5, -8.2, 0, 0.7); // B&B above the dinner plate
+
+  // menu card crowning the plate stack: ivory face inside green bridal edges
+  const menuY = 1.8; // dinner + salad
+  const menuGreen = new THREE.MeshStandardMaterial({ color: 0x5c7053, roughness: 0.8 });
+  const menuIvory = new THREE.MeshStandardMaterial({ color: 0xfbf8ef, roughness: 0.72 });
+  const menuBorder = new THREE.Mesh(new THREE.BoxGeometry(i2m(4.5), i2m(0.12), i2m(8.75)), menuGreen);
+  menuBorder.position.set(i2m(-1.5), i2m(menuY + 0.06), 0);
+  menuBorder.castShadow = menuBorder.receiveShadow = true;
+  g.add(menuBorder);
+  const menuFace = new THREE.Mesh(new THREE.BoxGeometry(i2m(4.06), i2m(0.08), i2m(8.31)), menuIvory);
+  menuFace.position.set(i2m(-1.5), i2m(menuY + 0.14), 0);
+  menuFace.receiveShadow = true;
+  g.add(menuFace);
+  const ink = new THREE.MeshStandardMaterial({ color: 0x76806b, roughness: 0.9 });
+  const menuLine = (zOff: number, wIn: number) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(i2m(wIn), i2m(0.03), i2m(0.32)), ink);
+    m.position.set(i2m(-1.5), i2m(menuY + 0.19), i2m(zOff));
+    g.add(m);
+  };
+  menuLine(-3.1, 2.3); // MENU header
+  menuLine(-1.4, 3.1);
+  menuLine(-0.1, 2.7);
+  menuLine(1.2, 3.1);
+  menuLine(2.5, 2.4);
   const stem = (x: number, z: number, bowlR: number, bowlH: number, stemH: number) => {
     const s1 = new THREE.Mesh(new THREE.CylinderGeometry(i2m(0.22), i2m(1.2), i2m(stemH), 10), glass);
     s1.position.set(i2m(x), i2m(stemH / 2), i2m(z));

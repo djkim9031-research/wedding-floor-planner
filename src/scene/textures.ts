@@ -176,54 +176,102 @@ export function reedTexture(): THREE.CanvasTexture {
 // Deck boards — 512px == 96" tile, weathered redwood, near-black gaps.
 // ---------------------------------------------------------------------------
 
-export function deckWoodTexture(): THREE.CanvasTexture {
-  const S = 512;
+export function deckWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: THREE.CanvasTexture } {
+  const S = 1024; // 1024px == one 96" tile -> ~10.7 px/inch, same class as the interior floor
   const rnd = mulberry32(0xdec);
   const ctx = makeCanvas(S, S);
+  const rough = makeCanvas(S, S);
   const rows = 18; // ≈5.3" boards
   const h = S / rows;
   // oiled redwood per the deck photos: warm, saturated red-brown
   const palette = ['#A0603F', '#96573A', '#AB6B48', '#8B4E33', '#A26443'];
 
-  ctx.fillStyle = '#17100B';
+  ctx.fillStyle = '#1d120c';
   ctx.fillRect(0, 0, S, S);
+  rough.fillStyle = '#b4b4b4'; // gaps read matte
+  rough.fillRect(0, 0, S, S);
+
   for (let r = 0; r < rows; r++) {
     const y = r * h;
-    const segs: { x0: number; x1: number; c: string }[] = [];
-    let x = -(40 + rnd() * 260);
+    const segs: { x0: number; x1: number; c: string; ro: number }[] = [];
+    let x = -(80 + rnd() * 520);
     while (x < S) {
-      const len = 180 + rnd() * 240;
-      segs.push({ x0: x, x1: x + len, c: palette[(rnd() * palette.length) | 0] });
+      const len = 360 + rnd() * 480;
+      segs.push({
+        x0: x,
+        x1: x + len,
+        c: palette[(rnd() * palette.length) | 0],
+        ro: 0.62 + rnd() * 0.24,
+      });
       x += len;
     }
     segs[segs.length - 1].c = segs[0].c; // seam wrap
-    for (const s of segs) {
-      ctx.fillStyle = s.c;
-      ctx.fillRect(s.x0, y + 0.8, s.x1 - s.x0 - 1.6, h - 1.6);
-      // grain
-      for (let i = 0; i < 3; i++) {
-        ctx.strokeStyle = '#4A2E1D';
-        ctx.globalAlpha = 0.09 + rnd() * 0.1;
-        ctx.lineWidth = 0.7 + rnd();
-        const gy = y + 3 + rnd() * (h - 6);
+    segs[segs.length - 1].ro = segs[0].ro;
+    for (const sg of segs) {
+      ctx.fillStyle = sg.c;
+      ctx.fillRect(sg.x0, y + 1.4, sg.x1 - sg.x0 - 2.6, h - 2.8);
+      const g = Math.round(sg.ro * 255);
+      rough.fillStyle = `rgb(${g},${g},${g})`;
+      rough.fillRect(sg.x0, y + 1.4, sg.x1 - sg.x0 - 2.6, h - 2.8);
+
+      // long grain streaks, board-length like the interior floor
+      const n = 4 + ((rnd() * 4) | 0);
+      for (let i = 0; i < n; i++) {
+        const dark = rnd() < 0.72;
+        ctx.strokeStyle = dark ? '#5C3520' : '#C88B60';
+        ctx.globalAlpha = 0.06 + rnd() * 0.12;
+        ctx.lineWidth = 0.8 + rnd() * 1.6;
+        const gy = y + 4 + rnd() * (h - 8);
         ctx.beginPath();
-        ctx.moveTo(s.x0 + 3, gy);
-        ctx.lineTo(s.x1 - 4, gy + (rnd() - 0.5) * 3);
+        ctx.moveTo(sg.x0 + 4, gy);
+        let gx = sg.x0 + 4;
+        let cy = gy;
+        while (gx < sg.x1 - 6) {
+          gx += 70 + rnd() * 90;
+          cy = Math.min(y + h - 3, Math.max(y + 3, cy + (rnd() - 0.5) * 4));
+          ctx.lineTo(Math.min(gx, sg.x1 - 6), cy);
+        }
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
+
+      // end joint between boards
+      if (sg.x0 > 0 && sg.x0 < S) {
+        ctx.fillStyle = '#3A2114';
+        ctx.globalAlpha = 0.5;
+        ctx.fillRect(sg.x0 - 1.4, y + 1.4, 2.8, h - 2.8);
+        ctx.globalAlpha = 1;
+      }
+
+      // occasional knot
+      if (rnd() < 0.3) {
+        const kx = sg.x0 + 40 + rnd() * Math.max(40, sg.x1 - sg.x0 - 80);
+        const ky = y + h * (0.3 + rnd() * 0.4);
+        for (let ring = 0; ring < 3; ring++) {
+          ctx.strokeStyle = '#4A2A18';
+          ctx.globalAlpha = 0.24 - ring * 0.06;
+          ctx.lineWidth = 1.1;
+          ctx.beginPath();
+          ctx.ellipse(kx, ky, 3 + ring * 3, 2 + ring * 2, rnd(), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
     }
     // sun-warmed smears
     for (let i = 0; i < 4; i++) {
       ctx.fillStyle = 'rgba(222,176,130,1)';
       ctx.globalAlpha = 0.03 + rnd() * 0.05;
-      ctx.fillRect(rnd() * S, y + 1, 30 + rnd() * 90, h - 2);
+      ctx.fillRect(rnd() * S, y + 2, 60 + rnd() * 180, h - 4);
     }
     ctx.globalAlpha = 1;
   }
-  const deckTex = toTexture(ctx, true);
-  deckTex.anisotropy = 16;
-  return deckTex;
+
+  const map = toTexture(ctx, true);
+  map.anisotropy = 16;
+  const roughTex = toTexture(rough, false);
+  roughTex.anisotropy = 16;
+  return { map, roughnessMap: roughTex };
 }
 
 // ---------------------------------------------------------------------------

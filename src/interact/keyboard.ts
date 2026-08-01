@@ -42,6 +42,17 @@ export function installKeyboard(fsm: PlacementFSM, rig: CameraRig, actions: Keyb
     }
     if (mod) return;
 
+    // orbit view only — in stand mode the arrows keep walking the camera
+    if (e.key.startsWith('Arrow') && store.getState().selectedId && store.getState().viewMode !== 'stand') {
+      e.preventDefault(); // claim the page-scroll keys only when they move an item
+      const step = e.shiftKey ? 6 : 1;
+      if (e.key === 'ArrowUp') fsm.nudgeSelected(0, -step);
+      else if (e.key === 'ArrowDown') fsm.nudgeSelected(0, step);
+      else if (e.key === 'ArrowLeft') fsm.nudgeSelected(-step, 0);
+      else if (e.key === 'ArrowRight') fsm.nudgeSelected(step, 0);
+      return;
+    }
+
     switch (e.key) {
       case 'r':
         fsm.rotateBy(15);
