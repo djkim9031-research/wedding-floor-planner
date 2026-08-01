@@ -348,6 +348,19 @@ if (creatorParam === 'demo' || creatorParam === 'demo-tilt' || creatorParam === 
     }, 400);
   }, 1200);
 }
+if (params.get('qa') === 'dimpop') {
+  // capture aid: open the custom-linen size popover
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.palette-card');
+    for (const c of cards) {
+      if (c.textContent?.includes('Custom Linen')) {
+        c.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 0, clientY: 0 }));
+        window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 0, clientY: 0 }));
+        break;
+      }
+    }
+  }, 3000);
+}
 if (params.get('qa') === 'group') {
   // capture aid: group-select every table after the preset settles
   setTimeout(() => {

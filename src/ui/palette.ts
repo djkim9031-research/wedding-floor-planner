@@ -1,4 +1,16 @@
-import { CHAIR_SEAT_H, HEDGE_H, ITEM_DIMS, ITEM_LABELS, LANTERN_SPECS, SCREEN_H, TABLE_TOPS, isLantern, isTable } from '../constants';
+import {
+  CHAIR_SEAT_H,
+  HEDGE_H,
+  ITEM_DIMS,
+  ITEM_LABELS,
+  LANTERN_SPECS,
+  SCREEN_H,
+  TABLE_TOPS,
+  isLantern,
+  isTable,
+  setCustomClothDims,
+  setCustomTableDims,
+} from '../constants';
 import type { ItemType } from '../types';
 import type { PlacementFSM } from '../interact/placementFSM';
 import type { PointerController } from '../interact/pointer';
@@ -73,6 +85,56 @@ export function buildPalette(
   });
   window.addEventListener('resize', renderPage);
 
+  // small dims popover for the custom pieces: enter a size, ✓ to start placing
+  let pop: HTMLDivElement | null = null;
+  const closePop = (): void => {
+    pop?.remove();
+    pop = null;
+  };
+  document.addEventListener('pointerdown', (e) => {
+    if (pop && !(e.target as HTMLElement).closest('.dim-pop')) closePop();
+  });
+  const openDimPop = (card: HTMLElement, type: 'clothC' | 'tableC'): void => {
+    closePop();
+    pop = document.createElement('div');
+    pop.className = 'dim-pop';
+    const isTableC = type === 'tableC';
+    const cur = ITEM_DIMS[type];
+    pop.innerHTML = `
+      <b>${ITEM_LABELS[type]}</b>
+      <div class="dim-pop-row">
+        <input type="number" data-k="w" min="18" max="260" step="0.5" value="${cur.w}" title="width (in)"> ×
+        <input type="number" data-k="d" min="18" max="260" step="0.5" value="${cur.d}" title="depth (in)">
+        ${isTableC ? `× <input type="number" data-k="h" min="24" max="42" step="0.5" value="${TABLE_TOPS.tableC}" title="height (in)">` : ''} in
+        <button class="ui-btn dim-ok" title="Use this size and place">✓</button>
+      </div>`;
+    const rect = card.getBoundingClientRect();
+    pop.style.left = `${Math.max(8, rect.left - 40)}px`;
+    pop.style.bottom = `${window.innerHeight - rect.top + 8}px`;
+    root.appendChild(pop);
+    const num = (k: string, lo: number, hi: number, dflt: number): number => {
+      const inp = pop!.querySelector(`[data-k="${k}"]`) as HTMLInputElement | null;
+      return Math.min(hi, Math.max(lo, Number(inp?.value) || dflt));
+    };
+    const confirm = (): void => {
+      if (isTableC) setCustomTableDims(num('w', 18, 120, 48), num('d', 18, 60, 30), num('h', 24, 42, 30));
+      else setCustomClothDims(num('w', 20, 260, 120), num('d', 20, 260, 120));
+      const small = card.querySelector('.card-dims');
+      if (small) {
+        const d2 = ITEM_DIMS[type];
+        small.textContent = isTableC ? `${d2.w}" × ${d2.d}" · ${TABLE_TOPS.tableC}"h` : `${d2.w}" × ${d2.d}"`;
+      }
+      closePop();
+      fsm.startPlacing(type); // ghost picks up the fresh dims, places like any item
+    };
+    (pop.querySelector('.dim-ok') as HTMLButtonElement).addEventListener('click', confirm);
+    pop.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') confirm();
+      if (e.key === 'Escape') closePop();
+    });
+    (pop.querySelector('[data-k="w"]') as HTMLInputElement).focus();
+  };
+
   for (const type of CARD_TYPES) {
     const card = document.createElement('button');
     card.className = 'palette-card';
@@ -125,7 +187,11 @@ export function buildPalette(
         if (draggedOut) {
           fsm.commit(); // release over the floor: place (or park if invalid)
         } else if (!panning) {
-          fsm.startPlacing(type); // plain click: ghost follows the cursor
+          if (type === 'clothC' || type === 'tableC') {
+            openDimPop(card, type); // size first, then place like the others
+          } else {
+            fsm.startPlacing(type); // plain click: ghost follows the cursor
+          }
         }
       };
       const cancel = () => {

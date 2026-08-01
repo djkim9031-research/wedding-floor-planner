@@ -291,6 +291,18 @@ export class CreatorController {
     }
   }
 
+  /** keyboard nudge of the selected solid (inches, world axes) */
+  nudgeSelected(dx: number, dz: number): void {
+    const t = this.findItem(this.selectedId ?? '');
+    if (!t) return;
+    const pose = { x: t.x + dx, z: t.z + dz, yawDeg: t.yawDeg };
+    if (this.poseOk(t.type as CreatorItemType, pose, t.id)) {
+      t.x = pose.x;
+      t.z = pose.z;
+      this.sync();
+    }
+  }
+
   deleteSelected(): void {
     if (!this.selectedId) return;
     this.removeItem(this.selectedId);

@@ -27,9 +27,9 @@ export function buildCreatorPanel(
       <h3>Table Setup Creator</h3>
       <button class="ui-btn danger" data-k="close" title="Close (Esc)">✕</button>
     </div>
-    <div class="creator-hint">Pick a table, click the bird’s-eye view to place it
-      (scroll or R rotates, Del removes). Drop a linen — it centers itself on the
-      group; slide it from there.</div>
+    <div class="creator-hint">Pick a table, click the bird’s-eye view to place it.
+      Selected items move with arrows/WASD, rotate with Q/R, Del removes.
+      Drop a linen — it centers itself on the group; slide it from there.</div>
     <div class="creator-cards" data-k="tables"></div>
     <div class="creator-cards" data-k="extras"></div>
     <div class="creator-cards" data-k="cloths"></div>

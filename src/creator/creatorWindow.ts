@@ -289,10 +289,37 @@ export function openCreator(
     if (e.key === 'Escape') {
       if (controller.hasGhost()) controller.cancelGhost();
       else close();
-    } else if (e.key === 'r' || e.key === 'R') {
-      controller.rotate(e.key === 'R' ? -15 : 15);
-    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      return;
+    }
+    if (e.key === 'r' || e.key === 'R') {
+      controller.rotate(15); // R rotates clockwise…
+      return;
+    }
+    if (e.key === 'q' || e.key === 'Q') {
+      controller.rotate(-15); // …Q counter-clockwise
+      return;
+    }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
       controller.deleteSelected();
+      return;
+    }
+    // arrows / WASD nudge the selected item (Shift = 6")
+    const step = e.shiftKey ? 6 : 1;
+    const k = e.key.toLowerCase();
+    const nudges: Record<string, [number, number]> = {
+      arrowup: [0, -step],
+      w: [0, -step],
+      arrowdown: [0, step],
+      s: [0, step],
+      arrowleft: [-step, 0],
+      a: [-step, 0],
+      arrowright: [step, 0],
+      d: [step, 0],
+    };
+    const n = nudges[k];
+    if (n) {
+      e.preventDefault();
+      controller.nudgeSelected(n[0], n[1]);
     }
   }
 

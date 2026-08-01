@@ -782,3 +782,37 @@ button.ui-btn.danger:hover {
 .item-row.set-head .set-edit {
   color: var(--brass);
 }
+
+/* ---- custom-size popover over the palette ---- */
+.dim-pop {
+  position: absolute;
+  z-index: 40;
+  background: var(--ivory);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.dim-pop b {
+  display: block;
+  margin-bottom: 6px;
+}
+.dim-pop-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.dim-pop input[type='number'] {
+  width: 58px;
+  padding: 3px 5px;
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  background: #fffdf8;
+  font: inherit;
+}
+.dim-pop .dim-ok {
+  background: var(--brass);
+  color: #fffdf8;
+  font-weight: 700;
+}
