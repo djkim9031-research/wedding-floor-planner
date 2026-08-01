@@ -6,14 +6,15 @@ import type { PlacementFSM } from '../interact/placementFSM';
 
 export interface DrapeSource {
   getReport(id: string): DrapeReport | null;
-  predict(type: 'clothA' | 'clothB', pose: Pose, tables: PlacedItem[]): DrapeReport;
+  predict(type: 'clothA' | 'clothB' | 'clothC', pose: Pose, tables: PlacedItem[]): DrapeReport;
 }
 
 export interface StatusPanel {
   refresh(): void;
 }
 
-const isCloth = (t: string): t is 'clothA' | 'clothB' => t === 'clothA' || t === 'clothB';
+const isCloth = (t: string): t is 'clothA' | 'clothB' | 'clothC' =>
+  t === 'clothA' || t === 'clothB' || t === 'clothC';
 
 const coarsePointer =
   typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;

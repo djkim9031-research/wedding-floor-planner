@@ -3,6 +3,7 @@ import type { CameraRig } from '../scene/camera';
 import type { SceneHost } from '../scene/scene';
 import type { Settings } from '../types';
 import { buildLayoutsMenu, buildPresetsMenu } from './layoutsMenu';
+import { openCreator } from '../creator/creatorWindow';
 
 export interface Toolbar {
   refresh(): void;
@@ -52,6 +53,12 @@ export function buildToolbar(
   const gMenus = group();
   gMenus.appendChild(buildPresetsMenu(toast));
   gMenus.appendChild(buildLayoutsMenu(toast));
+  btn(gMenus, 'Table Sets', 'Design a table + linen set with live drape views', () => {
+    openCreator((design) => {
+      const label = store.placeSet(design);
+      toast(`${label} placed — drag it into position`);
+    });
+  });
 
   const gToggles = group();
   const toggles: Array<[keyof Settings, HTMLButtonElement]> = [];

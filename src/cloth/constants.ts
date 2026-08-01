@@ -68,7 +68,7 @@ export const FLOOR_EPS = 0.6; // particle this close to the floor counts as touc
 export const CORNER_EXCLUDE = 3; // skip measurement lines this close to cloth corners
 export const INVALIDATE_MARGIN = 6; // cloth AABB inflation for table-change fan-out
 
-export type ClothType = 'clothA' | 'clothB';
+export type ClothType = 'clothA' | 'clothB' | 'clothC';
 
 export interface ClothSpec {
   type: ClothType;
@@ -87,13 +87,17 @@ export function isCoarseTier(): boolean {
   return Math.min(window.innerWidth, window.innerHeight) < 700;
 }
 
-export function makeClothSpec(type: ClothType, coarse = isCoarseTier()): ClothSpec {
-  const dims = ITEM_DIMS[type];
+export function makeClothSpec(
+  type: ClothType,
+  coarse = isCoarseTier(),
+  dimsOverride?: { w: number; d: number },
+): ClothSpec {
+  const dims = dimsOverride ?? ITEM_DIMS[type];
   return {
     type,
     w: dims.w,
     d: dims.d,
-    color: type === 'clothA' ? COLORS.linenA : COLORS.linenB,
+    color: type === 'clothA' ? COLORS.linenA : type === 'clothB' ? COLORS.linenB : COLORS.linenC,
     spacing: coarse ? SPACING_COARSE : SPACING_FINE,
     coarse,
   };

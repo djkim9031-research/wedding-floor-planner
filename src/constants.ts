@@ -147,6 +147,7 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   chair: { w: 20, d: 17 },
   clothA: { w: 108, d: 156 },
   clothB: { w: 104, d: 144 },
+  clothC: { w: 120, d: 120 }, // custom linen — mutable via setCustomClothDims
   lantern18: { w: 9, d: 9 },
   lantern24: { w: 11, d: 11 },
   lantern30: { w: 12, d: 12 },
@@ -165,6 +166,7 @@ export const ITEM_LABELS: Record<ItemType, string> = {
   chair: 'Oak Bistro Chair',
   clothA: 'Rental Linen',
   clothB: 'C&B Linen',
+  clothC: 'Custom Linen',
   lantern18: 'Lantern · 18″',
   lantern24: 'Lantern · 24″',
   lantern30: 'Lantern · 30″',
@@ -177,6 +179,26 @@ export const ITEM_LABELS: Record<ItemType, string> = {
 };
 
 export const isFigure = (t: ItemType): boolean => t === 'figureW' || t === 'figureM';
+export const isCloth = (t: ItemType): boolean => t === 'clothA' || t === 'clothB' || t === 'clothC';
+
+/** The custom linen's current default size (user-set, persisted). */
+export function setCustomClothDims(w: number, d: number): void {
+  ITEM_DIMS.clothC = { w, d };
+  try {
+    localStorage.setItem('wp:clothC', JSON.stringify({ w, d }));
+  } catch {
+    /* ignore */
+  }
+}
+try {
+  const saved = localStorage.getItem('wp:clothC');
+  if (saved) {
+    const { w, d } = JSON.parse(saved) as { w: number; d: number };
+    if (Number.isFinite(w) && Number.isFinite(d)) ITEM_DIMS.clothC = { w, d };
+  }
+} catch {
+  /* ignore */
+}
 
 export type LanternType = 'lantern18' | 'lantern24' | 'lantern30' | 'lantern36';
 /** free-standing privacy pieces: solid, they block sunlight.
@@ -256,6 +278,7 @@ export const COLORS = {
   tableOakEdge: 0xb57a40,
   linenA: 0xf2ebdd, // ivory
   linenB: 0xe4d5bb, // warm oat
+  linenC: 0xf5f2e8, // custom — bright white linen
 };
 
 // ---------------------------------------------------------------------------

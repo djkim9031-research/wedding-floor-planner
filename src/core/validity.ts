@@ -36,12 +36,14 @@ export function isPoseValid(
   pose: Pose,
   items: PlacedItem[],
   selfId?: string | string[],
+  zones: Vec2[][] = PLACEMENT_AREAS,
 ): boolean {
   const excluded = typeof selfId === 'string' ? [selfId] : (selfId ?? []);
   const obb = obbFromPose(pose, ITEM_DIMS[type]);
 
   const corners = obbCorners(obb);
-  if (!PLACEMENT_AREAS.some((poly) => insideZone(corners, obb, poly))) return false;
+  if (!zones.some((poly) => insideZone(corners, obb, poly))) return false;
+  if (zones !== PLACEMENT_AREAS) return true; // studio sandbox: only the zone bound applies
 
   if (isFigure(type)) return true;
 

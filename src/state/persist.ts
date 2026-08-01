@@ -10,6 +10,7 @@ const TYPES = new Set([
   'chair',
   'clothA',
   'clothB',
+  'clothC',
   'lantern18',
   'lantern24',
   'lantern30',
@@ -25,12 +26,21 @@ function isValidItem(it: unknown): it is PlacedItem {
   if (typeof it !== 'object' || it === null) return false;
   const o = it as Record<string, unknown>;
   if (o.type === 'figure') o.type = 'figureM'; // pre-two-figure saves
+  const dimsOk =
+    o.dims === undefined ||
+    (typeof o.dims === 'object' &&
+      o.dims !== null &&
+      Number.isFinite((o.dims as Record<string, unknown>).w) &&
+      Number.isFinite((o.dims as Record<string, unknown>).d));
   return (
     typeof o.id === 'string' &&
     TYPES.has(o.type as string) &&
     Number.isFinite(o.x) &&
     Number.isFinite(o.z) &&
-    Number.isFinite(o.yawDeg)
+    Number.isFinite(o.yawDeg) &&
+    dimsOk &&
+    (o.set === undefined || typeof o.set === 'string') &&
+    (o.type !== 'clothC' || o.dims !== undefined) // custom linens carry their size
   );
 }
 

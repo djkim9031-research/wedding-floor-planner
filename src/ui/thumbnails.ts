@@ -66,6 +66,7 @@ export const THUMBNAILS: Record<ItemType, string> = {
   chair,
   clothA: cloth('#F2EBDD'),
   clothB: cloth('#E4D5BB'),
+  clothC: cloth('#F5F2E8'),
   lantern18: lantern('#3A3A3A', 0),
   lantern24: lantern('#3A3A3A', 3),
   lantern30: lantern('#3A3A3A', 6),

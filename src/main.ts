@@ -17,6 +17,7 @@ import { buildPalette } from './ui/palette';
 import { buildStatusPanel } from './ui/statusPanel';
 import { buildSunPanel } from './ui/sunPanel';
 import { buildToolbar } from './ui/toolbar';
+import { openCreator } from './creator/creatorWindow';
 
 const app = document.getElementById('app')!;
 const container = document.createElement('div');
@@ -247,6 +248,33 @@ else if (view === 'stand') {
   rig.enterStand({ x: 272.5, z: 500 });
   store.setViewMode('stand');
 }
+const creatorParam = params.get('creator');
+if (creatorParam === 'demo' || creatorParam === 'place-demo' || creatorParam === '1') {
+  // headless QA: open the creator; demo variants pre-seed the sideways
+  // 3-table block + C&B linen with a slid offset
+  setTimeout(() => {
+    openCreator((design) => {
+      const label = store.placeSet(design);
+      toast(`${label} placed`);
+    });
+    if (creatorParam === '1') return;
+    setTimeout(() => {
+      const c = (window as unknown as { __creator?: import('./creator/creatorController').CreatorController })
+        .__creator;
+      if (!c) return;
+      for (const x of [-31.5, 0, 31.5]) {
+        c.state.tables.push({ id: `q${x}`, type: 'table', x, z: 0, yawDeg: 90 });
+      }
+      c.setCloth('clothB', null);
+      c.setOffset(8, 0); // slide east so the elevations show the asymmetry
+      if (creatorParam === 'place-demo') {
+        setTimeout(() => {
+          (document.querySelector('.creator-foot .ui-btn.primary') as HTMLButtonElement)?.click();
+        }, 6000);
+      }
+    }, 400);
+  }, 1200);
+}
 if (params.get('qa') === 'group') {
   // capture aid: group-select every table after the preset settles
   setTimeout(() => {
@@ -267,7 +295,7 @@ if (params.get('qa') === 'probe') {
     const s = store.getState();
     const out: string[] = [];
     for (const it of s.items) {
-      if (it.type === 'clothA' || it.type === 'clothB') continue;
+      if (it.type.startsWith('cloth')) continue;
       const m = clothMgr.debugMaxOver(it.x, it.z, 5);
       out.push(`${it.type}@${it.x},${it.z}=${m.toFixed(1)}`);
     }

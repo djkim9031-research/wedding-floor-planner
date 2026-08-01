@@ -210,12 +210,18 @@ export class PlacementFSM {
     const s = store.getState();
     const item = s.items.find((it) => it.id === id);
     if (!item) return;
-    if (s.selectedIds.length > 1 && s.selectedIds.includes(id) && floor) {
+    // members of a named set always travel together
+    if (item.set && !(s.selectedIds.includes(id) && s.selectedIds.length > 1)) {
+      const members = s.items.filter((it) => it.set === item.set).map((it) => it.id);
+      store.selectGroup(members);
+    }
+    const s2 = store.getState();
+    if (s2.selectedIds.length > 1 && s2.selectedIds.includes(id) && floor) {
       // grabbing a member of the group: the whole group rides along
       this.groupDrag = {
         startFloor: floor,
-        originals: s.items
-          .filter((it) => s.selectedIds.includes(it.id))
+        originals: s2.items
+          .filter((it) => s2.selectedIds.includes(it.id))
           .map((it) => ({ id: it.id, type: it.type, pose: { x: it.x, z: it.z, yawDeg: it.yawDeg } })),
         yawAcc: 0,
         applied: false,

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { IN, ITEM_DIMS, isTable } from '../constants';
+import { IN, ITEM_DIMS, isCloth, isTable } from '../constants';
 import { aabbToOBB, obbFromPose, obbIntersectsOBB, type OBB } from '../core/geometry';
 import type { DrapeReport, PlacedItem, Pose } from '../types';
-import { DT, INVALIDATE_MARGIN, MAX_CATCHUP_FRAMES, makeClothSpec } from './constants';
+import { DT, INVALIDATE_MARGIN, MAX_CATCHUP_FRAMES, makeClothSpec, type ClothType } from './constants';
 import { buildColliders } from './colliders';
 import { disposeClothResources } from './clothMesh';
 import { ClothSim } from './ClothSim';
@@ -47,7 +47,7 @@ export class ClothManager {
     // every non-cloth item is a drape obstacle now, not just tables — but
     // stacking follows placement order: a cloth drapes only over items placed
     // BEFORE it; items placed after ride on top of the settled fabric
-    const obstacles = items.filter((it) => it.type !== 'clothA' && it.type !== 'clothB');
+    const obstacles = items.filter((it) => !isCloth(it.type));
     const orderIdx = new Map(items.map((it, i) => [it.id, i]));
     this.lastOrder = orderIdx;
     this.lastTables = obstacles.filter((it) => isTable(it.type));
@@ -97,18 +97,18 @@ export class ClothManager {
     }
 
     for (const it of items) {
-      if (it.type !== 'clothA' && it.type !== 'clothB') continue;
+      if (!isCloth(it.type)) continue;
       const pose: Pose = { x: it.x, z: it.z, yawDeg: it.yawDeg };
       const clothIdx = orderIdx.get(it.id)!;
       // only obstacles placed before this cloth are under its drape
       const under = obstacles.filter((o) => (orderIdx.get(o.id) ?? Infinity) < clothIdx);
       // per-cloth collision world, culled to obstacles this cloth can reach
       // (keeps the hot loop small in furnished rooms)
-      const colliders = buildColliders(this.nearObstacles(it.type, pose, under));
+      const colliders = buildColliders(this.nearObstacles(it.dims ?? ITEM_DIMS[it.type], pose, under));
       const underChangedObbs = changedObbs.filter((_, i) => underChangeIdx[i] < clothIdx);
       const inst = this.instances.get(it.id);
       if (!inst) {
-        const sim = new ClothSim(makeClothSpec(it.type), pose, colliders);
+        const sim = new ClothSim(makeClothSpec(it.type as ClothType, undefined, it.dims), pose, colliders);
         sim.mesh.userData.itemId = it.id; // pointer picking hook
         this.group.add(sim.mesh);
         this.instances.set(it.id, { sim, notified: false, dirty: false });
@@ -135,8 +135,7 @@ export class ClothManager {
   }
 
   /** Obstacles whose footprint a cloth of this size could possibly touch. */
-  private nearObstacles(type: 'clothA' | 'clothB', pose: Pose, obstacles: PlacedItem[]): PlacedItem[] {
-    const dims = ITEM_DIMS[type];
+  private nearObstacles(dims: { w: number; d: number }, pose: Pose, obstacles: PlacedItem[]): PlacedItem[] {
     const reach = Math.hypot(dims.w, dims.d) / 2 + INVALIDATE_MARGIN;
     return obstacles.filter((o) => {
       const od = ITEM_DIMS[o.type];

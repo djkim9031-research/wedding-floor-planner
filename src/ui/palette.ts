@@ -11,6 +11,7 @@ const CARD_TYPES: ItemType[] = [
   'chair',
   'clothA',
   'clothB',
+  'clothC',
   'lantern18',
   'lantern24',
   'lantern30',

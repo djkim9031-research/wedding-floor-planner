@@ -1,4 +1,5 @@
-import { PRESETS } from '../constants';
+import { ITEM_DIMS, PRESETS } from '../constants';
+import { isPoseValid } from '../core/validity';
 import type { AppState, GhostState, ItemType, PlacedItem, Pose, Settings, ViewMode } from '../types';
 import * as history from './history';
 
@@ -171,6 +172,54 @@ export function deleteItems(ids: string[]): void {
   state.items = state.items.filter((it) => !set.has(it.id));
   pruneSelection();
   emit({ kind: 'items', changedIds: ids });
+}
+
+/** Insert a Table Setup Creator design as ONE undoable, named group. Items
+ * arrive centered on their own centroid-origin; we translate the whole set to
+ * the first collision-free spot near the room center and select it as a
+ * group, ready to drag. Returns the set label. */
+export function placeSet(design: Omit<PlacedItem, 'id'>[]): string {
+  const n =
+    1 +
+    state.items.reduce((m, it) => {
+      const match = it.set?.match(/^Table Set (\d+)$/);
+      return match ? Math.max(m, parseInt(match[1], 10)) : m;
+    }, 0);
+  const label = `Table Set ${n}`;
+
+  // spiral out from the room center until every member lands valid
+  const tryAt = (cx: number, cz: number): boolean =>
+    design.every((d) =>
+      isPoseValid(d.type, { x: d.x + cx, z: d.z + cz, yawDeg: d.yawDeg }, state.items),
+    );
+  let ox = 272.5;
+  let oz = 300;
+  outer: for (const r of [0, 30, 60, 90, 120, 150, 180, 210]) {
+    for (const a of [0, 45, 90, 135, 180, 225, 270, 315]) {
+      const cx = 272.5 + r * Math.cos((a * Math.PI) / 180);
+      const cz = 300 + r * Math.sin((a * Math.PI) / 180);
+      if (tryAt(cx, cz)) {
+        ox = cx;
+        oz = cz;
+        break outer;
+      }
+    }
+  }
+
+  history.push(state.items);
+  const placed = design.map((d) => ({
+    ...d,
+    id: uid(),
+    x: d.x + ox,
+    z: d.z + oz,
+    set: label,
+  }));
+  state.items = [...state.items, ...placed];
+  state.selectedIds = placed.map((it) => it.id);
+  syncSingle();
+  emit({ kind: 'items', changedIds: placed.map((it) => it.id) });
+  emit({ kind: 'selection' });
+  return label;
 }
 
 export function undo(): void {
