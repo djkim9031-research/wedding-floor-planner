@@ -374,12 +374,22 @@ button.ui-btn.danger:hover {
 }
 
 .items-list {
-  max-height: 217px; /* seven rows, then scroll */
+  max-height: 212px; /* seven rows, then scroll */
   overflow-y: auto;
-  overflow-y: auto;
-  max-height: calc(100vh - 460px);
   min-height: 40px;
   margin-top: 4px;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--brass-soft) transparent;
+}
+.items-list::-webkit-scrollbar {
+  width: 8px;
+}
+.items-list::-webkit-scrollbar-thumb {
+  background: var(--brass-soft);
+  border-radius: 4px;
+}
+.items-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .item-row {

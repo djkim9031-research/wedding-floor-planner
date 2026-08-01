@@ -673,6 +673,17 @@ export function applyAtmosphere(scene: THREE.Scene): Atmosphere {
   valley.renderOrder = -1;
   scene.add(valley);
 
+  // ground plane to the horizon: a broad lawn disc under everything, so
+  // downward views land on grass (it takes the scene lights, darkening at
+  // night) instead of the void behind the backdrop
+  const lawn = new THREE.Mesh(
+    new THREE.CircleGeometry(260, 48),
+    new THREE.MeshStandardMaterial({ color: 0x76825a, roughness: 1, metalness: 0 }),
+  );
+  lawn.rotation.x = -Math.PI / 2;
+  lawn.position.set(cx, -0.55, cz);
+  scene.add(lawn);
+
   // near treetop ring just past the knoll: crowns rise above deck level and
   // parallax against the painted valley as the camera moves
   const ring = new THREE.Mesh(

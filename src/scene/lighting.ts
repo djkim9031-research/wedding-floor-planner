@@ -127,8 +127,8 @@ export function setupLighting(
     // dome at the horizon — the faintest stars only survive near the zenith
     for (let i = 0; i < 1700; i++) {
       const x = rnd() * 2048;
-      const y = rnd() * 760;
-      const highSky = 1 - y / 760; // 1 at zenith band, 0 near the horizon
+      const y = rnd() * 690; // hemisphere v: 0 = zenith, ~1024 = horizon rim
+      const highSky = 1 - y / 690; // 1 at zenith band, 0 near the horizon
       const mag = rnd();
       if (mag < 0.55 && highSky < 0.45) continue; // faint stars drown low down
       const r = mag < 0.9 ? 0.7 + rnd() * 0.9 : 1.6 + rnd() * 1.5;
@@ -158,7 +158,8 @@ export function setupLighting(
     depthWrite: false,
     blending: THREE.AdditiveBlending,
   });
-  const stars = new THREE.Mesh(new THREE.SphereGeometry(238, 32, 16), starMat);
+  // upper hemisphere only — no stars can ever show below the horizon
+  const stars = new THREE.Mesh(new THREE.SphereGeometry(238, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), starMat);
   stars.position.set(cx, 0, cz);
   stars.renderOrder = -2;
   stars.visible = false;
