@@ -773,3 +773,8 @@ button.ui-btn.danger:hover {
 .creator-list {
   max-height: 150px;
 }
+
+.creator-reset {
+  z-index: 5;
+  font-size: 12px;
+}

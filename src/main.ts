@@ -249,7 +249,7 @@ else if (view === 'stand') {
   store.setViewMode('stand');
 }
 const creatorParam = params.get('creator');
-if (creatorParam === 'demo' || creatorParam === 'place-demo' || creatorParam === '1') {
+if (creatorParam === 'demo' || creatorParam === 'demo-tilt' || creatorParam === 'place-demo' || creatorParam === '1') {
   // headless QA: open the creator; demo variants pre-seed the sideways
   // 3-table block + C&B linen with a slid offset
   setTimeout(() => {
@@ -275,6 +275,15 @@ if (creatorParam === 'demo' || creatorParam === 'place-demo' || creatorParam ===
         { id: 'qs1', type: 'setting', x: -20, z: -14, yawDeg: 0 },
         { id: 'qs2', type: 'setting', x: 20, z: 14, yawDeg: 180 },
       );
+      if (creatorParam === 'demo-tilt') {
+        const v = (window as unknown as { __creatorView?: { orbit: { theta: number; phi: number }; reframe: () => void } })
+          .__creatorView;
+        if (v) {
+          v.orbit.theta = 0.7;
+          v.orbit.phi = 0.85;
+          v.reframe();
+        }
+      }
       if (creatorParam === 'place-demo') {
         setTimeout(() => {
           (document.querySelector('.creator-foot .ui-btn.primary') as HTMLButtonElement)?.click();

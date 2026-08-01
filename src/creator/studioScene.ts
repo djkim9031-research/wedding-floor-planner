@@ -15,7 +15,10 @@ export interface StudioScene {
   scene: THREE.Scene;
   itemsGroup: THREE.Group;
   overlayGroup: THREE.Group;
-  topCam: THREE.OrthographicCamera;
+  topCam: THREE.PerspectiveCamera;
+  /** center-view orbit (spherical around the group): phi 0 ≈ straight down */
+  topOrbit: { theta: number; phi: number };
+  resetTopOrbit(): void;
   /** N, E, S, W elevations (looking at that face of the group) */
   sideCams: Record<'N' | 'E' | 'S' | 'W', THREE.OrthographicCamera>;
   /** re-frame every camera around the current content bounds (inches);
@@ -72,10 +75,9 @@ export function createStudioScene(): StudioScene {
   const overlayGroup = new THREE.Group();
   scene.add(itemsGroup, overlayGroup);
 
-  const topCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 30);
-  topCam.position.set(0, i2m(400), 0);
-  topCam.up.set(0, 0, -1); // +z (south) reads downward, matching the floor plan
-  topCam.lookAt(0, 0, 0);
+  const topCam = new THREE.PerspectiveCamera(45, 1, 0.05, 80);
+  const TOP_PHI = 0.06; // ~3.4°: reads as plan view but dodges the pole
+  const topOrbit = { theta: 0, phi: TOP_PHI };
 
   const mkSide = (): THREE.OrthographicCamera => new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 60);
   const sideCams = { N: mkSide(), E: mkSide(), S: mkSide(), W: mkSide() };
@@ -90,15 +92,20 @@ export function createStudioScene(): StudioScene {
     const cz = (b.minZ + b.maxZ) / 2;
     const spanX = Math.max(b.maxX - b.minX, 48);
     const spanZ = Math.max(b.maxZ - b.minZ, 48);
-    // top view: fit the group + working margin (square viewport assumed)
+    // center view: orbit around the group at a radius that fits it at 45° fov
     const halfIn = Math.max(spanX, spanZ) / 2 + 70;
-    const half = i2m(halfIn);
-    topCam.left = -half;
-    topCam.right = half;
-    topCam.top = half;
-    topCam.bottom = -half;
-    topCam.position.set(i2m(cx), i2m(400), i2m(cz));
-    topCam.lookAt(i2m(cx), 0, i2m(cz));
+    const radius = i2m(halfIn) / Math.tan((topCam.fov / 2) * (Math.PI / 180));
+    const phi = Math.min(1.35, Math.max(TOP_PHI, topOrbit.phi));
+    topOrbit.phi = phi;
+    const tx = i2m(cx);
+    const tz = i2m(cz);
+    topCam.position.set(
+      tx + radius * Math.sin(phi) * Math.sin(topOrbit.theta),
+      radius * Math.cos(phi),
+      tz + radius * Math.sin(phi) * Math.cos(topOrbit.theta),
+    );
+    topCam.up.set(0, 1, 0);
+    topCam.lookAt(tx, 0, tz);
     topCam.updateProjectionMatrix();
     topView.cx = cx;
     topView.cz = cz;
@@ -142,6 +149,11 @@ export function createStudioScene(): StudioScene {
     sideCams,
     frame,
     topView,
+    topOrbit,
+    resetTopOrbit() {
+      topOrbit.theta = 0;
+      topOrbit.phi = TOP_PHI;
+    },
     dispose() {
       wood.map.dispose();
       wood.roughnessMap.dispose();

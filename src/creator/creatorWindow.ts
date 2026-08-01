@@ -68,6 +68,15 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
     viewsWrap.appendChild(row);
     hems[key] = { row, slider, num };
   }
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'ui-btn creator-reset';
+  resetBtn.textContent = '⟲ bird’s eye';
+  resetBtn.title = 'Restore the straight-down view';
+  resetBtn.addEventListener('click', () => {
+    studio.resetTopOrbit();
+    reframe();
+  });
+  viewsWrap.appendChild(resetBtn);
   modal.appendChild(viewsWrap);
   document.body.appendChild(overlay);
 
@@ -108,6 +117,8 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
       if (key !== 'top') {
         const h = hems[key];
         h.row.style.cssText = `left:${r.x + r.w - 218}px;top:${r.y + r.h - 30}px;width:210px;`;
+      } else {
+        resetBtn.style.cssText = `position:absolute;left:${r.x + r.w - 108}px;top:${r.y + 6}px;`;
       }
     }
     reframe();
@@ -195,7 +206,10 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
     panel.refresh();
   };
 
-  // ---- pointer: map canvas px inside the top rect to studio inches ----
+  // ---- pointer: raycast canvas px inside the center rect onto the floor
+  // plane (works at any orbit angle) ----
+  const raycaster = new THREE.Raycaster();
+  const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const toWorld = (e: PointerEvent): { x: number; z: number } | null => {
     if (!rects) return null;
     const b = canvas.getBoundingClientRect();
@@ -203,28 +217,49 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
     const py = e.clientY - b.top;
     const r = rects.top;
     if (px < r.x || px > r.x + r.w || py < r.y || py > r.y + r.h) return null;
-    const span = studio.topView.spanIn;
-    return {
-      x: studio.topView.cx + ((px - r.x) / r.w - 0.5) * span,
-      z: studio.topView.cz + ((py - r.y) / r.h - 0.5) * span,
-    };
+    raycaster.setFromCamera(
+      new THREE.Vector2(((px - r.x) / r.w) * 2 - 1, -((py - r.y) / r.h) * 2 + 1),
+      studio.topCam,
+    );
+    const hit = new THREE.Vector3();
+    if (!raycaster.ray.intersectPlane(floorPlane, hit)) return null;
+    const IN = 0.0254;
+    return { x: hit.x / IN, z: hit.z / IN };
   };
   let downAt: { x: number; y: number } | null = null;
+  let orbiting: { x0: number; y0: number; theta0: number; phi0: number } | null = null;
   canvas.addEventListener('pointerdown', (e) => {
     const p = toWorld(e);
     if (!p) return;
     downAt = { x: e.clientX, y: e.clientY };
-    if (!controller.hasGhost()) controller.pointerDown(p, controller.pickAt(p));
+    if (controller.hasGhost()) return;
+    const hit = controller.pickAt(p);
+    if (hit) {
+      controller.pointerDown(p, hit);
+    } else {
+      // empty floor: drag orbits the inspect camera
+      orbiting = { x0: e.clientX, y0: e.clientY, theta0: studio.topOrbit.theta, phi0: studio.topOrbit.phi };
+    }
   });
   window.addEventListener('pointermove', onMove);
   function onMove(e: PointerEvent): void {
+    if (orbiting) {
+      studio.topOrbit.theta = orbiting.theta0 - (e.clientX - orbiting.x0) * 0.008;
+      studio.topOrbit.phi = Math.min(1.35, Math.max(0.06, orbiting.phi0 + (e.clientY - orbiting.y0) * 0.006));
+      reframe();
+      return;
+    }
     controller.pointerMove(toWorld(e));
   }
   window.addEventListener('pointerup', onUp);
   function onUp(e: PointerEvent): void {
+    const wasOrbit = orbiting !== null;
+    orbiting = null;
     controller.pointerUp();
     if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 6) {
-      controller.click(toWorld(e));
+      const p = toWorld(e);
+      if (controller.hasGhost()) controller.click(p);
+      else if (wasOrbit && p && !controller.pickAt(p)) controller.pointerDown(p, null); // clean click on empty: deselect
     }
     downAt = null;
   }
@@ -272,6 +307,7 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
 
   const close = (): void => {
     delete (window as unknown as { __creator?: CreatorController }).__creator;
+    delete (window as unknown as { __creatorView?: unknown }).__creatorView;
     cancelAnimationFrame(raf);
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
@@ -303,6 +339,10 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
   openInstance = { close };
   // headless QA / debugging handle while the modal is open
   (window as unknown as { __creator?: CreatorController }).__creator = controller;
+  (window as unknown as { __creatorView?: { orbit: typeof studio.topOrbit; reframe: () => void } }).__creatorView = {
+    orbit: studio.topOrbit,
+    reframe,
+  };
 }
 
 export function creatorIsOpen(): boolean {
