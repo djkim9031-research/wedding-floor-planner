@@ -228,7 +228,7 @@ export const FIGURE_HEIGHTS: Record<'figureW' | 'figureM', number> = {
 export const TABLE_TYPES = ['table', 'tableSq', 'tableQ', 'tableC'] as const;
 export type TableType = (typeof TABLE_TYPES)[number];
 export const isTable = (t: ItemType): t is TableType =>
-  t === 'table' || t === 'tableSq' || t === 'tableQ';
+  (TABLE_TYPES as readonly string[]).includes(t); // derived — new table types can't be missed again
 
 /** Tabletop heights differ per table (QCC is 1" taller). */
 export const TABLE_TOPS: Record<TableType, number> = {

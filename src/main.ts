@@ -240,7 +240,11 @@ if (presetName) {
     toast('Restored your last layout');
   }
 }
-if (params.get('demo') === 'qcc') {
+if (params.get('demo') === 'tablec') {
+  // QA: custom oak table + custom linen
+  store.placeItem('tableC', { x: 272.5, z: 300, yawDeg: 0 });
+  store.placeItem('clothC', { x: 272.5, z: 300, yawDeg: 0 });
+} else if (params.get('demo') === 'qcc') {
   store.placeItem('tableQ', { x: 272.5, z: 300, yawDeg: 0 });
   store.placeItem('clothA', { x: 272.5, z: 300, yawDeg: 0 });
 } else if (params.get('demo') === 'deck') {
