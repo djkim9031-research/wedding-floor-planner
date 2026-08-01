@@ -31,7 +31,13 @@ function insideZone(corners: Vec2[], obb: ReturnType<typeof obbFromPose>, poly: 
  *  - chairs must not interpenetrate other chairs, but may tuck under tables
  *  - cloths may overlap tables, chairs, cloths, and figures freely
  */
-export function isPoseValid(type: ItemType, pose: Pose, items: PlacedItem[], selfId?: string): boolean {
+export function isPoseValid(
+  type: ItemType,
+  pose: Pose,
+  items: PlacedItem[],
+  selfId?: string | string[],
+): boolean {
+  const excluded = typeof selfId === 'string' ? [selfId] : (selfId ?? []);
   const obb = obbFromPose(pose, ITEM_DIMS[type]);
 
   const corners = obbCorners(obb);
@@ -62,7 +68,7 @@ export function isPoseValid(type: ItemType, pose: Pose, items: PlacedItem[], sel
           : false;
 
   for (const it of items) {
-    if (it.id === selfId || !collidesWith(it.type)) continue;
+    if (excluded.includes(it.id) || !collidesWith(it.type)) continue;
     if (obbIntersectsOBB(obb, obbFromPose(it, ITEM_DIMS[it.type]), PENETRATION_EPS)) return false;
   }
 

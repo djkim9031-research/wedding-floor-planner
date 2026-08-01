@@ -24,7 +24,8 @@ export function buildItemsPanel(root: HTMLElement, fsm: PlacementFSM): ItemsPane
     const head = document.createElement('div');
     head.className = 'items-head';
     const title = document.createElement('span');
-    title.textContent = `Placed (${s.items.length})`;
+    const nSel = s.selectedIds.length;
+    title.textContent = nSel > 1 ? `Placed (${s.items.length}) · ${nSel} selected` : `Placed (${s.items.length})`;
     const delAll = document.createElement('button');
     delAll.className = 'ui-btn danger';
     delAll.textContent = 'Delete all';
@@ -43,7 +44,7 @@ export function buildItemsPanel(root: HTMLElement, fsm: PlacementFSM): ItemsPane
       counters.set(it.type, n);
       const row = document.createElement('div');
       const locked = fsm.lockedId === it.id;
-      row.className = 'item-row' + (it.id === s.selectedId ? ' selected' : '');
+      row.className = 'item-row' + (s.selectedIds.includes(it.id) ? ' selected' : '');
       const label = document.createElement('button');
       label.className = 'item-label';
       label.textContent = `${ITEM_LABELS[it.type]} ${n}${locked ? ' 🔒' : ''}`;

@@ -1,4 +1,4 @@
-import { fmtClock, hillSetTime, horizonAltDeg, phaseName, sunPosition, sunTimes, twilightTimes } from '../scene/sun';
+import { fmtClock, hillSetTime, horizonAltDeg, moonState, moonTimes, phaseName, sunPosition, sunTimes, twilightTimes } from '../scene/sun';
 
 export interface SunPanelState {
   enabled: boolean;
@@ -116,7 +116,11 @@ export function buildSunPanel(
           : pos.altitudeDeg >= 0
             ? 'behind the hills'
             : phaseName(pos.altitudeDeg);
-      infoEl.textContent = `☼ ${fmtClock(t.sunrise)} → ${fmtClock(t.sunset)} · hills ${fmtClock(hills)} · dusk ${fmtClock(tw.civilDusk)} · ${state}`;
+      const mt = moonTimes(s.date);
+      const ms = moonState(s.date, s.minutes);
+      infoEl.textContent =
+        `☼ ${fmtClock(t.sunrise)} → ${fmtClock(t.sunset)} · hills ${fmtClock(hills)} · dusk ${fmtClock(tw.civilDusk)} · ${state}\n` +
+        `☾ ${fmtClock(mt.rise)} → ${fmtClock(mt.set)} · ${ms.emoji} ${ms.phaseLabel} · ${Math.round(ms.fraction * 100)}% lit`;
     } else {
       infoEl.textContent = 'showcase lighting';
     }

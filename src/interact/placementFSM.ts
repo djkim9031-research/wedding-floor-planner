@@ -1,11 +1,11 @@
 import { SNAP, isTable } from '../constants';
-import { normalizeDeg } from '../core/geometry';
+import { DEG as DEG_TO_RAD, normalizeDeg } from '../core/geometry';
 import { angleSnap, edgeSnap, gridSnap } from '../core/snapping';
 import { isPoseValid } from '../core/validity';
 import * as store from '../state/store';
 import type { GhostState, ItemType, Pose, Vec2 } from '../types';
 
-export type FSMState = 'idle' | 'placing' | 'parked' | 'selected' | 'dragging' | 'rotating';
+export type FSMState = 'idle' | 'placing' | 'parked' | 'selected' | 'dragging' | 'rotating' | 'groupDragging';
 
 /**
  * The placement state machine. Transient ghost motion goes through
@@ -29,6 +29,13 @@ export class PlacementFSM {
   private lastFloor: Vec2 | null = null;
   private grabOffset: Vec2 = { x: 0, z: 0 };
   private dragSource: { id: string; pose: Pose; type: ItemType } | null = null;
+  /** live group drag: original poses + grab point + accumulated group yaw */
+  private groupDrag: {
+    startFloor: Vec2;
+    originals: { id: string; type: ItemType; pose: Pose }[];
+    yawAcc: number;
+    applied: boolean;
+  } | null = null;
 
   private setState(s: FSMState): void {
     if (this.state !== s) {
@@ -81,6 +88,10 @@ export class PlacementFSM {
   pointerMove(floor: Vec2 | null): void {
     if (floor) this.lastFloor = floor;
     if (!floor) return;
+    if (this.state === 'groupDragging' && this.groupDrag) {
+      this.applyGroupTransform(floor);
+      return;
+    }
     if (this.state === 'placing' || this.state === 'dragging') {
       const g = this.ghost();
       if (!g) return;
@@ -156,6 +167,16 @@ export class PlacementFSM {
 
   /** Cancel ghost (Esc / right-click / ✕). */
   cancel(): void {
+    if (this.state === 'groupDragging') {
+      const g = this.groupDrag;
+      this.groupDrag = null;
+      if (g && g.applied) {
+        store.moveItemsLive(g.originals.map((o) => ({ id: o.id, pose: o.pose })));
+      }
+      this.setState('selected');
+      this.onGestureLock(false);
+      return;
+    }
     if (this.state === 'placing' || this.state === 'parked' || this.state === 'dragging' || this.state === 'rotating') {
       this.abortGhost();
       const sel = store.getState().selectedId;
@@ -186,8 +207,23 @@ export class PlacementFSM {
     // only from rest states — a second pointer mid-gesture must not corrupt
     // the active drag/rotate ghost
     if (this.state !== 'idle' && this.state !== 'selected') return;
-    const item = store.getState().items.find((it) => it.id === id);
+    const s = store.getState();
+    const item = s.items.find((it) => it.id === id);
     if (!item) return;
+    if (s.selectedIds.length > 1 && s.selectedIds.includes(id) && floor) {
+      // grabbing a member of the group: the whole group rides along
+      this.groupDrag = {
+        startFloor: floor,
+        originals: s.items
+          .filter((it) => s.selectedIds.includes(it.id))
+          .map((it) => ({ id: it.id, type: it.type, pose: { x: it.x, z: it.z, yawDeg: it.yawDeg } })),
+        yawAcc: 0,
+        applied: false,
+      };
+      this.setState('selected');
+      return;
+    }
+    this.groupDrag = null;
     store.select(id);
     this.setState('selected');
     this.dragSource = { id, pose: { x: item.x, z: item.z, yawDeg: item.yawDeg }, type: item.type };
@@ -196,6 +232,11 @@ export class PlacementFSM {
 
   /** Called by the pointer controller once movement exceeds the threshold. */
   beginDrag(): void {
+    if (this.groupDrag && this.state === 'selected') {
+      this.setState('groupDragging');
+      this.onGestureLock(true);
+      return;
+    }
     if (!this.dragSource || this.state !== 'selected') return;
     const src = this.dragSource;
     this.ghostYaw = src.pose.yawDeg;
@@ -206,8 +247,86 @@ export class PlacementFSM {
     this.onGestureLock(true);
   }
 
+  /** Translate+rotate the whole group about its centroid; apply only when
+   * every member lands valid (validated against non-members). */
+  private applyGroupTransform(floor: Vec2): void {
+    const g = this.groupDrag;
+    if (!g) return;
+    const dx = floor.x - g.startFloor.x;
+    const dz = floor.z - g.startFloor.z;
+    const cx = g.originals.reduce((a, o) => a + o.pose.x, 0) / g.originals.length;
+    const cz = g.originals.reduce((a, o) => a + o.pose.z, 0) / g.originals.length;
+    const rad = g.yawAcc * DEG_TO_RAD;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const ids = g.originals.map((o) => o.id);
+    const { items } = store.getState();
+    const updates = g.originals.map((o) => {
+      const rx = o.pose.x - cx;
+      const rz = o.pose.z - cz;
+      // yaw about +Y maps +X toward −Z (matches three.js rotation.y)
+      const wx = cx + rx * cos + rz * sin + dx;
+      const wz = cz - rx * sin + rz * cos + dz;
+      return { id: o.id, pose: { x: wx, z: wz, yawDeg: normalizeDeg(o.pose.yawDeg + g.yawAcc) } };
+    });
+    const allValid = updates.every((u, i) =>
+      isPoseValid(g.originals[i].type, u.pose, items, ids),
+    );
+    if (allValid) {
+      store.moveItemsLive(updates);
+      g.applied = true;
+    }
+  }
+
+  /** Rotate the live group (wheel / R while group-dragging). */
+  rotateGroupBy(deg: number): void {
+    if (this.state === 'groupDragging' && this.groupDrag) {
+      this.groupDrag.yawAcc = normalizeDeg(this.groupDrag.yawAcc + deg);
+      if (this.lastFloor) this.applyGroupTransform(this.lastFloor);
+      return;
+    }
+    // stationary group rotate: one undo step per press
+    const s = store.getState();
+    if (s.selectedIds.length < 2) return;
+    const members = s.items.filter((it) => s.selectedIds.includes(it.id));
+    const cx = members.reduce((a, o) => a + o.x, 0) / members.length;
+    const cz = members.reduce((a, o) => a + o.z, 0) / members.length;
+    const rad = deg * DEG_TO_RAD;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const updates = members.map((o) => {
+      const rx = o.x - cx;
+      const rz = o.z - cz;
+      return {
+        id: o.id,
+        pose: { x: cx + rx * cos + rz * sin, z: cz - rx * sin + rz * cos, yawDeg: normalizeDeg(o.yawDeg + deg) },
+      };
+    });
+    const ids = members.map((o) => o.id);
+    const ok = updates.every((u, i) => isPoseValid(members[i].type, u.pose, s.items, ids));
+    if (ok) store.moveItems(updates);
+  }
+
+  /** Marquee result: select the ids as a group. */
+  selectMarquee(ids: string[]): void {
+    if (this.state !== 'idle' && this.state !== 'selected') return;
+    this.unlock();
+    store.selectGroup(ids);
+    this.setState(ids.length ? 'selected' : 'idle');
+  }
+
   /** Pointer released. */
   pointerUp(): void {
+    if (this.state === 'groupDragging') {
+      const g = this.groupDrag;
+      this.groupDrag = null;
+      if (g && g.applied) {
+        store.commitGroupMove(g.originals.map((o) => ({ id: o.id, pose: o.pose })));
+      }
+      this.setState('selected');
+      this.onGestureLock(false);
+      return;
+    }
     if (this.state === 'dragging') {
       const g = this.ghost();
       if (g && g.valid) {
@@ -246,25 +365,41 @@ export class PlacementFSM {
       // taps on the floor move the parked ghost via pointerMove; nothing here
     } else if (this.state === 'selected') {
       if (this.lockedId) return; // locked selection survives stray clicks
+      this.groupDrag = null;
       store.select(null);
       this.setState('idle');
     }
   }
 
-  /** Arrow-key nudge of the selected item (inches, world axes). */
+  /** Arrow-key nudge of the selected item or group (inches, world axes). */
   nudgeSelected(dx: number, dz: number): void {
     if (this.ghost()) return; // a live ghost owns the pointer/keys
-    const { selectedId, items } = store.getState();
-    const item = items.find((it) => it.id === selectedId);
+    const s = store.getState();
+    if (s.selectedIds.length > 1) {
+      const members = s.items.filter((it) => s.selectedIds.includes(it.id));
+      const ids = members.map((o) => o.id);
+      const updates = members.map((o) => ({
+        id: o.id,
+        pose: { x: o.x + dx, z: o.z + dz, yawDeg: o.yawDeg },
+      }));
+      const ok = updates.every((u, i) => isPoseValid(members[i].type, u.pose, s.items, ids));
+      if (ok) store.moveItems(updates);
+      return;
+    }
+    const item = s.items.find((it) => it.id === s.selectedId);
     if (!item) return;
     const pose = { x: item.x + dx, z: item.z + dz, yawDeg: item.yawDeg };
-    if (isPoseValid(item.type, pose, items, item.id)) {
+    if (isPoseValid(item.type, pose, s.items, item.id)) {
       store.moveItem(item.id, pose);
     }
   }
 
-  /** Rotate the ghost (while placing/dragging) or the selected item. */
+  /** Rotate the ghost (while placing/dragging) or the selected item/group. */
   rotateBy(deg: number): void {
+    if (this.state === 'groupDragging' || store.getState().selectedIds.length > 1) {
+      this.rotateGroupBy(deg);
+      return;
+    }
     const g = this.ghost();
     if (g) {
       this.ghostYaw = normalizeDeg(this.ghostYaw + deg);
@@ -311,7 +446,16 @@ export class PlacementFSM {
   }
 
   deleteSelected(): void {
-    const id = store.getState().selectedId;
+    const s = store.getState();
+    if (s.selectedIds.length > 1) {
+      this.abortGhost();
+      this.groupDrag = null;
+      this.unlock();
+      store.deleteItems(s.selectedIds);
+      this.setState('idle');
+      return;
+    }
+    const id = s.selectedId;
     if (!id) return;
     this.abortGhost();
     if (this.lockedId === id) this.unlock();

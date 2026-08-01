@@ -176,3 +176,112 @@ export function fmtClock(min: number | null): string {
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   return `${h12}:${mm} ${ampm}`;
 }
+
+// ---------------------------------------------------------------------------
+// Moon — truncated lunar ephemeris (±0.3°, ample for sky rendering) + phase.
+// ---------------------------------------------------------------------------
+
+export interface MoonState {
+  altitudeDeg: number;
+  azimuthDeg: number;
+  azimuthModelDeg: number;
+  /** illuminated fraction 0..1 */
+  fraction: number;
+  waxing: boolean;
+  /** position angle of the bright limb vs the local zenith direction (deg) */
+  brightLimbDeg: number;
+  phaseLabel: string;
+  emoji: string;
+}
+
+/** Days since J2000.0 (UT) for a venue-local date + minutes. */
+function j2000Days(dateStr: string, minutesLocal: number): number {
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const tzMin = tzOffsetMinutes(dateStr);
+  const utcMs = Date.UTC(y, mo - 1, d) + (minutesLocal - tzMin) * 60000;
+  return (utcMs - Date.UTC(2000, 0, 1, 12)) / 86400000;
+}
+
+/** Sun's ecliptic longitude (rad) — for the phase geometry. */
+function sunEclipticLon(dDays: number): number {
+  const g = (357.529 + 0.98560028 * dDays) * RAD;
+  return ((280.459 + 0.98564736 * dDays) % 360) * RAD + (1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * RAD;
+}
+
+const PHASES: { label: string; emoji: string }[] = [
+  { label: 'new moon', emoji: '🌑' },
+  { label: 'waxing crescent', emoji: '🌒' },
+  { label: 'first quarter', emoji: '🌓' },
+  { label: 'waxing gibbous', emoji: '🌔' },
+  { label: 'full moon', emoji: '🌕' },
+  { label: 'waning gibbous', emoji: '🌖' },
+  { label: 'last quarter', emoji: '🌗' },
+  { label: 'waning crescent', emoji: '🌘' },
+];
+
+export function moonState(dateStr: string, minutesLocal: number): MoonState {
+  const dDays = j2000Days(dateStr, minutesLocal);
+  const L = 218.316 + 13.176396 * dDays; // mean longitude
+  const M = (134.963 + 13.064993 * dDays) * RAD; // mean anomaly
+  const F = (93.272 + 13.22935 * dDays) * RAD; // argument of latitude
+  const lam = (L % 360) * RAD + 6.289 * RAD * Math.sin(M);
+  const beta = 5.128 * RAD * Math.sin(F);
+  const eps = (23.4393 - 3.563e-7 * dDays) * RAD;
+  const ra = Math.atan2(Math.sin(lam) * Math.cos(eps) - Math.tan(beta) * Math.sin(eps), Math.cos(lam));
+  const dec = Math.asin(
+    Math.sin(beta) * Math.cos(eps) + Math.cos(beta) * Math.sin(eps) * Math.sin(lam),
+  );
+  const gmst = 280.16 + 360.9856235 * dDays;
+  const H = ((gmst + VENUE.lon) % 360) * RAD - ra; // hour angle
+  const lat = VENUE.lat * RAD;
+  const alt = Math.asin(
+    Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(H),
+  );
+  const azFromSouth = Math.atan2(
+    Math.sin(H),
+    Math.cos(H) * Math.sin(lat) - Math.tan(dec) * Math.cos(lat),
+  );
+  const azimuthDeg = ((azFromSouth / RAD + 180) % 360 + 360) % 360;
+
+  // phase from the sun–moon elongation in ecliptic longitude
+  const elong = lam - sunEclipticLon(dDays);
+  const fraction = (1 - Math.cos(elong)) / 2;
+  const waxing = Math.sin(elong) > 0;
+  const elongDeg = ((elong / RAD) % 360 + 360) % 360;
+  const phase = PHASES[Math.round(elongDeg / 45) % 8];
+
+  // bright limb direction on the visible disc, measured from local "up"
+  const sun = sunPosition(dateStr, minutesLocal);
+  const dAz = (sun.azimuthDeg - azimuthDeg) * RAD;
+  const hs = sun.altitudeDeg * RAD;
+  const chi = Math.atan2(
+    Math.cos(hs) * Math.sin(dAz),
+    Math.sin(hs) * Math.cos(alt) - Math.cos(hs) * Math.sin(alt) * Math.cos(dAz),
+  );
+
+  return {
+    altitudeDeg: alt / RAD,
+    azimuthDeg,
+    azimuthModelDeg: (azimuthDeg - FACADE_AZ_DEG + 360) % 360,
+    fraction,
+    waxing,
+    brightLimbDeg: chi / RAD,
+    phaseLabel: phase.label,
+    emoji: phase.emoji,
+  };
+}
+
+/** Moonrise / moonset (upper-limb ≈ +0.125° with parallax), local minutes. */
+export function moonTimes(dateStr: string): { rise: number | null; set: number | null } {
+  const H0 = 0.125;
+  let rise: number | null = null;
+  let set: number | null = null;
+  let prev = moonState(dateStr, 0).altitudeDeg;
+  for (let m = 6; m < 1440; m += 6) {
+    const a = moonState(dateStr, m).altitudeDeg;
+    if (prev < H0 && a >= H0 && rise === null) rise = m - 6 * ((a - H0) / (a - prev));
+    if (prev >= H0 && a < H0 && set === null) set = m - 6 * ((a - H0) / (a - prev));
+    prev = a;
+  }
+  return { rise, set };
+}

@@ -334,6 +334,7 @@ button.ui-btn.danger:hover {
 }
 
 .sun-info {
+  white-space: pre-line;
   font-size: 11px;
   color: #8d8478;
 }
@@ -373,6 +374,8 @@ button.ui-btn.danger:hover {
 }
 
 .items-list {
+  max-height: 217px; /* seven rows, then scroll */
+  overflow-y: auto;
   overflow-y: auto;
   max-height: calc(100vh - 460px);
   min-height: 40px;
@@ -582,4 +585,12 @@ button.ui-btn.danger:hover {
     top: 150px;
     width: 200px;
   }
+}
+
+.marquee {
+  position: absolute;
+  border: 1.5px dashed var(--brass);
+  background: rgba(176, 141, 87, 0.12);
+  pointer-events: none;
+  z-index: 30;
 }

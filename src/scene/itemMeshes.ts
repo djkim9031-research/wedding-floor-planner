@@ -423,13 +423,14 @@ export class ItemMeshes {
   private meshes = new Map<string, THREE.Group>();
   private outlines = new Map<string, THREE.LineSegments>();
   private hiddenId: string | null = null;
-  private selectedId: string | null = null;
+  private selectedIds: string[] = [];
   private hoveredId: string | null = null;
-  private plate: THREE.Mesh;
+  private plates: THREE.Mesh[] = [];
+  private plateProto: THREE.Mesh;
 
   constructor(parent: THREE.Group) {
     this.parent = parent;
-    this.plate = new THREE.Mesh(
+    this.plateProto = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
       new THREE.MeshBasicMaterial({
         color: COLORS.brass,
@@ -438,14 +439,13 @@ export class ItemMeshes {
         depthWrite: false,
       }),
     );
-    this.plate.rotation.x = -Math.PI / 2;
-    this.plate.position.y = i2m(0.3);
-    this.plate.visible = false;
-    parent.add(this.plate);
+    this.plateProto.rotation.x = -Math.PI / 2;
+    this.plateProto.visible = false;
   }
 
-  /** Everything except cloths — cloth meshes belong to the ClothManager. */
-  sync(items: PlacedItem[]): void {
+  /** Everything except cloths — cloth meshes belong to the ClothManager.
+   * `extraTop` lets later-placed decor ride settled cloth surfaces. */
+  sync(items: PlacedItem[], extraTop?: (it: PlacedItem) => number): void {
     const wanted = new Map(
       items
         .filter(
@@ -493,7 +493,9 @@ export class ItemMeshes {
         }
       }
       const mountY =
-        isLantern(it.type) || it.type === 'setting' ? tableTopUnder(items, it.x, it.z) : 0;
+        isLantern(it.type) || it.type === 'setting'
+          ? Math.max(tableTopUnder(items, it.x, it.z), extraTop ? extraTop(it) : 0)
+          : 0;
       mesh.position.set(i2m(it.x), i2m(mountY), i2m(it.z));
       mesh.rotation.y = it.yawDeg * DEG;
       mesh.visible = id !== this.hiddenId;
@@ -510,8 +512,8 @@ export class ItemMeshes {
     if (id && this.meshes.has(id)) this.meshes.get(id)!.visible = false;
   }
 
-  setSelected(id: string | null, items: PlacedItem[]): void {
-    this.selectedId = id;
+  setSelected(ids: string[], items: PlacedItem[]): void {
+    this.selectedIds = ids;
     this.refreshHighlights(items);
   }
 
@@ -526,7 +528,7 @@ export class ItemMeshes {
   private refreshHighlights(items: PlacedItem[]): void {
     for (const [id, outline] of this.outlines) {
       const mat = outline.material as THREE.LineBasicMaterial;
-      if (id === this.selectedId) {
+      if (this.selectedIds.includes(id)) {
         outline.visible = true;
         mat.color.setHex(COLORS.brass);
       } else if (id === this.hoveredId) {
@@ -536,16 +538,25 @@ export class ItemMeshes {
         outline.visible = false;
       }
     }
-    const sel = items.find((it) => it.id === this.selectedId);
-    if (sel && sel.id !== this.hiddenId) {
-      const dims = ITEM_DIMS[sel.type];
-      this.plate.visible = true;
-      this.plate.scale.set(i2m(dims.w + 8), i2m(dims.d + 8), 1);
-      this.plate.position.set(i2m(sel.x), i2m(0.3), i2m(sel.z));
-      this.plate.rotation.z = sel.yawDeg * DEG;
-    } else {
-      this.plate.visible = false;
+    // one brass floor plate under every selected item (pool grows on demand)
+    const sels = items.filter((it) => this.selectedIds.includes(it.id) && it.id !== this.hiddenId);
+    while (this.plates.length < sels.length) {
+      const p = this.plateProto.clone();
+      this.parent.add(p);
+      this.plates.push(p);
     }
+    this.plates.forEach((p, i) => {
+      const sel = sels[i];
+      if (!sel) {
+        p.visible = false;
+        return;
+      }
+      const dims = ITEM_DIMS[sel.type];
+      p.visible = true;
+      p.scale.set(i2m(dims.w + 8), i2m(dims.d + 8), 1);
+      p.position.set(i2m(sel.x), i2m(0.3), i2m(sel.z));
+      p.rotation.z = sel.yawDeg * DEG;
+    });
   }
 
   getMesh(id: string): THREE.Group | undefined {

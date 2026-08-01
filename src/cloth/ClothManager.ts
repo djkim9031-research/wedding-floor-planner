@@ -27,6 +27,7 @@ export class ClothManager {
   private readonly prevObstacles = new Map<string, PlacedItem>();
   private readonly cbs: SettledCb[] = [];
   private lastTables: PlacedItem[] = [];
+  private lastOrder = new Map<string, number>();
   private acc = 0;
   /** QA counters */
   stepCalls = 0;
@@ -43,8 +44,12 @@ export class ClothManager {
    * invalidation fan-out to the obstacles that actually moved/appeared/vanished;
    * omitted, changes are inferred from the previously seen obstacle poses. */
   sync(items: PlacedItem[], changedIds?: string[]): void {
-    // every non-cloth item is a drape obstacle now, not just tables
+    // every non-cloth item is a drape obstacle now, not just tables — but
+    // stacking follows placement order: a cloth drapes only over items placed
+    // BEFORE it; items placed after ride on top of the settled fabric
     const obstacles = items.filter((it) => it.type !== 'clothA' && it.type !== 'clothB');
+    const orderIdx = new Map(items.map((it, i) => [it.id, i]));
+    this.lastOrder = orderIdx;
     this.lastTables = obstacles.filter((it) => isTable(it.type));
 
     let changed: string[];
@@ -63,13 +68,22 @@ export class ClothManager {
       }
     }
 
-    // old + new footprints of every changed obstacle
+    // old + new footprints of every changed obstacle (+ its placement order,
+    // so post-cloth items never trigger a re-drape of that cloth)
     const changedObbs: OBB[] = [];
+    const underChangeIdx: number[] = [];
     for (const id of changed) {
+      const idx = orderIdx.get(id) ?? Infinity;
       const old = this.prevObstacles.get(id);
-      if (old) changedObbs.push(obbFromPose(old, ITEM_DIMS[old.type]));
+      if (old) {
+        changedObbs.push(obbFromPose(old, ITEM_DIMS[old.type]));
+        underChangeIdx.push(idx);
+      }
       const cur = obstacles.find((t) => t.id === id);
-      if (cur) changedObbs.push(obbFromPose(cur, ITEM_DIMS[cur.type]));
+      if (cur) {
+        changedObbs.push(obbFromPose(cur, ITEM_DIMS[cur.type]));
+        underChangeIdx.push(idx);
+      }
     }
 
     // drop instances whose item is gone (or changed type)
@@ -85,9 +99,13 @@ export class ClothManager {
     for (const it of items) {
       if (it.type !== 'clothA' && it.type !== 'clothB') continue;
       const pose: Pose = { x: it.x, z: it.z, yawDeg: it.yawDeg };
+      const clothIdx = orderIdx.get(it.id)!;
+      // only obstacles placed before this cloth are under its drape
+      const under = obstacles.filter((o) => (orderIdx.get(o.id) ?? Infinity) < clothIdx);
       // per-cloth collision world, culled to obstacles this cloth can reach
       // (keeps the hot loop small in furnished rooms)
-      const colliders = buildColliders(this.nearObstacles(it.type, pose, obstacles));
+      const colliders = buildColliders(this.nearObstacles(it.type, pose, under));
+      const underChangedObbs = changedObbs.filter((_, i) => underChangeIdx[i] < clothIdx);
       const inst = this.instances.get(it.id);
       if (!inst) {
         const sim = new ClothSim(makeClothSpec(it.type), pose, colliders);
@@ -101,7 +119,7 @@ export class ClothManager {
       if (cur.x !== pose.x || cur.z !== pose.z || cur.yawDeg !== pose.yawDeg) {
         inst.sim.replace(pose, colliders); // cloth itself moved → full re-drop
         inst.notified = false;
-      } else if (changedObbs.length && this.overlapsAny(inst.sim, changedObbs)) {
+      } else if (underChangedObbs.length && this.overlapsAny(inst.sim, underChangedObbs)) {
         // obstacle changed under it → full re-drop: everything beneath the
         // sheet must end up strictly under the drape (an in-place re-settle
         // can't climb over an object taller than where the fabric lies)
@@ -193,6 +211,28 @@ export class ClothManager {
 
   onSettled(cb: SettledCb): void {
     this.cbs.push(cb);
+  }
+
+  /** How high the settled fabric of any EARLIER-placed cloth lifts an item
+   * at (x,z) — so a plate set down after the linen rests on the linen. */
+  mountLift(item: PlacedItem, _items: PlacedItem[]): number {
+    const itemIdx = this.lastOrder.get(item.id);
+    if (itemIdx === undefined) return 0;
+    let lift = 0;
+    for (const [id, inst] of this.instances) {
+      const clothIdx = this.lastOrder.get(id);
+      if (clothIdx === undefined || clothIdx > itemIdx) continue;
+      const pos = inst.sim.grid.pos;
+      const count = inst.sim.grid.count;
+      let m = -1;
+      for (let p = 0; p < count; p++) {
+        if (Math.abs(pos[p * 3] - item.x) < 7 && Math.abs(pos[p * 3 + 2] - item.z) < 7) {
+          m = Math.max(m, pos[p * 3 + 1]);
+        }
+      }
+      if (m > lift) lift = m;
+    }
+    return lift;
   }
 
   /** QA: per-instance state summary. */

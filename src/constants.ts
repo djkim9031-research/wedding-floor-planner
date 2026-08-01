@@ -269,23 +269,30 @@ export interface PresetDef {
 
 export const PRESETS: PresetDef[] = [
   {
-    // 3 tables stacked long-edge-to-long-edge => 47.5" x 94.5" block, C&B linen
-    name: 'Crate & Barrel',
+    // 3×2 oak tables => 142.5" × 63" block; the 108×156 rental linen laid
+    // lengthwise covers all six with drape on every side
+    name: 'Rental',
     items: [
-      { type: 'table', x: 272.5, z: 268.5, yawDeg: 0 },
-      { type: 'table', x: 272.5, z: 300, yawDeg: 0 },
-      { type: 'table', x: 272.5, z: 331.5, yawDeg: 0 },
-      { type: 'clothB', x: 272.5, z: 300, yawDeg: 0 },
+      { type: 'table', x: 225, z: 284.25, yawDeg: 0 },
+      { type: 'table', x: 272.5, z: 284.25, yawDeg: 0 },
+      { type: 'table', x: 320, z: 284.25, yawDeg: 0 },
+      { type: 'table', x: 225, z: 315.75, yawDeg: 0 },
+      { type: 'table', x: 272.5, z: 315.75, yawDeg: 0 },
+      { type: 'table', x: 320, z: 315.75, yawDeg: 0 },
+      { type: 'clothA', x: 272.5, z: 300, yawDeg: 90 },
     ],
   },
   {
-    // 2 tables side by side + 1 perpendicular below center => T, rental linen
-    name: 'Rental',
+    // 2×3 oak tables => 95" × 94.5" block; the 104×144 C&B linen covers it
+    name: 'Crate & Barrel',
     items: [
-      { type: 'table', x: 248.75, z: 280, yawDeg: 0 },
-      { type: 'table', x: 296.25, z: 280, yawDeg: 0 },
-      { type: 'table', x: 272.5, z: 319.5, yawDeg: 90 },
-      { type: 'clothA', x: 272.5, z: 293, yawDeg: 90 },
+      { type: 'table', x: 248.75, z: 268.5, yawDeg: 0 },
+      { type: 'table', x: 296.25, z: 268.5, yawDeg: 0 },
+      { type: 'table', x: 248.75, z: 300, yawDeg: 0 },
+      { type: 'table', x: 296.25, z: 300, yawDeg: 0 },
+      { type: 'table', x: 248.75, z: 331.5, yawDeg: 0 },
+      { type: 'table', x: 296.25, z: 331.5, yawDeg: 0 },
+      { type: 'clothB', x: 272.5, z: 300, yawDeg: 0 },
     ],
   },
 ];

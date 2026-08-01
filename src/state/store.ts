@@ -17,6 +17,7 @@ const state: AppState = {
   items: [],
   settings: { gridSnap: false, angleSnap: true, magnetSnap: true, showDims: true },
   selectedId: null,
+  selectedIds: [],
   ghost: null,
   viewMode: 'orbit',
 };
@@ -42,10 +43,30 @@ export function setGhost(ghost: GhostState | null): void {
   emit({ kind: 'ghost' });
 }
 
+function syncSingle(): void {
+  state.selectedId = state.selectedIds.length === 1 ? state.selectedIds[0] : null;
+}
+
 export function select(id: string | null): void {
-  if (state.selectedId === id) return;
-  state.selectedId = id;
+  const next = id ? [id] : [];
+  if (state.selectedIds.length === next.length && state.selectedIds[0] === next[0]) return;
+  state.selectedIds = next;
+  syncSingle();
   emit({ kind: 'selection' });
+}
+
+/** Marquee / group selection. */
+export function selectGroup(ids: string[]): void {
+  const valid = ids.filter((id) => state.items.some((it) => it.id === id));
+  state.selectedIds = [...new Set(valid)];
+  syncSingle();
+  emit({ kind: 'selection' });
+}
+
+/** Drop selected ids whose items no longer exist. */
+function pruneSelection(): void {
+  state.selectedIds = state.selectedIds.filter((id) => state.items.some((it) => it.id === id));
+  syncSingle();
 }
 
 export function setSetting<K extends keyof Settings>(key: K, value: Settings[K]): void {
@@ -80,7 +101,7 @@ export function deleteItem(id: string): void {
   if (!state.items.some((it) => it.id === id)) return;
   history.push(state.items);
   state.items = state.items.filter((it) => it.id !== id);
-  if (state.selectedId === id) state.selectedId = null;
+  pruneSelection();
   emit({ kind: 'items', changedIds: [id] });
 }
 
@@ -89,7 +110,8 @@ export function clearAll(): void {
   history.push(state.items);
   const ids = state.items.map((it) => it.id);
   state.items = [];
-  state.selectedId = null;
+  state.selectedIds = [];
+  syncSingle();
   emit({ kind: 'items', changedIds: ids });
 }
 
@@ -100,7 +122,8 @@ export function applyPreset(name: string): void {
   const ids: string[] = [...state.items.map((it) => it.id)];
   state.items = preset.items.map((it) => ({ id: uid(), ...it }));
   ids.push(...state.items.map((it) => it.id));
-  state.selectedId = null;
+  state.selectedIds = [];
+  syncSingle();
   emit({ kind: 'items', changedIds: ids });
 }
 
@@ -108,8 +131,46 @@ export function importItems(items: PlacedItem[]): void {
   history.push(state.items);
   const ids = [...state.items.map((it) => it.id), ...items.map((it) => it.id)];
   state.items = items.map((it) => ({ ...it }));
-  state.selectedId = null;
+  state.selectedIds = [];
+  syncSingle();
   emit({ kind: 'load', changedIds: ids });
+}
+
+/** Move several items at once as ONE undo step. */
+export function moveItems(updates: { id: string; pose: Pose }[]): void {
+  const real = updates.filter(({ id, pose }) => {
+    const cur = state.items.find((it) => it.id === id);
+    return cur && (cur.x !== pose.x || cur.z !== pose.z || cur.yawDeg !== pose.yawDeg);
+  });
+  if (!real.length) return;
+  history.push(state.items);
+  const map = new Map(real.map((u) => [u.id, u.pose]));
+  state.items = state.items.map((it) => (map.has(it.id) ? { ...it, ...map.get(it.id)! } : it));
+  emit({ kind: 'items', changedIds: real.map((u) => u.id) });
+}
+
+/** Live group-drag positions — NO history entry; commitGroupMove closes it. */
+export function moveItemsLive(updates: { id: string; pose: Pose }[]): void {
+  const map = new Map(updates.map((u) => [u.id, u.pose]));
+  state.items = state.items.map((it) => (map.has(it.id) ? { ...it, ...map.get(it.id)! } : it));
+  emit({ kind: 'items', changedIds: updates.map((u) => u.id) });
+}
+
+/** After live moves: record ONE undo snapshot of the pre-drag poses. */
+export function commitGroupMove(originals: { id: string; pose: Pose }[]): void {
+  const map = new Map(originals.map((u) => [u.id, u.pose]));
+  const prevItems = state.items.map((it) => (map.has(it.id) ? { ...it, ...map.get(it.id)! } : it));
+  history.push(prevItems);
+}
+
+/** Delete several items as ONE undo step. */
+export function deleteItems(ids: string[]): void {
+  const set = new Set(ids);
+  if (!state.items.some((it) => set.has(it.id))) return;
+  history.push(state.items);
+  state.items = state.items.filter((it) => !set.has(it.id));
+  pruneSelection();
+  emit({ kind: 'items', changedIds: ids });
 }
 
 export function undo(): void {
@@ -117,7 +178,7 @@ export function undo(): void {
   if (!prev) return;
   const ids = diffIds(state.items, prev);
   state.items = prev;
-  if (state.selectedId && !prev.some((it) => it.id === state.selectedId)) state.selectedId = null;
+  pruneSelection();
   emit({ kind: 'items', changedIds: ids });
 }
 
@@ -126,7 +187,7 @@ export function redo(): void {
   if (!next) return;
   const ids = diffIds(state.items, next);
   state.items = next;
-  if (state.selectedId && !next.some((it) => it.id === state.selectedId)) state.selectedId = null;
+  pruneSelection();
   emit({ kind: 'items', changedIds: ids });
 }
 

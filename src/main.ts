@@ -11,7 +11,7 @@ import { Overlays } from './scene/overlays';
 import { createSceneHost } from './scene/scene';
 import * as persist from './state/persist';
 import * as store from './state/store';
-import { horizonAltDeg, sunPosition } from './scene/sun';
+import { horizonAltDeg, moonState, sunPosition } from './scene/sun';
 import { buildItemsPanel } from './ui/itemsPanel';
 import { buildPalette } from './ui/palette';
 import { buildStatusPanel } from './ui/statusPanel';
@@ -76,11 +76,18 @@ const sunPanel = buildSunPanel(container, (s) => {
     return;
   }
   const pos = sunPosition(s.date, s.minutes);
+  const moon = moonState(s.date, s.minutes);
   host.applySun({
     // ridge-effective altitude: the western mountains swallow the sun early
     altitudeDeg: pos.altitudeDeg - horizonAltDeg(pos.azimuthDeg),
     azimuthModelDeg: pos.azimuthModelDeg,
     clouds: s.clouds ? s.cloudPct / 100 : 0,
+    moon: {
+      altitudeDeg: moon.altitudeDeg,
+      azimuthModelDeg: moon.azimuthModelDeg,
+      fraction: moon.fraction,
+      brightLimbDeg: moon.brightLimbDeg,
+    },
   });
 });
 const statusPanel = buildStatusPanel(container, fsm, {
@@ -128,8 +135,8 @@ store.subscribe((s, ev) => {
     case 'load':
       // a lock must not outlive its item (delete-all, undo, imports…)
       if (fsm.lockedId && !s.items.some((it) => it.id === fsm.lockedId)) fsm.unlock();
-      itemMeshes.sync(s.items);
       clothMgr.sync(s.items, ev.changedIds);
+      itemMeshes.sync(s.items, (it) => clothMgr.mountLift(it, s.items));
       overlays.update(s);
       persist.autosave(s.items);
       host.invalidateShadows();
@@ -142,7 +149,7 @@ store.subscribe((s, ev) => {
       updateRing();
       break;
     case 'selection':
-      itemMeshes.setSelected(s.selectedId, s.items);
+      itemMeshes.setSelected(s.selectedIds, s.items);
       overlays.update(s);
       updateRing();
       break;
@@ -163,6 +170,9 @@ store.subscribe((s, ev) => {
 
 clothMgr.onSettled(() => {
   statusPanel.refresh();
+  // decor placed after a cloth rides its surface — re-mount on settle
+  const s = store.getState();
+  itemMeshes.sync(s.items, (it) => clothMgr.mountLift(it, s.items));
   host.invalidateShadows();
 });
 
@@ -236,6 +246,16 @@ if (view === 'top') rig.toTopView();
 else if (view === 'stand') {
   rig.enterStand({ x: 272.5, z: 500 });
   store.setViewMode('stand');
+}
+if (params.get('qa') === 'group') {
+  // capture aid: group-select every table after the preset settles
+  setTimeout(() => {
+    const ids = store
+      .getState()
+      .items.filter((it) => it.type === 'table')
+      .map((it) => it.id);
+    fsm.selectMarquee(ids);
+  }, 4000);
 }
 if (params.get('qa') === 'probe') {
   // headless QA: live cloth-height overlay over every mounted obstacle

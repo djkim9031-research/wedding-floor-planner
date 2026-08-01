@@ -59,7 +59,8 @@ export type ViewMode = 'orbit' | 'stand';
 export interface AppState {
   items: PlacedItem[];
   settings: Settings;
-  selectedId: string | null;
+  selectedId: string | null; // exactly-one selection (single-item flows)
+  selectedIds: string[]; // full selection; length>1 = group
   ghost: GhostState | null;
   viewMode: ViewMode;
 }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ITEM_DIMS, i2m } from '../constants';
+import type { PlacedItem } from '../types';
 import * as store from '../state/store';
 import type { Vec2 } from '../types';
 import type { CameraRig } from '../scene/camera';
@@ -29,6 +30,8 @@ export class PointerController {
     onRing: boolean;
     claimed: boolean;
   } | null = null;
+  /** ⇧-drag rubber-band selection */
+  private marquee: { x0: number; y0: number; el: HTMLDivElement } | null = null;
 
   constructor(
     private container: HTMLElement,
@@ -113,6 +116,23 @@ export class PointerController {
       return;
     }
 
+    // ⇧-drag on the canvas: rubber-band select everything inside the box
+    if (
+      e.shiftKey &&
+      !this.fsm.lockedId &&
+      (state === 'idle' || state === 'selected') &&
+      e.button === 0
+    ) {
+      const el = document.createElement('div');
+      el.className = 'marquee';
+      this.container.appendChild(el);
+      this.marquee = { x0: e.clientX, y0: e.clientY, el };
+      this.down.claimed = true;
+      this.rig.setGestureLock(true);
+      e.stopPropagation();
+      return;
+    }
+
     // list-locked selection: every canvas drag moves the locked item — no
     // camera orbit, no accidental grabs of other items — until Esc
     if (this.fsm.lockedId && (state === 'idle' || state === 'selected')) {
@@ -161,6 +181,17 @@ export class PointerController {
     const state = this.fsm.state;
     const floor = this.clientToFloor(e.clientX, e.clientY);
 
+    if (this.down && this.marquee) {
+      const rect = this.container.getBoundingClientRect();
+      const x0 = Math.min(this.marquee.x0, e.clientX) - rect.left;
+      const y0 = Math.min(this.marquee.y0, e.clientY) - rect.top;
+      const w = Math.abs(e.clientX - this.marquee.x0);
+      const h = Math.abs(e.clientY - this.marquee.y0);
+      this.marquee.el.style.cssText = `left:${x0}px;top:${y0}px;width:${w}px;height:${h}px;`;
+      this.invalidate();
+      return;
+    }
+
     if (this.down) {
       const dist = Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y);
       if (this.down.onRing) {
@@ -174,7 +205,7 @@ export class PointerController {
       if (this.down.itemId && state === 'selected' && dist > DRAG_THRESHOLD_PX) {
         this.fsm.beginDrag();
       }
-      if (state === 'dragging') {
+      if (state === 'dragging' || this.fsm.state === 'groupDragging') {
         this.fsm.pointerMove(floor);
         return;
       }
@@ -203,10 +234,28 @@ export class PointerController {
     this.down = null;
     const state = this.fsm.state;
 
+    if (down && this.marquee) {
+      const m = this.marquee;
+      this.marquee = null;
+      m.el.remove();
+      this.rig.setGestureLock(false);
+      const minX = Math.min(m.x0, e.clientX);
+      const maxX = Math.max(m.x0, e.clientX);
+      const minY = Math.min(m.y0, e.clientY);
+      const maxY = Math.max(m.y0, e.clientY);
+      if (maxX - minX < 4 && maxY - minY < 4) return; // stray shift-click
+      const ids = store
+        .getState()
+        .items.filter((it) => this.centerInScreenRect(it, minX, minY, maxX, maxY))
+        .map((it) => it.id);
+      this.fsm.selectMarquee(ids);
+      return;
+    }
+
     if (!down) return;
     const dist = Math.hypot(e.clientX - down.x, e.clientY - down.y);
 
-    if (down.onRing || state === 'rotating' || state === 'dragging') {
+    if (down.onRing || state === 'rotating' || state === 'dragging' || state === 'groupDragging') {
       this.fsm.pointerUp();
       this.rig.setGestureLock(false);
       return;
@@ -240,21 +289,35 @@ export class PointerController {
     }
   };
 
+  /** Does the item's floor center project inside the screen-space rect? */
+  private centerInScreenRect(it: PlacedItem, minX: number, minY: number, maxX: number, maxY: number): boolean {
+    const rect = this.canvas.getBoundingClientRect();
+    const v = new THREE.Vector3(i2m(it.x), i2m(10), i2m(it.z)).project(this.rig.camera);
+    if (v.z > 1) return false; // behind the camera
+    const sx = ((v.x + 1) / 2) * rect.width + rect.left;
+    const sy = ((1 - v.y) / 2) * rect.height + rect.top;
+    return sx >= minX && sx <= maxX && sy >= minY && sy <= maxY;
+  }
+
   private onCancel = (e: PointerEvent) => {
     if (this.down && e.pointerId !== this.down.pointerId) return;
     const down = this.down;
     this.down = null;
     this.rig.setGestureLock(false);
+    if (this.marquee) {
+      this.marquee.el.remove();
+      this.marquee = null;
+    }
     if (!down) return;
     // a cancelled gesture must never commit: revert drags/rotations outright
-    if (this.fsm.state === 'dragging' || this.fsm.state === 'rotating') {
+    if (this.fsm.state === 'dragging' || this.fsm.state === 'rotating' || this.fsm.state === 'groupDragging') {
       this.fsm.cancel();
     }
   };
 
   private onWheel = (e: WheelEvent) => {
     const state = this.fsm.state;
-    if (state === 'placing' || state === 'dragging' || state === 'parked') {
+    if (state === 'placing' || state === 'dragging' || state === 'parked' || state === 'groupDragging') {
       e.preventDefault();
       e.stopPropagation();
       const step = e.shiftKey ? 1 : 15;

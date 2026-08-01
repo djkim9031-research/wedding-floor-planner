@@ -9,6 +9,13 @@ export interface SunInput {
   azimuthModelDeg: number;
   /** 0 = clear, 1 = fully overcast */
   clouds: number;
+  /** real moon state for the same instant (drives the night sky) */
+  moon?: {
+    altitudeDeg: number;
+    azimuthModelDeg: number;
+    fraction: number;
+    brightLimbDeg: number;
+  };
 }
 
 export interface Lighting {
@@ -107,6 +114,187 @@ export function setupLighting(
   arrow.visible = false;
   scene.add(arrow);
 
+  // Starfield: seeded canvas dome, faded in past nautical twilight
+  const starC = document.createElement('canvas');
+  starC.width = 2048;
+  starC.height = 1024;
+  {
+    const g = starC.getContext('2d')!;
+    let seed = 0x57a5;
+    const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
+    g.clearRect(0, 0, 2048, 1024);
+    // Bay Area sky: a decent scatter overhead, washed out toward the light
+    // dome at the horizon — the faintest stars only survive near the zenith
+    for (let i = 0; i < 1700; i++) {
+      const x = rnd() * 2048;
+      const y = rnd() * 760;
+      const highSky = 1 - y / 760; // 1 at zenith band, 0 near the horizon
+      const mag = rnd();
+      if (mag < 0.55 && highSky < 0.45) continue; // faint stars drown low down
+      const r = mag < 0.9 ? 0.7 + rnd() * 0.9 : 1.6 + rnd() * 1.5;
+      const tint = rnd();
+      g.fillStyle = tint < 0.12 ? '#cfe0ff' : tint < 0.2 ? '#ffe9c9' : '#ffffff';
+      g.globalAlpha = (0.3 + mag * 0.7) * (0.45 + 0.55 * highSky);
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.fill();
+    }
+    // faint light-pollution dome hugging the horizon
+    const dome = g.createLinearGradient(0, 620, 0, 1024);
+    dome.addColorStop(0, 'rgba(70,72,88,0)');
+    dome.addColorStop(1, 'rgba(96,92,104,0.35)');
+    g.fillStyle = dome;
+    g.fillRect(0, 620, 2048, 404);
+    g.globalAlpha = 1;
+  }
+  const starTex = new THREE.CanvasTexture(starC);
+  starTex.colorSpace = THREE.SRGBColorSpace;
+  const starMat = new THREE.MeshBasicMaterial({
+    map: starTex,
+    transparent: true,
+    opacity: 0,
+    side: THREE.BackSide,
+    fog: false,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const stars = new THREE.Mesh(new THREE.SphereGeometry(238, 32, 16), starMat);
+  stars.position.set(cx, 0, cz);
+  stars.renderOrder = -2;
+  stars.visible = false;
+  scene.add(stars);
+
+  // Moon: phase-correct disc painted per instant (bright limb toward the sun)
+  const moonC = document.createElement('canvas');
+  moonC.width = 256;
+  moonC.height = 256;
+  const moonTex = new THREE.CanvasTexture(moonC);
+  moonTex.colorSpace = THREE.SRGBColorSpace;
+  const moonMat = new THREE.SpriteMaterial({ map: moonTex, transparent: true, fog: false, depthWrite: false });
+  const moonSprite = new THREE.Sprite(moonMat);
+  moonSprite.scale.setScalar(4.6); // ≈0.55° at the dome distance
+  moonSprite.renderOrder = -2;
+  moonSprite.visible = false;
+  scene.add(moonSprite);
+  let moonKey = '';
+  const drawMoon = (fraction: number, limbDeg: number): void => {
+    const key = `${fraction.toFixed(3)}|${limbDeg.toFixed(1)}`;
+    if (key === moonKey) return;
+    moonKey = key;
+    const g = moonC.getContext('2d')!;
+    const R = 108;
+    g.clearRect(0, 0, 256, 256);
+    g.save();
+    g.translate(128, 128);
+    // canonical bright limb at +x, then swing it toward the real sun
+    g.rotate((limbDeg - 90) * DEG);
+    // dark side first (earthshine-dark)
+    g.fillStyle = '#232733';
+    g.globalAlpha = 0.95;
+    g.beginPath();
+    g.arc(0, 0, R, 0, Math.PI * 2);
+    g.fill();
+    g.globalAlpha = 1;
+    // lit region: right semicircle closed by the terminator half-ellipse
+    const rx = Math.abs(2 * fraction - 1) * R;
+    g.fillStyle = '#E9E6DC';
+    g.beginPath();
+    g.arc(0, 0, R, -Math.PI / 2, Math.PI / 2, false);
+    g.ellipse(0, 0, rx, R, 0, Math.PI / 2, Math.PI * 1.5, fraction < 0.5);
+    g.fill();
+    // mare blotches, clipped to the disc
+    g.save();
+    g.beginPath();
+    g.arc(0, 0, R, 0, Math.PI * 2);
+    g.clip();
+    let seed = 0x300d;
+    const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
+    g.fillStyle = '#b9b5a8';
+    for (let i = 0; i < 9; i++) {
+      g.globalAlpha = 0.25 + rnd() * 0.2;
+      g.beginPath();
+      g.ellipse((rnd() - 0.5) * 150, (rnd() - 0.5) * 150, 14 + rnd() * 26, 10 + rnd() * 20, rnd() * 3, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
+    g.restore();
+    moonTex.needsUpdate = true;
+  };
+
+  // Sunset glow: a soft orange arc hugging the horizon around the sun azimuth
+  const glowC = document.createElement('canvas');
+  glowC.width = 256;
+  glowC.height = 256;
+  {
+    const g = glowC.getContext('2d')!;
+    const img = g.createImageData(256, 256);
+    for (let y = 0; y < 256; y++) {
+      const vy = 1 - y / 255; // 1 at top
+      const vert = Math.max(0, 1 - vy * 1.45); // strongest at the bottom
+      for (let x = 0; x < 256; x++) {
+        const hx = 1 - Math.abs(x - 127.5) / 127.5;
+        const a = Math.pow(vert, 1.6) * Math.pow(hx, 1.5);
+        const o = (y * 256 + x) * 4;
+        img.data[o] = 255;
+        img.data[o + 1] = 255;
+        img.data[o + 2] = 255;
+        img.data[o + 3] = Math.round(a * 255);
+      }
+    }
+    g.putImageData(img, 0, 0);
+  }
+  const glowTex = new THREE.CanvasTexture(glowC);
+  const glowMat = new THREE.MeshBasicMaterial({
+    map: glowTex,
+    color: 0xff9a3c,
+    transparent: true,
+    opacity: 0,
+    side: THREE.BackSide,
+    fog: false,
+    depthWrite: false,
+  });
+  const glow = new THREE.Mesh(new THREE.CylinderGeometry(230, 230, 120, 48, 1, true, -0.95, 1.9), glowMat);
+  glow.position.set(cx, 34, cz);
+  glow.renderOrder = -2;
+  glow.visible = false;
+  scene.add(glow);
+
+  const setNightSky = (input: SunInput | null, nightF: number): void => {
+    const c = input ? THREE.MathUtils.clamp(input.clouds, 0, 1) : 0;
+    starMat.opacity = nightF * (1 - 0.97 * c); // overcast blots the stars out
+    stars.visible = starMat.opacity > 0.02;
+    const m = input?.moon;
+    if (m && m.altitudeDeg > 0) {
+      drawMoon(m.fraction, m.brightLimbDeg);
+      const ma = m.azimuthModelDeg * DEG;
+      const mh = m.altitudeDeg * DEG;
+      moonSprite.position
+        .set(Math.sin(ma) * Math.cos(mh), Math.sin(mh), -Math.cos(ma) * Math.cos(mh))
+        .multiplyScalar(232)
+        .add(new THREE.Vector3(cx, 0, cz));
+      moonMat.opacity = (0.3 + 0.7 * nightF) * (1 - 0.94 * c); // clouds hide the moon
+      moonSprite.visible = moonMat.opacity > 0.04;
+    } else {
+      moonSprite.visible = false;
+    }
+  };
+
+  const setGlow = (altDeg: number, azModelDeg: number, clouds: number): void => {
+    // peaks as the sun touches the horizon, gone by −9° and by +14°
+    const up = THREE.MathUtils.clamp(1 - Math.abs(altDeg - 1.5) / (altDeg > 1.5 ? 12 : 10), 0, 1);
+    const op = Math.pow(up, 1.35) * (1 - 0.9 * clouds);
+    glowMat.opacity = op * 0.85;
+    glow.visible = op > 0.02;
+    if (!glow.visible) return;
+    glow.rotation.y = Math.PI - azModelDeg * DEG;
+    // deep orange at the horizon, rosier as the sun sinks below
+    glowMat.color.copy(
+      altDeg >= 0
+        ? colA.setHex(0xff9a3c).lerp(colB.setHex(0xffc37a), THREE.MathUtils.clamp(altDeg / 12, 0, 1))
+        : colA.setHex(0xff8a48).lerp(colB.setHex(0xc2547e), THREE.MathUtils.clamp(-altDeg / 9, 0, 1)),
+    );
+  };
+
   const invalidateShadows = () => {
     renderer.shadowMap.needsUpdate = true;
   };
@@ -140,6 +328,9 @@ export function setupLighting(
       setAtmo(colA.setHex(0xffffff).clone(), colB.setHex(0xffffff).clone(), fogCol.setHex(0xe8eef2));
       disc.visible = false;
       arrow.visible = false;
+      stars.visible = false;
+      moonSprite.visible = false;
+      glow.visible = false;
       invalidateShadows();
       return;
     }
@@ -180,6 +371,8 @@ export function setupLighting(
       setAtmo(sky, val, fogCol.copy(lerpHex(k0.fog, k1.fog, t)));
       disc.visible = false;
       arrow.visible = false;
+      setGlow(alt, azm, c);
+      setNightSky(input, THREE.MathUtils.clamp((-alt - 6) / 8, 0, 1));
       invalidateShadows();
       return;
     }
@@ -213,7 +406,7 @@ export function setupLighting(
 
     const skyTint = lerpHex(0xffffff, 0xffb066, golden)
       .clone()
-      .multiplyScalar(0.85 - 0.1 * golden)
+      .multiplyScalar(0.98 - 0.22 * golden) // clear vivid blue at midday
       .lerp(colB.setHex(0x6f767e), c * 0.75);
     setAtmo(
       skyTint,
@@ -230,6 +423,8 @@ export function setupLighting(
     const origin = center.clone().addScaledVector(dir, 14);
     arrow.position.copy(origin);
     arrow.setDirection(dir.clone().negate());
+    setGlow(alt, azm, c);
+    setNightSky(input, 0); // daytime: stars off; a risen moon shows faintly
     invalidateShadows();
   };
 
