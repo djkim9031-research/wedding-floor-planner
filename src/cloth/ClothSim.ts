@@ -110,6 +110,15 @@ export class ClothSim {
     this.render.update();
   }
 
+  /** Seam shading hooks (see ClothRenderMesh.shadeSeam). */
+  shadeRender(fn: (x: number, y: number, z: number, edgeIn: number) => number): void {
+    this.render.shadeSeam(fn);
+  }
+
+  resetShade(): void {
+    this.render.resetShade();
+  }
+
   /** Fast-forward to the settled state synchronously (chunked; bounded by the
    * hard time cap, so at most a few hundred frames). */
   skip(): void {
@@ -198,6 +207,7 @@ export class ClothSim {
     this.sleepCount = 0;
     this.state = 'settling';
     this.report = null;
+    this.render.resetShade(); // shading is recomputed once settled
   }
 
   private freeze(): void {

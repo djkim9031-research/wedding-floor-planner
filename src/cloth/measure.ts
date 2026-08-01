@@ -199,7 +199,10 @@ export function predictDrape(type: ClothType, pose: Pose, tables: PlacedItem[]):
   let bz0 = Infinity;
   let bz1 = -Infinity;
   for (const t of primary) {
-    if (isTable(t.type) && TABLE_TOPS[t.type] > blockTop) blockTop = TABLE_TOPS[t.type];
+    if (isTable(t.type)) {
+      const top = t.dims?.h ?? TABLE_TOPS[t.type];
+      if (top > blockTop) blockTop = top;
+    }
     const o = obbFromPose(t, ITEM_DIMS[t.type]);
     for (const [sxn, szn] of [
       [1, 1],

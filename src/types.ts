@@ -2,6 +2,7 @@ export type ItemType =
   | 'table'
   | 'tableSq'
   | 'tableQ'
+  | 'tableC'
   | 'chair'
   | 'clothA'
   | 'clothB'
@@ -30,8 +31,8 @@ export interface Pose {
 export interface PlacedItem extends Pose {
   /** named group from the Table Setup Creator (e.g. "Table Set 1") */
   set?: string;
-  /** per-item size override — stamped on custom linens at placement */
-  dims?: { w: number; d: number };
+  /** per-item size override — stamped on custom linens/tables at placement */
+  dims?: { w: number; d: number; h?: number };
   id: string;
   type: ItemType;
 }

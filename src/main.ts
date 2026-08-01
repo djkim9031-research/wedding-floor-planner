@@ -95,7 +95,55 @@ const statusPanel = buildStatusPanel(container, fsm, {
   getReport: (id) => clothMgr.getReport(id),
   predict: predictDrape,
 });
-const itemsPanel = buildItemsPanel(container, fsm);
+const itemsPanel = buildItemsPanel(container, fsm, (label) => {
+  // reverse-map the set into the sandbox: centroid-relative, cloth-yaw
+  // normalized (group rotations put linens off-axis; spin the design back)
+  const members = store.getState().items.filter((it) => it.set === label);
+  if (!members.length) return;
+  const isTbl = (t: string) => t.startsWith('table');
+  const isCl = (t: string) => t.startsWith('cloth');
+  const tables = members.filter((it) => isTbl(it.type));
+  const cloths = members.filter((it) => isCl(it.type));
+  const extras = members.filter((it) => !isTbl(it.type) && !isCl(it.type));
+  const ref = tables.length ? tables : members;
+  const cx = ref.reduce((a, it) => a + it.x, 0) / ref.length;
+  const cz = ref.reduce((a, it) => a + it.z, 0) / ref.length;
+  const back = -(cloths[0]?.yawDeg ?? 0) * (Math.PI / 180);
+  const cosB = Math.cos(back);
+  const sinB = Math.sin(back);
+  const rel = (it: (typeof members)[number]) => {
+    const dx = it.x - cx;
+    const dz = it.z - cz;
+    return {
+      ...it,
+      x: dx * cosB + dz * sinB,
+      z: -dx * sinB + dz * cosB,
+      yawDeg: it.yawDeg + (cloths[0]?.yawDeg ? -(cloths[0].yawDeg) : 0),
+    };
+  };
+  openCreator(
+    (design) => {
+      store.updateSet(label, design);
+      toast(`${label} updated`);
+    },
+    {
+      placeLabel: `Update ${label}`,
+      initial: {
+        tables: tables.map(rel),
+        extras: extras.map(rel),
+        cloths: cloths.map((c, i) => {
+          const r = rel(c);
+          return {
+            id: `edit-cloth-${i}`,
+            type: c.type as 'clothA' | 'clothB' | 'clothC',
+            ...(c.dims ? { dims: { ...c.dims } } : {}),
+            offset: { dx: r.x, dz: r.z },
+          };
+        }),
+      },
+    },
+  );
+});
 fsm.onLockChange = (id) => {
   itemsPanel.refresh();
   if (id) toast('Locked 🔒 — drag anywhere or use the arrow keys; Esc unlocks');
@@ -249,7 +297,7 @@ else if (view === 'stand') {
   store.setViewMode('stand');
 }
 const creatorParam = params.get('creator');
-if (creatorParam === 'demo' || creatorParam === 'demo-tilt' || creatorParam === 'place-demo' || creatorParam === '1') {
+if (creatorParam === 'demo' || creatorParam === 'demo-tilt' || creatorParam === 'place-demo' || creatorParam === 'edit-demo' || creatorParam === '1') {
   // headless QA: open the creator; demo variants pre-seed the sideways
   // 3-table block + C&B linen with a slid offset
   setTimeout(() => {
@@ -283,6 +331,14 @@ if (creatorParam === 'demo' || creatorParam === 'demo-tilt' || creatorParam === 
           v.orbit.phi = 0.85;
           v.reframe();
         }
+      }
+      if (creatorParam === 'edit-demo') {
+        setTimeout(() => {
+          (document.querySelector('.creator-foot .ui-btn.primary') as HTMLButtonElement)?.click();
+          setTimeout(() => {
+            (document.querySelector('.set-edit') as HTMLButtonElement)?.click();
+          }, 4000);
+        }, 6000);
       }
       if (creatorParam === 'place-demo') {
         setTimeout(() => {

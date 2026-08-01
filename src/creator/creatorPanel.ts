@@ -1,4 +1,4 @@
-import { ITEM_DIMS, ITEM_LABELS, TABLE_TOPS, setCustomClothDims, type TableType } from '../constants';
+import { ITEM_DIMS, ITEM_LABELS, TABLE_TOPS, setCustomClothDims, setCustomTableDims, type TableType } from '../constants';
 import type { ClothType } from '../cloth/constants';
 import { THUMBNAILS } from '../ui/thumbnails';
 import { CreatorController, minClothDims, tableCentroid, type CreatorItemType } from './creatorController';
@@ -7,7 +7,7 @@ export interface CreatorPanel {
   refresh(): void;
 }
 
-const TABLE_CARDS: CreatorItemType[] = ['table', 'tableSq', 'tableQ'];
+const TABLE_CARDS: CreatorItemType[] = ['table', 'tableSq', 'tableQ', 'tableC'];
 const EXTRA_CARDS: CreatorItemType[] = ['chair', 'setting'];
 const CLOTH_CARDS: ClothType[] = ['clothA', 'clothB', 'clothC'];
 const OFFSET_RANGE = 72;
@@ -16,7 +16,7 @@ const OFFSET_RANGE = 72;
 export function buildCreatorPanel(
   modal: HTMLElement,
   controller: CreatorController,
-  actions: { place(): void; close(): void },
+  actions: { place(): void; close(): void; placeLabel?: string },
 ): CreatorPanel {
   const col = document.createElement('div');
   col.className = 'creator-col';
@@ -43,6 +43,12 @@ export function buildCreatorPanel(
         <input type="number" data-k="cw" min="20" max="260" step="1" title="width (in)"> ×
         <input type="number" data-k="cd" min="20" max="260" step="1" title="depth (in)"> in
       </div>
+      <label>Custom oak table size</label>
+      <div class="creator-row">
+        <input type="number" data-k="tw" min="18" max="120" step="0.5" title="width (in)"> ×
+        <input type="number" data-k="td" min="18" max="60" step="0.5" title="depth (in)"> ×
+        <input type="number" data-k="th" min="24" max="42" step="0.5" title="height (in)"> in
+      </div>
     </div>
     <div class="creator-sec">
       <label>Linen offset from table centroid</label>
@@ -60,7 +66,7 @@ export function buildCreatorPanel(
     <div class="creator-info" data-k="minCloth"></div>
     <div class="creator-info" data-k="drape"></div>
     <div class="creator-foot">
-      <button class="ui-btn primary" data-k="place">Place on floor</button>
+      <button class="ui-btn primary" data-k="place"></button>
     </div>`;
 
   const el = <T extends HTMLElement>(k: string): T => col.querySelector(`[data-k="${k}"]`) as T;
@@ -70,6 +76,9 @@ export function buildCreatorPanel(
   const listEl = el<HTMLDivElement>('list');
   const cw = el<HTMLInputElement>('cw');
   const cd = el<HTMLInputElement>('cd');
+  const tw = el<HTMLInputElement>('tw');
+  const td = el<HTMLInputElement>('td');
+  const th = el<HTMLInputElement>('th');
   const sx = el<HTMLInputElement>('sx');
   const szEl = el<HTMLInputElement>('sz');
   const nx = el<HTMLInputElement>('nx');
@@ -77,9 +86,13 @@ export function buildCreatorPanel(
   const minClothEl = el<HTMLDivElement>('minCloth');
   const drapeEl = el<HTMLDivElement>('drape');
   const placeBtn = el<HTMLButtonElement>('place');
+  placeBtn.textContent = actions.placeLabel ?? 'Place on floor';
 
   cw.value = String(ITEM_DIMS.clothC.w);
   cd.value = String(ITEM_DIMS.clothC.d);
+  tw.value = String(ITEM_DIMS.tableC.w);
+  td.value = String(ITEM_DIMS.tableC.d);
+  th.value = String(TABLE_TOPS.tableC);
 
   const card = (
     parent: HTMLElement,
@@ -102,7 +115,6 @@ export function buildCreatorPanel(
       controller.addCloth(t, t === 'clothC' ? { w: clamp(cw), d: clamp(cd) } : null);
     }),
   );
-  void tableBtns;
 
   const clamp = (input: HTMLInputElement): number =>
     Math.min(260, Math.max(20, Math.round(Number(input.value) || 120)));
@@ -123,6 +135,27 @@ export function buildCreatorPanel(
   };
   cw.addEventListener('change', applyCustom);
   cd.addEventListener('change', applyCustom);
+  const applyCustomTable = (): void => {
+    const clampV = (inp: HTMLInputElement, lo: number, hi: number, dflt: number): number =>
+      Math.min(hi, Math.max(lo, Number(inp.value) || dflt));
+    const w = clampV(tw, 18, 120, 48);
+    const d = clampV(td, 18, 60, 30);
+    const h = clampV(th, 24, 42, 30);
+    tw.value = String(w);
+    td.value = String(d);
+    th.value = String(h);
+    setCustomTableDims(w, d, h);
+    // re-stamp the selected custom table (others keep their stamp)
+    const sel = controller.state.tables.find((t) => t.id === controller.selectedId && t.type === 'tableC');
+    if (sel) {
+      sel.dims = { w, d, h };
+      controller.sync();
+    }
+    refresh();
+  };
+  tw.addEventListener('change', applyCustomTable);
+  td.addEventListener('change', applyCustomTable);
+  th.addEventListener('change', applyCustomTable);
 
   const curOffset = (): { dx: number; dz: number } => controller.activeCloth()?.offset ?? { dx: 0, dz: 0 };
   const setOffset = (dx: number, dz: number): void => {
@@ -152,6 +185,13 @@ export function buildCreatorPanel(
       if (CLOTH_CARDS[i] === 'clothC') {
         const small = b.querySelector('small');
         if (small) small.textContent = `${ITEM_DIMS.clothC.w}" × ${ITEM_DIMS.clothC.d}"`;
+      }
+    });
+    tableBtns.forEach((b, i) => {
+      if (TABLE_CARDS[i] === 'tableC') {
+        const small = b.querySelector('small');
+        if (small)
+          small.textContent = `${ITEM_DIMS.tableC.w}" × ${ITEM_DIMS.tableC.d}" · ${TABLE_TOPS.tableC}"h`;
       }
     });
 

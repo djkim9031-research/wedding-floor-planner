@@ -7,6 +7,7 @@ const TYPES = new Set([
   'table',
   'tableSq',
   'tableQ',
+  'tableC',
   'chair',
   'clothA',
   'clothB',
@@ -40,7 +41,8 @@ function isValidItem(it: unknown): it is PlacedItem {
     Number.isFinite(o.yawDeg) &&
     dimsOk &&
     (o.set === undefined || typeof o.set === 'string') &&
-    (o.type !== 'clothC' || o.dims !== undefined) // custom linens carry their size
+    (o.type !== 'clothC' || o.dims !== undefined) && // custom linens carry their size
+    (o.type !== 'tableC' || o.dims !== undefined) // custom tables too (incl. height)
   );
 }
 

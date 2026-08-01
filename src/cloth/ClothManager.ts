@@ -76,12 +76,12 @@ export class ClothManager {
       const idx = orderIdx.get(id) ?? Infinity;
       const old = this.prevObstacles.get(id);
       if (old) {
-        changedObbs.push(obbFromPose(old, ITEM_DIMS[old.type]));
+        changedObbs.push(obbFromPose(old, old.dims ?? ITEM_DIMS[old.type]));
         underChangeIdx.push(idx);
       }
       const cur = obstacles.find((t) => t.id === id);
       if (cur) {
-        changedObbs.push(obbFromPose(cur, ITEM_DIMS[cur.type]));
+        changedObbs.push(obbFromPose(cur, cur.dims ?? ITEM_DIMS[cur.type]));
         underChangeIdx.push(idx);
       }
     }
@@ -144,7 +144,7 @@ export class ClothManager {
   private nearObstacles(dims: { w: number; d: number }, pose: Pose, obstacles: PlacedItem[]): PlacedItem[] {
     const reach = Math.hypot(dims.w, dims.d) / 2 + INVALIDATE_MARGIN;
     return obstacles.filter((o) => {
-      const od = ITEM_DIMS[o.type];
+      const od = o.dims ?? ITEM_DIMS[o.type];
       const r = reach + Math.hypot(od.w, od.d) / 2;
       return (pose.x - o.x) ** 2 + (pose.z - o.z) ** 2 <= r * r;
     });
@@ -289,11 +289,57 @@ export class ClothManager {
   }
 
   private notifySettled(): void {
+    let anySettled = false;
     for (const [id, inst] of this.instances) {
       if (inst.sim.state === 'settled' && !inst.notified && inst.sim.report) {
         inst.notified = true;
+        anySettled = true;
         for (const cb of this.cbs) cb(id, inst.sim.report);
       }
     }
+    if (anySettled) this.shadeSeams();
+  }
+
+  /** Subtle seam tone where one linen's edge rests on another: darken the
+   * top cloth's border a touch (deepest right at the hem) so overlaps read
+   * without shouting. */
+  private shadeSeams(): void {
+    const settled = [...this.instances.entries()].filter(([, i]) => i.sim.state === 'settled');
+    if (settled.length < 2) {
+      for (const [, inst] of settled) inst.sim.resetShade();
+      return;
+    }
+    const CELL = 3; // inches
+    const tops = settled.map(([, inst]) => {
+      const map = new Map<number, number>();
+      const pos = inst.sim.grid.pos;
+      for (let p = 0; p < inst.sim.grid.count; p++) {
+        const key = Math.round(pos[p * 3] / CELL) * 4096 + Math.round(pos[p * 3 + 2] / CELL);
+        const y = pos[p * 3 + 1];
+        const cur = map.get(key);
+        if (cur === undefined || y > cur) map.set(key, y);
+      }
+      return map;
+    });
+    const EDGE = 4.5;
+    settled.forEach(([, inst], idx) => {
+      inst.sim.shadeRender((x, y, z, edgeIn) => {
+        if (edgeIn > EDGE) return 1;
+        const kx = Math.round(x / CELL);
+        const kz = Math.round(z / CELL);
+        for (let o = 0; o < tops.length; o++) {
+          if (o === idx) continue;
+          for (const key of [kx * 4096 + kz, (kx + 1) * 4096 + kz, kx * 4096 + kz + 1]) {
+            const h = tops[o].get(key);
+            // this hem is lying ON the other fabric (not floor, not table gap)
+            if (h !== undefined && y - h > -1.2 && y - h < 2.6 && h > 2) {
+              const t = 1 - edgeIn / EDGE;
+              return 1 - 0.08 * Math.pow(t, 0.75);
+            }
+          }
+        }
+        return 1;
+      });
+    });
   }
 }

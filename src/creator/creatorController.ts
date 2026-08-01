@@ -47,7 +47,7 @@ export function tableBBox(
   let minZ = Infinity;
   let maxZ = -Infinity;
   for (const t of tables) {
-    const { w, d } = ITEM_DIMS[t.type];
+    const { w, d } = t.dims ?? ITEM_DIMS[t.type];
     const yaw = (t.yawDeg * Math.PI) / 180;
     const c = Math.abs(Math.cos(yaw));
     const s = Math.abs(Math.sin(yaw));
@@ -65,7 +65,7 @@ export function tableBBox(
 export function minClothDims(tables: PlacedItem[]): { w: number; d: number } | null {
   const b = tableBBox(tables);
   if (!b) return null;
-  const h = Math.max(...tables.map((t) => TABLE_TOPS[t.type as TableType]));
+  const h = Math.max(...tables.map((t) => t.dims?.h ?? TABLE_TOPS[t.type as TableType]));
   return { w: Math.ceil(b.maxX - b.minX + 2 * h), d: Math.ceil(b.maxZ - b.minZ + 2 * h) };
 }
 
@@ -131,6 +131,16 @@ export class CreatorController {
     }
     out.push(...this.state.extras);
     return out;
+  }
+
+  /** Seed the sandbox from an existing set (centroid-relative poses). */
+  loadInitial(init: { tables: PlacedItem[]; cloths: CreatorCloth[]; extras: PlacedItem[] }): void {
+    this.state.tables = init.tables.map((t) => ({ ...t }));
+    this.state.extras = init.extras.map((t) => ({ ...t }));
+    this.state.cloths = init.cloths.map((c) => ({ ...c, offset: { ...c.offset } }));
+    this.seq = 1000; // fresh ids never collide with loaded ones
+    const last = this.state.cloths[this.state.cloths.length - 1];
+    this.activeClothId = last ? last.id : null;
   }
 
   activeCloth(): CreatorCloth | null {
@@ -258,7 +268,8 @@ export class CreatorController {
     if (!this.ghostType || !p) return;
     const pose = this.snapPose(this.ghostType, { x: p.x, z: p.z, yawDeg: this.ghostYaw });
     if (!this.poseOk(this.ghostType, pose)) return;
-    const item = { id: `ct${++this.seq}`, type: this.ghostType, ...pose };
+    const item: PlacedItem = { id: `ct${++this.seq}`, type: this.ghostType, ...pose };
+    if (this.ghostType === 'tableC') item.dims = { ...ITEM_DIMS.tableC, h: TABLE_TOPS.tableC };
     if (isTable(this.ghostType)) this.state.tables.push(item);
     else this.state.extras.push(item);
     this.refreshGhost(); // stay armed, Sims-style
@@ -300,7 +311,7 @@ export class CreatorController {
     const all = [...this.state.tables, ...this.state.extras];
     for (let i = all.length - 1; i >= 0; i--) {
       const t = all[i];
-      const { w, d } = ITEM_DIMS[t.type];
+      const { w, d } = t.dims ?? ITEM_DIMS[t.type];
       const yaw = (-t.yawDeg * Math.PI) / 180;
       const dx = p.x - t.x;
       const dz = p.z - t.z;

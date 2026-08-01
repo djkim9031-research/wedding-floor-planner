@@ -7,7 +7,11 @@ export interface ItemsPanel {
 }
 
 /** Right-hand inventory: every placed item, selectable and deletable. */
-export function buildItemsPanel(root: HTMLElement, fsm: PlacementFSM): ItemsPanel {
+export function buildItemsPanel(
+  root: HTMLElement,
+  fsm: PlacementFSM,
+  onEditSet?: (label: string) => void,
+): ItemsPanel {
   const panel = document.createElement('div');
   panel.className = 'items-panel';
   root.appendChild(panel);
@@ -59,6 +63,17 @@ export function buildItemsPanel(root: HTMLElement, fsm: PlacementFSM): ItemsPane
           fsm.unlock();
           store.selectGroup(members.map((m) => m.id));
         });
+        if (onEditSet) {
+          const hEdit = document.createElement('button');
+          hEdit.className = 'ui-btn row-del set-edit';
+          hEdit.textContent = '✎';
+          hEdit.title = `Edit ${setLabel} in the Table Setup Creator`;
+          hEdit.addEventListener('click', () => {
+            if (fsm.state !== 'idle' && fsm.state !== 'selected') fsm.cancel();
+            onEditSet(setLabel);
+          });
+          header.append(hEdit);
+        }
         const hDel = document.createElement('button');
         hDel.className = 'ui-btn danger row-del';
         hDel.textContent = '✕';

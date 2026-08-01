@@ -69,7 +69,7 @@ function mountTop(items: PlacedItem[], x: number, z: number): number {
   let top = 0;
   for (const it of items) {
     if (!isTable(it.type)) continue;
-    const dims = ITEM_DIMS[it.type];
+    const dims = it.dims ?? ITEM_DIMS[it.type];
     const yaw = it.yawDeg * DEG;
     const c = Math.cos(yaw);
     const s = Math.sin(yaw);
@@ -78,7 +78,7 @@ function mountTop(items: PlacedItem[], x: number, z: number): number {
     const lx = dx * c - dz * s;
     const lz = dx * s + dz * c;
     if (Math.abs(lx) <= dims.w / 2 && Math.abs(lz) <= dims.d / 2) {
-      top = Math.max(top, TABLE_TOPS[it.type]);
+      top = Math.max(top, it.dims?.h ?? TABLE_TOPS[it.type]);
     }
   }
   return top;
@@ -86,9 +86,9 @@ function mountTop(items: PlacedItem[], x: number, z: number): number {
 
 /** Slabs for one obstacle, in its local frame (matching the render meshes). */
 function slabsFor(it: PlacedItem, items: PlacedItem[]): SlabDef[] {
-  const { w, d } = ITEM_DIMS[it.type];
+  const { w, d } = it.dims ?? ITEM_DIMS[it.type];
   if (isTable(it.type)) {
-    const top = TABLE_TOPS[it.type];
+    const top = it.dims?.h ?? TABLE_TOPS[it.type];
     return [
       { ox: 0, oz: 0, hx: w / 2, hz: d / 2, top, sideBottom: top - SLAB_T, ejectBelow: top - TUCK_DEPTH },
     ];
@@ -167,8 +167,8 @@ export function buildColliders(obstacles: PlacedItem[]): Colliders {
       if (sd.top - (sd.band ?? SLAB_T) < bandMin) bandMin = sd.top - (sd.band ?? SLAB_T);
     }
     if (isTable(t.type)) {
-      const dims = ITEM_DIMS[t.type];
-      const top = TABLE_TOPS[t.type];
+      const dims = t.dims ?? ITEM_DIMS[t.type];
+      const top = t.dims?.h ?? TABLE_TOPS[t.type];
       const lx = dims.w / 2 - LEG_INSET;
       const lz = dims.d / 2 - LEG_INSET;
       for (let sxn = -1; sxn <= 1; sxn += 2) {

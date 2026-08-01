@@ -19,7 +19,21 @@ let openInstance: { close: () => void } | null = null;
  * each face floor-to-tabletop; the cloth stays locked to the table-group
  * centroid plus a slider/numeric offset. `onPlace` receives the design
  * (centroid-relative poses) when the user hits Place. */
-export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void): void {
+export interface CreatorOpenOptions {
+  /** seed the sandbox (centroid-relative poses) — used when editing a set */
+  initial?: {
+    tables: PlacedItem[];
+    cloths: import('./creatorController').CreatorCloth[];
+    extras: PlacedItem[];
+  };
+  /** Place-button caption override (e.g. "Update Table Set 2") */
+  placeLabel?: string;
+}
+
+export function openCreator(
+  onPlace: (design: Omit<PlacedItem, 'id'>[]) => void,
+  options: CreatorOpenOptions = {},
+): void {
   if (openInstance) return;
 
   const overlay = document.createElement('div');
@@ -147,7 +161,7 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
     const c = tableCentroid(st.tables);
     const cx = c.x + active.offset.dx;
     const cz = c.z + active.offset.dz;
-    const h = Math.max(...st.tables.map((t) => TABLE_TOPS[t.type as TableType]));
+    const h = Math.max(...st.tables.map((t) => t.dims?.h ?? TABLE_TOPS[t.type as TableType]));
     const clampG = (drop: number): number => Math.min(h, Math.max(0, h - drop));
     return {
       h,
@@ -182,7 +196,7 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
     if (!b || !active) return;
     const dims = active.dims ?? ITEM_DIMS[active.type];
     const c = tableCentroid(st.tables);
-    const h = Math.max(...st.tables.map((t) => TABLE_TOPS[t.type as TableType]));
+    const h = Math.max(...st.tables.map((t) => t.dims?.h ?? TABLE_TOPS[t.type as TableType]));
     const drop = h - Math.min(h, Math.max(0, gap));
     let { dx, dz } = active.offset;
     if (face === 'E') dx = b.maxX + drop - dims.w / 2 - c.x;
@@ -320,6 +334,7 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
     openInstance = null;
   };
 
+  if (options.initial) controller.loadInitial(options.initial);
   const panel = buildCreatorPanel(modal, controller, {
     place() {
       if (!controller.state.tables.length) return;
@@ -328,6 +343,7 @@ export function openCreator(onPlace: (design: Omit<PlacedItem, 'id'>[]) => void)
       onPlace(design);
     },
     close,
+    placeLabel: options.placeLabel,
   });
 
   const ro = new ResizeObserver(layout);

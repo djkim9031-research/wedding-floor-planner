@@ -8,6 +8,7 @@ const CARD_TYPES: ItemType[] = [
   'table',
   'tableSq',
   'tableQ',
+  'tableC',
   'chair',
   'clothA',
   'clothB',

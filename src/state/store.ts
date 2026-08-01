@@ -1,4 +1,4 @@
-import { ITEM_DIMS, PRESETS } from '../constants';
+import { ITEM_DIMS, PRESETS, TABLE_TOPS } from '../constants';
 import { isPoseValid } from '../core/validity';
 import type { AppState, GhostState, ItemType, PlacedItem, Pose, Settings, ViewMode } from '../types';
 import * as history from './history';
@@ -85,6 +85,9 @@ export function setViewMode(mode: ViewMode): void {
 export function placeItem(type: ItemType, pose: Pose): PlacedItem {
   history.push(state.items);
   const item: PlacedItem = { id: uid(), type, ...pose };
+  // custom pieces remember the size they were placed at
+  if (type === 'clothC') item.dims = { ...ITEM_DIMS.clothC };
+  if (type === 'tableC') item.dims = { ...ITEM_DIMS.tableC, h: TABLE_TOPS.tableC };
   state.items = [...state.items, item];
   emit({ kind: 'items', changedIds: [item.id] });
   return item;
@@ -178,34 +181,34 @@ export function deleteItems(ids: string[]): void {
  * arrive centered on their own centroid-origin; we translate the whole set to
  * the first collision-free spot near the room center and select it as a
  * group, ready to drag. Returns the set label. */
-export function placeSet(design: Omit<PlacedItem, 'id'>[]): string {
-  const n =
-    1 +
-    state.items.reduce((m, it) => {
-      const match = it.set?.match(/^Table Set (\d+)$/);
-      return match ? Math.max(m, parseInt(match[1], 10)) : m;
-    }, 0);
-  const label = `Table Set ${n}`;
-
-  // spiral out from the room center until every member lands valid
+/** Spiral out from (cx0, cz0) to the first spot where every design member
+ * lands valid against `context`. */
+function findSetSpot(
+  design: Omit<PlacedItem, 'id'>[],
+  context: PlacedItem[],
+  cx0: number,
+  cz0: number,
+): { ox: number; oz: number } {
   const tryAt = (cx: number, cz: number): boolean =>
-    design.every((d) =>
-      isPoseValid(d.type, { x: d.x + cx, z: d.z + cz, yawDeg: d.yawDeg }, state.items),
-    );
-  let ox = 272.5;
-  let oz = 300;
-  outer: for (const r of [0, 30, 60, 90, 120, 150, 180, 210]) {
+    design.every((d) => isPoseValid(d.type, { x: d.x + cx, z: d.z + cz, yawDeg: d.yawDeg }, context));
+  for (const r of [0, 30, 60, 90, 120, 150, 180, 210]) {
     for (const a of [0, 45, 90, 135, 180, 225, 270, 315]) {
-      const cx = 272.5 + r * Math.cos((a * Math.PI) / 180);
-      const cz = 300 + r * Math.sin((a * Math.PI) / 180);
-      if (tryAt(cx, cz)) {
-        ox = cx;
-        oz = cz;
-        break outer;
-      }
+      const cx = cx0 + r * Math.cos((a * Math.PI) / 180);
+      const cz = cz0 + r * Math.sin((a * Math.PI) / 180);
+      if (tryAt(cx, cz)) return { ox: cx, oz: cz };
     }
   }
+  return { ox: cx0, oz: cz0 };
+}
 
+function insertSet(
+  design: Omit<PlacedItem, 'id'>[],
+  label: string,
+  rest: PlacedItem[],
+  cx0: number,
+  cz0: number,
+): void {
+  const { ox, oz } = findSetSpot(design, rest, cx0, cz0);
   history.push(state.items);
   const placed = design.map((d) => ({
     ...d,
@@ -214,12 +217,41 @@ export function placeSet(design: Omit<PlacedItem, 'id'>[]): string {
     z: d.z + oz,
     set: label,
   }));
-  state.items = [...state.items, ...placed];
+  state.items = [...rest, ...placed];
   state.selectedIds = placed.map((it) => it.id);
   syncSingle();
   emit({ kind: 'items', changedIds: placed.map((it) => it.id) });
   emit({ kind: 'selection' });
+}
+
+export function placeSet(design: Omit<PlacedItem, 'id'>[]): string {
+  const n =
+    1 +
+    state.items.reduce((m, it) => {
+      const match = it.set?.match(/^Table Set (\d+)$/);
+      return match ? Math.max(m, parseInt(match[1], 10)) : m;
+    }, 0);
+  const label = `Table Set ${n}`;
+  insertSet(design, label, state.items, 272.5, 300);
   return label;
+}
+
+/** Replace an existing set's contents in place (same label, same spot). */
+export function updateSet(label: string, design: Omit<PlacedItem, 'id'>[]): void {
+  const members = state.items.filter((it) => it.set === label);
+  if (!members.length) {
+    placeSet(design);
+    return;
+  }
+  const anchor = members.filter((it) => it.type.startsWith('table'));
+  const ref = anchor.length ? anchor : members;
+  const ax = ref.reduce((a, it) => a + it.x, 0) / ref.length;
+  const az = ref.reduce((a, it) => a + it.z, 0) / ref.length;
+  const oldIds = members.map((it) => it.id);
+  const rest = state.items.filter((it) => it.set !== label);
+  insertSet(design, label, rest, ax, az);
+  // the removed members also changed — fold them into the fan-out
+  emit({ kind: 'items', changedIds: oldIds });
 }
 
 export function undo(): void {

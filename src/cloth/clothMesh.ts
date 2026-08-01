@@ -66,6 +66,7 @@ export function getClothMaterial(color: number): THREE.MeshPhysicalMaterial {
       sheenColor: 0xfff8ec,
       side: THREE.DoubleSide,
       shadowSide: THREE.FrontSide,
+      vertexColors: true, // seam shading writes per-vertex tone (default white)
     });
     materials.set(color, mat);
   }
@@ -140,6 +141,11 @@ export class ClothRenderMesh {
 
   /** invoked on the refined vertex buffer before normals (fine tier only) */
   clamp: ((pos: Float32Array, count: number) => void) | null = null;
+  private colorAttr!: THREE.BufferAttribute;
+  private renderNx = 0;
+  private renderNz = 0;
+  private cellSx = 0;
+  private cellSz = 0;
 
   constructor(
     simPos: Float32Array,
@@ -172,6 +178,13 @@ export class ClothRenderMesh {
     }
     this.posAttr.setUsage(THREE.DynamicDrawUsage);
     this.geometry.setAttribute('position', this.posAttr);
+    this.renderNx = subdivide ? this.rnx : nx;
+    this.renderNz = subdivide ? this.rnz : nz;
+    this.cellSx = subdivide ? sx / 2 : sx;
+    this.cellSz = subdivide ? sz / 2 : sz;
+    const colors = new Float32Array(this.renderNx * this.renderNz * 3).fill(1);
+    this.colorAttr = new THREE.BufferAttribute(colors, 3);
+    this.geometry.setAttribute('color', this.colorAttr);
 
     this.mesh = new THREE.Mesh(this.geometry, getClothMaterial(color));
     this.mesh.castShadow = true;
@@ -230,6 +243,36 @@ export class ClothRenderMesh {
         out[dst + k] = crMid(rows[r0 + k], rows[r1 + k], rows[r2 + k], rows[r3 + k]);
       }
     }
+  }
+
+  /** Per-vertex tone (1 = untouched). fn gets world pos + the vertex's
+   * rest-space distance to the cloth edge in inches. */
+  shadeSeam(fn: (x: number, y: number, z: number, edgeIn: number) => number): void {
+    const pos = this.subdivide ? this.outPos! : this.simPos;
+    const c = this.colorAttr.array as Float32Array;
+    let k = 0;
+    for (let iz = 0; iz < this.renderNz; iz++) {
+      for (let ix = 0; ix < this.renderNx; ix++) {
+        const edgeIn = Math.min(
+          ix * this.cellSx,
+          (this.renderNx - 1 - ix) * this.cellSx,
+          iz * this.cellSz,
+          (this.renderNz - 1 - iz) * this.cellSz,
+        );
+        const i3 = k * 3;
+        const tone = fn(pos[i3], pos[i3 + 1], pos[i3 + 2], edgeIn);
+        c[i3] = tone;
+        c[i3 + 1] = tone;
+        c[i3 + 2] = tone;
+        k++;
+      }
+    }
+    this.colorAttr.needsUpdate = true;
+  }
+
+  resetShade(): void {
+    (this.colorAttr.array as Float32Array).fill(1);
+    this.colorAttr.needsUpdate = true;
   }
 
   dispose(): void {

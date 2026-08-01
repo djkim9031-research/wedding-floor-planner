@@ -44,9 +44,9 @@ function tableMaterial(type: TableType | 'chair'): THREE.MeshStandardMaterial {
 const templates = new Map<ItemType, THREE.Group>();
 const tableOutlines = new Map<TableType, THREE.BufferGeometry>();
 
-function buildTableTemplate(type: TableType): THREE.Group {
-  const { w, d } = ITEM_DIMS[type];
-  const top = TABLE_TOPS[type];
+function buildTableTemplate(type: TableType, dimsOverride?: { w: number; d: number; h?: number }): THREE.Group {
+  const { w, d } = dimsOverride ?? ITEM_DIMS[type];
+  const top = dimsOverride?.h ?? TABLE_TOPS[type];
   const wood = tableMaterial(type);
   const g = new THREE.Group();
   const slab = new THREE.Mesh(new THREE.BoxGeometry(i2m(w), i2m(TABLE_TOP_T), i2m(d)), wood);
@@ -384,10 +384,10 @@ export function tableTopUnder(items: PlacedItem[], x: number, z: number): number
   let top = 0;
   for (const it of items) {
     if (!isTable(it.type)) continue;
-    const dims = ITEM_DIMS[it.type];
+    const dims = it.dims ?? ITEM_DIMS[it.type];
     const local = unrot(x - it.x, z - it.z, it.yawDeg * DEG);
     if (Math.abs(local.x) <= dims.w / 2 && Math.abs(local.z) <= dims.d / 2) {
-      top = Math.max(top, TABLE_TOPS[it.type]);
+      top = Math.max(top, it.dims?.h ?? TABLE_TOPS[it.type]);
     }
   }
   return top;
@@ -473,8 +473,15 @@ export class ItemMeshes {
     }
     for (const [id, it] of wanted) {
       let mesh = this.meshes.get(id);
+      const dimsKey = it.type === 'tableC' ? JSON.stringify(it.dims ?? null) : '';
+      if (mesh && it.type === 'tableC' && mesh.userData.dimsKey !== dimsKey) {
+        this.parent.remove(mesh);
+        this.meshes.delete(id);
+        mesh = undefined;
+      }
       if (!mesh) {
-        mesh = getTemplate(it.type);
+        mesh = it.type === 'tableC' ? buildTableTemplate('tableC', it.dims) : getTemplate(it.type);
+        mesh.userData.dimsKey = dimsKey;
         mesh.traverse((o) => {
           o.userData.itemId = id;
         });
@@ -482,11 +489,14 @@ export class ItemMeshes {
         this.parent.add(mesh);
         this.meshes.set(id, mesh);
         if (isTable(it.type)) {
+          const od = it.dims ?? ITEM_DIMS[it.type];
           const outline = new THREE.LineSegments(
-            getTableOutline(it.type),
+            it.type === 'tableC'
+              ? new THREE.EdgesGeometry(new THREE.BoxGeometry(i2m(od.w), i2m(TABLE_TOP_T), i2m(od.d)))
+              : getTableOutline(it.type),
             new THREE.LineBasicMaterial({ color: COLORS.brass, transparent: true, opacity: 0.95 }),
           );
-          outline.position.y = i2m(TABLE_TOPS[it.type] - TABLE_TOP_T / 2);
+          outline.position.y = i2m((it.dims?.h ?? TABLE_TOPS[it.type]) - TABLE_TOP_T / 2);
           outline.visible = false;
           mesh.add(outline);
           this.outlines.set(id, outline);

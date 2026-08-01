@@ -144,6 +144,7 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   table: { w: 47.5, d: 31.5 },
   tableSq: { w: 35.5, d: 35.5 },
   tableQ: { w: 72, d: 36 },
+  tableC: { w: 48, d: 30 }, // custom oak — mutable via setCustomTableDims
   chair: { w: 20, d: 17 },
   clothA: { w: 108, d: 156 },
   clothB: { w: 104, d: 144 },
@@ -163,6 +164,7 @@ export const ITEM_LABELS: Record<ItemType, string> = {
   table: 'Oak Table',
   tableSq: 'Square Oak Table',
   tableQ: 'QCC Table',
+  tableC: 'Custom Oak Table',
   chair: 'Oak Bistro Chair',
   clothA: 'Rental Linen',
   clothB: 'C&B Linen',
@@ -223,7 +225,7 @@ export const FIGURE_HEIGHTS: Record<'figureW' | 'figureM', number> = {
   figureM: 70, // 5'10"
 };
 
-export const TABLE_TYPES = ['table', 'tableSq', 'tableQ'] as const;
+export const TABLE_TYPES = ['table', 'tableSq', 'tableQ', 'tableC'] as const;
 export type TableType = (typeof TABLE_TYPES)[number];
 export const isTable = (t: ItemType): t is TableType =>
   t === 'table' || t === 'tableSq' || t === 'tableQ';
@@ -233,9 +235,46 @@ export const TABLE_TOPS: Record<TableType, number> = {
   table: 29.5,
   tableSq: 29.5,
   tableQ: 30.5,
+  tableC: 30, // mutable via setCustomTableDims
 };
 export const TABLE_TOP_MAX = 30.5;
 export const TABLE_TOP_T = 1.5; // rendered top slab thickness
+
+/** The custom oak table's current default size (user-set, persisted). */
+export function setCustomTableDims(w: number, d: number, h: number): void {
+  ITEM_DIMS.tableC = { w, d };
+  TABLE_TOPS.tableC = h;
+  try {
+    localStorage.setItem('wp:tableC', JSON.stringify({ w, d, h }));
+  } catch {
+    /* ignore */
+  }
+}
+try {
+  const savedT = localStorage.getItem('wp:tableC');
+  if (savedT) {
+    const { w, d, h } = JSON.parse(savedT) as { w: number; d: number; h: number };
+    if (Number.isFinite(w) && Number.isFinite(d) && Number.isFinite(h)) {
+      ITEM_DIMS.tableC = { w, d };
+      TABLE_TOPS.tableC = h;
+    }
+  }
+} catch {
+  /* ignore */
+}
+
+/** Effective footprint/height for an item (custom pieces carry a stamp). */
+export function itemDims(it: { type: ItemType; dims?: { w: number; d: number; h?: number } }): {
+  w: number;
+  d: number;
+} {
+  return it.dims ?? ITEM_DIMS[it.type];
+}
+export function itemTop(it: { type: ItemType; dims?: { w: number; d: number; h?: number } }): number {
+  if (!isTable(it.type)) return 0;
+  return it.dims?.h ?? TABLE_TOPS[it.type];
+}
+
 
 // Oak Bistro Chair: 20"L × 17"D × 35"H. Two fit between the oak table's legs
 // (47.5 − 2×2.5 = 42.5 ⇒ ≤21.25" wide); seat clears the 29.5" top by ~11.5".

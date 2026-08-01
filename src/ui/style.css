@@ -778,3 +778,7 @@ button.ui-btn.danger:hover {
   z-index: 5;
   font-size: 12px;
 }
+
+.item-row.set-head .set-edit {
+  color: var(--brass);
+}
