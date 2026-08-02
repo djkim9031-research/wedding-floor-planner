@@ -21,7 +21,7 @@ export function buildToolbar(
 
   const title = document.createElement('div');
   title.className = 'app-title';
-  title.innerHTML = 'Our Wedding Floor<small>Open Space · 45&prime;-5&Prime; × 49&prime;-11&Prime;</small>';
+  title.innerHTML = 'Our Wedding Floor<small>Open Space · 45&prime; 5&Prime; × 49&prime; 11&Prime;</small>';
   bar.appendChild(title);
 
   const group = (parent: HTMLElement = bar): HTMLElement => {

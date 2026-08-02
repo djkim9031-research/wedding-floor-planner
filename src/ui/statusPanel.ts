@@ -149,7 +149,7 @@ export function buildStatusPanel(
     }
 
     panel.innerHTML = `<h3>Open Space</h3>
-      <div class="sub">45'-5" × 49'-11" · 2,189 ft²</div>
+      <div class="sub">45' 5" × 49' 11" · 2,189 ft²</div>
       <div class="hint">Pick an item below and click to place it.<br>
       Drag tables together to snap them into one block, then drop a linen on top to see the drape.<br>
       <b>⇧-drag</b> select a group · <b>T</b> plan view · <b>V</b> stand in the room</div>`;

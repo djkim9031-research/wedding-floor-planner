@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { ITEM_DIMS, ROOM_POLYGON, TABLE_TOP_MAX, WALL_NAMES, i2m } from '../constants';
 import { clusterBounds, tableClusters } from '../core/clusters';
-import { fmtInches, formatFeetInches } from '../core/format';
+import { formatFeetInches, formatFeetInchesFull } from '../core/format';
 import { obbFromPose, raycastPolygon, rot } from '../core/geometry';
 import type { AppState, Vec2 } from '../types';
 
@@ -51,8 +51,8 @@ export class Overlays {
       const chip = makeChip('chip dim-chip');
       (chip.element as HTMLElement).textContent =
         cluster.length > 1
-          ? `${cluster.length} tables — ${formatFeetInches(b.w)} × ${formatFeetInches(b.d)}`
-          : `${fmtInches(b.w)}" × ${fmtInches(b.d)}"`;
+          ? `${cluster.length} tables — ${formatFeetInchesFull(b.w)} × ${formatFeetInchesFull(b.d)}`
+          : `${formatFeetInchesFull(b.w)} × ${formatFeetInchesFull(b.d)}`;
       chip.position.set(i2m(b.cx), i2m(TABLE_TOP_MAX + 8), i2m(b.cz));
       this.group.add(chip);
       this.dimChips.push(chip);
