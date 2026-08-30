@@ -721,6 +721,115 @@ function buildPlantMossTree(): THREE.Group {
   return g;
 }
 
+/** Coast rosemary (Westringia fruticosa), ~4': dozens of thin woody stems
+ * fanning up and outward from the base, each clothed in whorls of tiny
+ * silvery grey-green needle leaves — airy, sprawling, wider at the top.
+ * Everything is merged into two geometries so cloning stays cheap. */
+function buildPlantRosemary(): THREE.Group {
+  const g = new THREE.Group();
+  const stemPos: number[] = [];
+  const leafPos: number[] = [];
+  const leafCol: number[] = [];
+  const quad = (
+    out: number[],
+    c: THREE.Vector3,
+    u: THREE.Vector3,
+    v: THREE.Vector3,
+  ) => {
+    const a = c.clone().sub(u).sub(v);
+    const b = c.clone().add(u).sub(v);
+    const d = c.clone().add(u).add(v);
+    const e = c.clone().sub(u).add(v);
+    out.push(a.x, a.y, a.z, b.x, b.y, b.z, d.x, d.y, d.z, a.x, a.y, a.z, d.x, d.y, d.z, e.x, e.y, e.z);
+  };
+  const silver = new THREE.Color(0x98ab93);
+  const pale = new THREE.Color(0xc3d0bb);
+  const deep = new THREE.Color(0x7f927a);
+  const tmpC = new THREE.Color();
+
+  const stems = 64;
+  const up = new THREE.Vector3(0, 1, 0);
+  for (let k = 0; k < stems; k++) {
+    const az = k * 2.39996;
+    const elev = 0.55 + 0.9 * Math.abs(Math.sin(k * 1.31)); // 31°–83° from horizontal
+    const len = 28 + 20 * Math.abs(Math.sin(k * 0.77)); // 28–48"
+    const droop = 0.18 + 0.25 * (1 - elev / 1.45); // flatter stems sag more
+    const dir = new THREE.Vector3(Math.cos(az) * Math.cos(elev), Math.sin(elev), Math.sin(az) * Math.cos(elev));
+    const side = new THREE.Vector3().crossVectors(dir, up).normalize();
+    const pt = (t: number) => {
+      const p = dir.clone().multiplyScalar(i2m(len) * t);
+      p.y -= i2m(len) * droop * t * t;
+      p.addScaledVector(side, i2m(1.6) * Math.sin(t * 7 + k)); // gentle wander
+      p.y += i2m(0.6);
+      return p;
+    };
+    // stem: chain of thin crossed quads
+    const segs = 9;
+    for (let i = 0; i < segs; i++) {
+      const p0 = pt(i / segs);
+      const p1 = pt((i + 1) / segs);
+      const mid = p0.clone().add(p1).multiplyScalar(0.5);
+      const axis = p1.clone().sub(p0);
+      const half = axis.clone().multiplyScalar(0.5);
+      const w = i2m(0.22 * (1 - 0.6 * (i / segs)));
+      const n1 = new THREE.Vector3().crossVectors(axis, up).normalize().multiplyScalar(w);
+      const n2 = new THREE.Vector3().crossVectors(axis, n1).normalize().multiplyScalar(w);
+      quad(stemPos, mid, half, n1);
+      quad(stemPos, mid, half, n2);
+    }
+    // leaves: whorls of tiny needles along the outer 80 % of the stem
+    const whorls = Math.round(len / 1.1);
+    for (let j = 0; j < whorls; j++) {
+      const t = 0.2 + 0.8 * (j / whorls);
+      const c = pt(t);
+      const tangent = pt(t + 0.02).sub(c).normalize();
+      const s1 = new THREE.Vector3().crossVectors(tangent, up).normalize();
+      const s2 = new THREE.Vector3().crossVectors(tangent, s1).normalize();
+      const needles = 6;
+      for (let n = 0; n < needles; n++) {
+        const ang = (n / needles) * Math.PI * 2 + j * 0.9 + k;
+        const out = s1.clone().multiplyScalar(Math.cos(ang)).addScaledVector(s2, Math.sin(ang));
+        const nl = i2m(1.0 + 0.7 * Math.abs(Math.sin(j * 2.1 + n)));
+        const centre = c.clone().addScaledVector(out, nl * 0.5).addScaledVector(tangent, nl * 0.35);
+        const u = out.clone().multiplyScalar(nl * 0.5).addScaledVector(tangent, nl * 0.35);
+        const v = new THREE.Vector3().crossVectors(u, tangent).normalize().multiplyScalar(i2m(0.15));
+        quad(leafPos, centre, u, v);
+        // silvery base, paler toward the tips of the stem
+        tmpC.copy(j % 3 === 0 ? deep : silver).lerp(pale, t * 0.5);
+        for (let q = 0; q < 6; q++) leafCol.push(tmpC.r, tmpC.g, tmpC.b);
+      }
+    }
+  }
+
+  const stemGeo = new THREE.BufferGeometry();
+  stemGeo.setAttribute('position', new THREE.Float32BufferAttribute(stemPos, 3));
+  stemGeo.computeVertexNormals();
+  const stemMesh = new THREE.Mesh(
+    stemGeo,
+    new THREE.MeshStandardMaterial({ color: 0x8a8272, roughness: 0.9, side: THREE.DoubleSide }),
+  );
+  stemMesh.castShadow = true;
+  g.add(stemMesh);
+
+  const leafGeo = new THREE.BufferGeometry();
+  leafGeo.setAttribute('position', new THREE.Float32BufferAttribute(leafPos, 3));
+  leafGeo.setAttribute('color', new THREE.Float32BufferAttribute(leafCol, 3));
+  leafGeo.computeVertexNormals();
+  const leafMesh = new THREE.Mesh(
+    leafGeo,
+    new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      emissive: 0x1c2219,
+      emissiveIntensity: 0.15,
+      roughness: 0.9,
+      side: THREE.DoubleSide,
+    }),
+  );
+  leafMesh.castShadow = true;
+  g.add(leafMesh);
+  return g;
+}
+
 function buildPlant(type: PlantType): THREE.Group {
   switch (type) {
     case 'plantFern':
@@ -735,6 +844,8 @@ function buildPlant(type: PlantType): THREE.Group {
       return buildPlantOlive();
     case 'plantMossTree':
       return buildPlantMossTree();
+    case 'plantRosemary':
+      return buildPlantRosemary();
   }
 }
 

@@ -32,6 +32,7 @@ const TYPES = new Set([
   'plantGrass',
   'plantOlive',
   'plantMossTree',
+  'plantRosemary',
 ]);
 
 function isValidItem(it: unknown): it is PlacedItem {

@@ -134,6 +134,12 @@ const mossTreeIcon = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.
   <ellipse cx="24" cy="42" rx="6" ry="2.2" fill="#2E2A24"/>
 </svg>`;
 
+const rosemaryIcon = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M24 42 q-2 -14 -14 -24 M24 42 q-1 -16 -6 -30 M24 42 q0 -18 3 -34 M24 42 q3 -16 10 -28 M24 42 q4 -12 15 -20" stroke="#9CAB96" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+  <g fill="#BFCBB8"><circle cx="12" cy="20" r="1.6"/><circle cx="16" cy="26" r="1.6"/><circle cx="19" cy="14" r="1.6"/><circle cx="21" cy="22" r="1.6"/><circle cx="26" cy="10" r="1.6"/><circle cx="26" cy="20" r="1.6"/><circle cx="31" cy="16" r="1.6"/><circle cx="33" cy="24" r="1.6"/><circle cx="37" cy="21" r="1.6"/><circle cx="29" cy="28" r="1.6"/><circle cx="14" cy="32" r="1.6"/></g>
+  <ellipse cx="24" cy="42" rx="6" ry="2.2" fill="#2E2A24"/>
+</svg>`;
+
 export const THUMBNAILS: Record<ItemType, string> = {
   table,
   tableSq,
@@ -163,4 +169,5 @@ export const THUMBNAILS: Record<ItemType, string> = {
   plantGrass: grassIcon,
   plantOlive: oliveIcon,
   plantMossTree: mossTreeIcon,
+  plantRosemary: rosemaryIcon,
 };
