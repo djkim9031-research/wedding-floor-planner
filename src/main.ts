@@ -293,6 +293,20 @@ if (params.get('demo') === 'tablec') {
   store.placeItem('chair', { x: 262, z: 321.75, yawDeg: 180 });
   store.placeItem('figureW', { x: 330, z: 292, yawDeg: 240 });
   store.placeItem('figureM', { x: 344, z: 306, yawDeg: 300 });
+} else if (params.get('demo') === 'planters') {
+  // QA: the five Pottery Pots planters, each filled with its paired plant
+  // (plants mount at the pot's soil line), plus one loose fern on open floor
+  store.placeItem('planterHarithS', { x: 150, z: 300, yawDeg: 0 });
+  store.placeItem('plantFern', { x: 150, z: 300, yawDeg: 0 });
+  store.placeItem('planterCodyM', { x: 230, z: 300, yawDeg: 0 });
+  store.placeItem('plantBoxwood', { x: 230, z: 300, yawDeg: 0 });
+  store.placeItem('planterJesslynXXS', { x: 280, z: 300, yawDeg: 0 });
+  store.placeItem('plantSnake', { x: 280, z: 300, yawDeg: 0 });
+  store.placeItem('planterCodyL', { x: 332, z: 300, yawDeg: 0 });
+  store.placeItem('plantGrass', { x: 332, z: 300, yawDeg: 0 });
+  store.placeItem('planterHarithM', { x: 388, z: 300, yawDeg: 0 });
+  store.placeItem('plantOlive', { x: 388, z: 300, yawDeg: 0 });
+  store.placeItem('plantFern', { x: 280, z: 380, yawDeg: 0 });
 }
 const view = params.get('view');
 if (view === 'top') rig.toTopView();

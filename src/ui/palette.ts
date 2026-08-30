@@ -4,9 +4,13 @@ import {
   ITEM_DIMS,
   ITEM_LABELS,
   LANTERN_SPECS,
+  PLANTER_SPECS,
+  PLANT_SPECS,
   SCREEN_H,
   TABLE_TOPS,
   isLantern,
+  isPlant,
+  isPlanter,
   isTable,
   setCustomClothDims,
   setCustomTableDims,
@@ -31,6 +35,16 @@ const CARD_TYPES: ItemType[] = [
   'lantern36',
   'hedge',
   'screen',
+  'planterHarithS',
+  'planterCodyM',
+  'planterJesslynXXS',
+  'planterCodyL',
+  'planterHarithM',
+  'plantFern',
+  'plantBoxwood',
+  'plantSnake',
+  'plantGrass',
+  'plantOlive',
   'setting',
   'figureW',
   'figureM',
@@ -151,6 +165,10 @@ export function buildPalette(
               ? `${dims.w}" × ${dims.d}" · ${SCREEN_H}"h`
               : type === 'setting'
                 ? 'Lucca plates + glasses'
+                : isPlanter(type)
+                  ? `${dims.w}"⌀ · ${Math.round(PLANTER_SPECS[type].h)}"h`
+                  : isPlant(type)
+                    ? `fits ${ITEM_LABELS[PLANT_SPECS[type].planter]}`
           : type === 'figureW' || type === 'figureM'
             ? 'scale reference'
             : `${dims.w}" × ${dims.d}"`;

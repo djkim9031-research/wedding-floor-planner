@@ -15,7 +15,17 @@ export type ItemType =
   | 'screen'
   | 'setting'
   | 'figureW'
-  | 'figureM';
+  | 'figureM'
+  | 'planterHarithS'
+  | 'planterCodyM'
+  | 'planterJesslynXXS'
+  | 'planterCodyL'
+  | 'planterHarithM'
+  | 'plantFern'
+  | 'plantBoxwood'
+  | 'plantSnake'
+  | 'plantGrass'
+  | 'plantOlive';
 
 export interface Vec2 {
   x: number;

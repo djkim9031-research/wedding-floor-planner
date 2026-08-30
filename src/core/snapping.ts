@@ -1,4 +1,4 @@
-import { ITEM_DIMS, SNAP, isTable } from '../constants';
+import { ITEM_DIMS, PLANTER_SPECS, SNAP, isPlanter, isTable, type PlanterType } from '../constants';
 import type { ItemType, PlacedItem, Pose, SnapResult, Vec2 } from '../types';
 import { angleDeltaDeg, dist2, normalizeDeg, obbEdges, obbFromPose, type ObbEdge } from './geometry';
 
@@ -138,4 +138,30 @@ export function edgeSnap(
   ];
 
   return { otherId: best.other.id, pose: { x: cx, z: cz, yawDeg: yaw }, sharedEdge };
+}
+
+/**
+ * Magnetic plant→planter center snap. Engages when the dragged plant's center
+ * falls within a planter's soil opening (plus `extra` inches for release
+ * hysteresis) and pulls x/z to the pot's center; yaw is left alone. The
+ * sharedEdge is the pot's diameter so the brass snap line reads as a seat mark.
+ */
+export function centerSnap(pose: Pose, items: PlacedItem[], extra = 0): SnapResult | null {
+  let best: { it: PlacedItem; d: number } | null = null;
+  for (const it of items) {
+    if (!isPlanter(it.type)) continue;
+    const r = PLANTER_SPECS[it.type].openingDia / 2 + extra;
+    const d = Math.hypot(pose.x - it.x, pose.z - it.z);
+    if (d <= r && (!best || d < best.d)) best = { it, d };
+  }
+  if (!best) return null;
+  const R = PLANTER_SPECS[best.it.type as PlanterType].dia / 2;
+  return {
+    otherId: best.it.id,
+    pose: { x: best.it.x, z: best.it.z, yawDeg: pose.yawDeg },
+    sharedEdge: [
+      { x: best.it.x - R, z: best.it.z },
+      { x: best.it.x + R, z: best.it.z },
+    ],
+  };
 }

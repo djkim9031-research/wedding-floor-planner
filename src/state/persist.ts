@@ -21,6 +21,16 @@ const TYPES = new Set([
   'setting',
   'figureW',
   'figureM',
+  'planterHarithS',
+  'planterCodyM',
+  'planterJesslynXXS',
+  'planterCodyL',
+  'planterHarithM',
+  'plantFern',
+  'plantBoxwood',
+  'plantSnake',
+  'plantGrass',
+  'plantOlive',
 ]);
 
 function isValidItem(it: unknown): it is PlacedItem {

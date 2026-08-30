@@ -1,4 +1,17 @@
-import { HEDGE_H, ITEM_DIMS, ITEM_LABELS, LANTERN_SPECS, SCREEN_H, TABLE_TOPS, isLantern, isTable } from '../constants';
+import {
+  HEDGE_H,
+  ITEM_DIMS,
+  ITEM_LABELS,
+  LANTERN_SPECS,
+  PLANTER_SPECS,
+  PLANT_SPECS,
+  SCREEN_H,
+  TABLE_TOPS,
+  isLantern,
+  isPlant,
+  isPlanter,
+  isTable,
+} from '../constants';
 import { fmtInches } from '../core/format';
 import * as store from '../state/store';
 import type { DrapeReport, PlacedItem, Pose } from '../types';
@@ -132,7 +145,11 @@ export function buildStatusPanel(
             ? ` · ${HEDGE_H}"h`
             : sel.type === 'screen'
               ? ` · ${SCREEN_H}"h`
-              : '';
+              : isPlanter(sel.type)
+                ? ` · ${fmtInches(PLANTER_SPECS[sel.type].h)}"h`
+                : isPlant(sel.type)
+                  ? ` · ~${PLANT_SPECS[sel.type].h}" foliage`
+                  : '';
       let html = `<h3>${ITEM_LABELS[sel.type]}</h3>
         <div class="sub">${fmtInches(dims.w)}" × ${fmtInches(dims.d)}"${height} · ${Math.round(sel.yawDeg)}°</div>`;
       if (isCloth(sel.type)) {

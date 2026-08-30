@@ -11,16 +11,21 @@ import {
   LEG_SIZE,
   TABLE_TOPS,
   TABLE_TOP_T,
+  PLANTER_SPECS,
   isFigure,
   isLantern,
+  isPlant,
+  isPlanter,
   isTable,
   type LanternType,
+  type PlantType,
+  type PlanterType,
   type TableType,
   i2m,
 } from '../constants';
 import { DEG, unrot } from '../core/geometry';
 import type { ItemType, PlacedItem } from '../types';
-import { oakTableTextures, teakTableTextures } from './textures';
+import { dioriteTextures, oakTableTextures, teakTableTextures } from './textures';
 
 const woodMaterials = new Map<string, THREE.MeshStandardMaterial>();
 
@@ -379,6 +384,250 @@ function buildSetting(): THREE.Group {
   return g;
 }
 
+// ---------------------------------------------------------------------------
+// Pottery Pots planters (Diorite Grey fiberstone) + the plants that fill them
+// ---------------------------------------------------------------------------
+
+let dioriteMat: THREE.MeshStandardMaterial | null = null;
+function dioriteMaterial(): THREE.MeshStandardMaterial {
+  if (!dioriteMat) {
+    const tex = dioriteTextures();
+    dioriteMat = new THREE.MeshStandardMaterial({
+      map: tex.map,
+      roughnessMap: tex.roughnessMap,
+      bumpMap: tex.bumpMap,
+      bumpScale: 0.012,
+      roughness: 0.9,
+      metalness: 0,
+    });
+  }
+  return dioriteMat;
+}
+
+let soilMat: THREE.MeshStandardMaterial | null = null;
+function soilMaterial(): THREE.MeshStandardMaterial {
+  if (!soilMat) soilMat = new THREE.MeshStandardMaterial({ color: 0x2e2a24, roughness: 1, metalness: 0 });
+  return soilMat;
+}
+
+/** Lathe profile per family: up the outer wall, then a rim return inward and
+ * down to just below the soil line so the pot interior reads from above. */
+function potProfile(type: PlanterType): THREE.Vector2[] {
+  const { dia, h, openingDia, soilDrop, family } = PLANTER_SPECS[type];
+  const R = dia / 2;
+  const openR = openingDia / 2;
+  const pts: [number, number][] = [];
+  if (family === 'harith') {
+    // near-cylinder with the chamfered conical lower third
+    pts.push([0.3 * R, 0], [0.64 * R, 0.02 * h], [0.97 * R, 0.34 * h], [0.99 * R, 0.6 * h], [R, 0.95 * h], [R, h]);
+  } else if (family === 'cody') {
+    // egg cup: rounded bowl bottom, walls curling slightly inward at the lip
+    pts.push(
+      [0.3 * R, 0],
+      [0.48 * R, 0.02 * h],
+      [0.74 * R, 0.1 * h],
+      [0.92 * R, 0.26 * h],
+      [R, 0.52 * h],
+      [0.995 * R, 0.74 * h],
+      [0.955 * R, 0.9 * h],
+      [0.965 * R, 0.965 * h],
+      [0.96 * R, h],
+    );
+  } else {
+    // jesslyn: flat small base, smooth concave flare to a wide top
+    const r0 = 0.42 * R;
+    pts.push([r0, 0]);
+    for (let i = 1; i <= 7; i++) {
+      const t = i / 7;
+      pts.push([r0 + (R - r0) * Math.pow(t, 0.8), t * h]);
+    }
+  }
+  pts.push([openR, h], [openR * 0.98, h - soilDrop - 0.4]);
+  return pts.map(([r, y]) => new THREE.Vector2(i2m(r), i2m(y)));
+}
+
+function buildPlanter(type: PlanterType): THREE.Group {
+  const { h, openingDia, soilDrop } = PLANTER_SPECS[type];
+  const g = new THREE.Group();
+  const pot = new THREE.Mesh(new THREE.LatheGeometry(potProfile(type), 24), dioriteMaterial());
+  pot.castShadow = pot.receiveShadow = true;
+  g.add(pot);
+  const soilR = openingDia / 2 - 0.1;
+  const soil = new THREE.Mesh(new THREE.CylinderGeometry(i2m(soilR), i2m(soilR), i2m(0.6), 20), soilMaterial());
+  soil.position.y = i2m(h - soilDrop - 0.3); // top face exactly at the soil line
+  soil.receiveShadow = true;
+  g.add(soil);
+  return g;
+}
+
+/** Boston fern: 22 tapered fronds arching outward on golden-angle spokes. */
+function buildPlantFern(): THREE.Group {
+  const g = new THREE.Group();
+  const dark = new THREE.MeshStandardMaterial({ color: 0x3e5a34, roughness: 0.9, flatShading: true, side: THREE.DoubleSide });
+  const light = new THREE.MeshStandardMaterial({ color: 0x4e6a40, roughness: 0.9, flatShading: true, side: THREE.DoubleSide });
+  for (let k = 0; k < 22; k++) {
+    const len = 11 + 4 * Math.abs(Math.sin(k * 2.7));
+    const geo = new THREE.PlaneGeometry(i2m(1.7), i2m(len), 1, 4);
+    geo.translate(0, i2m(len / 2), 0);
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const t = pos.getY(i) / i2m(len);
+      pos.setX(i, pos.getX(i) * (1 - 0.75 * t * t)); // taper to the tip
+      pos.setZ(i, pos.getZ(i) + i2m(4.2) * t * t); // arching droop
+    }
+    geo.computeVertexNormals();
+    const frond = new THREE.Mesh(geo, k % 3 ? dark : light);
+    frond.rotation.order = 'YXZ';
+    frond.rotation.y = k * 2.39996;
+    frond.rotation.x = -(0.6 + 0.45 * Math.abs(Math.sin(k * 1.3))); // lean 34–60° outward
+    frond.castShadow = true;
+    g.add(frond);
+  }
+  return g;
+}
+
+/** Boxwood ball: displaced sphere, same leaf noise as the hedge. */
+function buildPlantBoxwood(): THREE.Group {
+  const g = new THREE.Group();
+  const leaf = new THREE.MeshStandardMaterial({ color: 0x44543a, roughness: 0.95, flatShading: true });
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(i2m(7), 20, 14), leaf);
+  const pos = ball.geometry.getAttribute('position') as THREE.BufferAttribute;
+  for (let k = 0; k < pos.count; k++) {
+    const x = pos.getX(k);
+    const y = pos.getY(k);
+    const z = pos.getZ(k);
+    const n = Math.sin(x * 61.7 + y * 43.3 + z * 89.1) * 0.5 + Math.sin(x * 17.9 - y * 23.7) * 0.5;
+    const sfc = 1 + 0.06 * n;
+    pos.setXYZ(k, x * sfc, y * sfc, z * sfc);
+  }
+  ball.geometry.computeVertexNormals();
+  ball.position.y = i2m(7.5);
+  ball.castShadow = ball.receiveShadow = true;
+  g.add(ball);
+  return g;
+}
+
+/** Snake plant: 11 upright pinched blades on two rings, two-tone greens. */
+function buildPlantSnake(): THREE.Group {
+  const g = new THREE.Group();
+  const dark = new THREE.MeshStandardMaterial({ color: 0x3c5232, roughness: 0.85, flatShading: true, side: THREE.DoubleSide });
+  const light = new THREE.MeshStandardMaterial({ color: 0x59714a, roughness: 0.85, flatShading: true, side: THREE.DoubleSide });
+  for (let k = 0; k < 11; k++) {
+    const len = 18 + 8 * Math.abs(Math.sin(k * 1.7));
+    const geo = new THREE.PlaneGeometry(i2m(2.4), i2m(len), 1, 3);
+    geo.translate(0, i2m(len / 2), 0);
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const t = pos.getY(i) / i2m(len);
+      pos.setX(i, pos.getX(i) * (1 - 0.75 * (Math.max(0, t - 0.66) / 0.34))); // pinched tip
+      pos.setZ(i, pos.getZ(i) + i2m(1.2) * Math.sin(t * Math.PI)); // slight belly
+    }
+    geo.computeVertexNormals();
+    const blade = new THREE.Mesh(geo, k % 2 ? dark : light);
+    const ring = k < 5 ? 1.5 : 3.2;
+    const a = k * 2.39996;
+    blade.position.set(i2m(ring * Math.cos(a)), 0, i2m(ring * Math.sin(a)));
+    blade.rotation.y = a + 0.2 * Math.sin(k * 3.1);
+    blade.rotation.z = 0.06 * Math.sin(k * 5.3);
+    blade.castShadow = true;
+    g.add(blade);
+  }
+  return g;
+}
+
+/** Fountain grass: 48 thin blades arcing outward from a golden-angle spiral. */
+function buildPlantGrass(): THREE.Group {
+  const g = new THREE.Group();
+  const green = new THREE.MeshStandardMaterial({ color: 0x6a7a4a, roughness: 0.95, flatShading: true, side: THREE.DoubleSide });
+  const straw = new THREE.MeshStandardMaterial({ color: 0x8a9464, roughness: 0.95, flatShading: true, side: THREE.DoubleSide });
+  for (let k = 0; k < 48; k++) {
+    const len = 14 + 10 * Math.abs(Math.sin(k * 2.1));
+    const geo = new THREE.PlaneGeometry(i2m(0.55), i2m(len), 1, 3);
+    geo.translate(0, i2m(len / 2), 0);
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const t = pos.getY(i) / i2m(len);
+      pos.setZ(i, pos.getZ(i) + i2m(6) * t * t); // fountain arc
+      pos.setX(i, pos.getX(i) * (1 - 0.5 * t));
+    }
+    geo.computeVertexNormals();
+    const blade = new THREE.Mesh(geo, k % 5 ? green : straw);
+    const a = k * 2.39996;
+    const r = 4 * Math.sqrt((k + 0.5) / 48);
+    blade.position.set(i2m(r * Math.cos(a)), 0, i2m(r * Math.sin(a)));
+    blade.rotation.y = Math.PI / 2 - a; // arc faces outward
+    blade.castShadow = true;
+    g.add(blade);
+  }
+  return g;
+}
+
+/** Small olive tree: leaning kinked trunk, three silvery displaced canopies. */
+function buildPlantOlive(): THREE.Group {
+  const g = new THREE.Group();
+  const bark = new THREE.MeshStandardMaterial({ color: 0x6e6154, roughness: 0.9, flatShading: true });
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(i2m(0.9), i2m(1.5), i2m(24), 7, 3), bark);
+  const tp = trunk.geometry.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < tp.count; i++) {
+    const t = tp.getY(i) / i2m(24) + 0.5;
+    tp.setX(i, tp.getX(i) + i2m(1.6) * t * t); // gentle lean
+  }
+  trunk.geometry.computeVertexNormals();
+  trunk.position.y = i2m(12);
+  trunk.castShadow = true;
+  g.add(trunk);
+  const leaf = new THREE.MeshStandardMaterial({ color: 0x7d8a6a, roughness: 0.95, flatShading: true });
+  const canopy = (r: number, cx: number, cy: number, cz: number, seed: number) => {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(i2m(r), 14, 10), leaf);
+    const pos = s.geometry.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const n = Math.sin(x * 61.7 + y * 43.3 + z * 89.1 + seed) * 0.5 + Math.sin(x * 17.9 - y * 23.7 + seed) * 0.5;
+      const sfc = 1 + 0.09 * n;
+      pos.setXYZ(i, x * sfc, y * sfc, z * sfc);
+    }
+    s.geometry.computeVertexNormals();
+    s.position.set(i2m(cx), i2m(cy), i2m(cz));
+    s.castShadow = true;
+    g.add(s);
+  };
+  canopy(7, 1.6, 32, 0, 0);
+  canopy(5, -2.8, 28, 2.4, 2);
+  canopy(4.6, 4, 27, -3.2, 4);
+  return g;
+}
+
+function buildPlant(type: PlantType): THREE.Group {
+  switch (type) {
+    case 'plantFern':
+      return buildPlantFern();
+    case 'plantBoxwood':
+      return buildPlantBoxwood();
+    case 'plantSnake':
+      return buildPlantSnake();
+    case 'plantGrass':
+      return buildPlantGrass();
+    case 'plantOlive':
+      return buildPlantOlive();
+  }
+}
+
+/** Tallest planter soil surface under a floor point (0 = open floor) —
+ * plants mount on it, mirroring how lanterns/settings ride tabletops. */
+export function planterSoilUnder(items: PlacedItem[], x: number, z: number): number {
+  let top = 0;
+  for (const it of items) {
+    if (!isPlanter(it.type)) continue;
+    const spec = PLANTER_SPECS[it.type];
+    if (Math.hypot(x - it.x, z - it.z) <= spec.openingDia / 2) {
+      top = Math.max(top, spec.h - spec.soilDrop);
+    }
+  }
+  return top;
+}
+
 /** Tallest tabletop under a floor point (0 = open floor) — lanterns mount on it. */
 export function tableTopUnder(items: PlacedItem[], x: number, z: number): number {
   let top = 0;
@@ -402,6 +651,8 @@ function getTemplate(type: ItemType): THREE.Group {
     else if (type === 'hedge') template = buildHedge();
     else if (type === 'screen') template = buildScreen();
     else if (type === 'setting') template = buildSetting();
+    else if (isPlanter(type)) template = buildPlanter(type);
+    else if (isPlant(type)) template = buildPlant(type);
     else template = buildHuman(type as 'figureW' | 'figureM');
     templates.set(type, template);
   }
@@ -456,7 +707,9 @@ export class ItemMeshes {
             it.type === 'screen' ||
             it.type === 'setting' ||
             isFigure(it.type) ||
-            isLantern(it.type),
+            isLantern(it.type) ||
+            isPlanter(it.type) ||
+            isPlant(it.type),
         )
         .map((it) => [it.id, it]),
     );
@@ -505,7 +758,9 @@ export class ItemMeshes {
       const mountY =
         isLantern(it.type) || it.type === 'setting'
           ? Math.max(tableTopUnder(items, it.x, it.z), extraTop ? extraTop(it) : 0)
-          : 0;
+          : isPlant(it.type)
+            ? planterSoilUnder(items, it.x, it.z)
+            : 0;
       mesh.position.set(i2m(it.x), i2m(mountY), i2m(it.z));
       mesh.rotation.y = it.yawDeg * DEG;
       mesh.visible = id !== this.hiddenId;

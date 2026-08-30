@@ -1,6 +1,6 @@
-import { SNAP, isTable } from '../constants';
+import { SNAP, isPlant, isTable } from '../constants';
 import { DEG as DEG_TO_RAD, normalizeDeg } from '../core/geometry';
-import { angleSnap, edgeSnap, gridSnap } from '../core/snapping';
+import { angleSnap, centerSnap, edgeSnap, gridSnap } from '../core/snapping';
 import { isPoseValid } from '../core/validity';
 import * as store from '../state/store';
 import type { GhostState, ItemType, Pose, Vec2 } from '../types';
@@ -55,6 +55,9 @@ export class PlacementFSM {
     let snapped = null;
     if (settings.magnetSnap && isTable(type)) {
       snapped = edgeSnap(type, pose, items, sourceId, this.snappedActive ? SNAP.release : SNAP.engage);
+      if (snapped) pose = snapped.pose;
+    } else if (settings.magnetSnap && isPlant(type)) {
+      snapped = centerSnap(pose, items, this.snappedActive ? SNAP.plantReleaseExtra : 0);
       if (snapped) pose = snapped.pose;
     }
     this.snappedActive = !!snapped;

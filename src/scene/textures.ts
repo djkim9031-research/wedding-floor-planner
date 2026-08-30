@@ -804,6 +804,120 @@ export function plankPaverTextures(): { map: THREE.CanvasTexture; roughnessMap: 
 }
 
 // ---------------------------------------------------------------------------
+// Diorite-grey fiberstone — Pottery Pots planter finish: warm grey cement,
+// dense dark/light speckle, faint horizontal casting bands. u wraps the pot.
+// ---------------------------------------------------------------------------
+
+export function dioriteTextures(): {
+  map: THREE.CanvasTexture;
+  roughnessMap: THREE.CanvasTexture;
+  bumpMap: THREE.CanvasTexture;
+} {
+  const S = 512;
+  const rnd = mulberry32(0xd107173);
+  const ctx = makeCanvas(S, S);
+  const rough = makeCanvas(S, S);
+  const bump = makeCanvas(S, S);
+
+  ctx.fillStyle = '#8F8C86';
+  ctx.fillRect(0, 0, S, S);
+  rough.fillStyle = '#e6e6e6';
+  rough.fillRect(0, 0, S, S);
+  bump.fillStyle = '#808080';
+  bump.fillRect(0, 0, S, S);
+
+  // large soft mottle so the five pot sizes don't read flat
+  for (let i = 0; i < 14; i++) {
+    const x = rnd() * S;
+    const y = rnd() * S;
+    const r = 60 + rnd() * 140;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    const tone = rnd() < 0.5 ? '#9C9992' : '#7F7C75';
+    g.addColorStop(0, tone);
+    g.addColorStop(1, 'rgba(143,140,134,0)');
+    ctx.globalAlpha = 0.05 + rnd() * 0.05;
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  ctx.globalAlpha = 1;
+
+  // faint horizontal casting bands
+  for (let i = 0; i < 7; i++) {
+    ctx.fillStyle = rnd() < 0.5 ? '#B0ACA4' : '#6F6C66';
+    ctx.globalAlpha = 0.035 + rnd() * 0.02;
+    ctx.fillRect(0, rnd() * S, S, 3 + rnd() * 6);
+  }
+  ctx.globalAlpha = 1;
+
+  // speckle: dark grit + lighter aggregate flecks
+  for (let i = 0; i < 3200; i++) {
+    ctx.fillStyle = '#55524C';
+    ctx.globalAlpha = 0.35 + rnd() * 0.35;
+    const s = 0.7 + rnd() * 1.6;
+    ctx.fillRect(rnd() * S, rnd() * S, s, s);
+    if (i < 1400) {
+      ctx.fillStyle = '#B8B4AC';
+      ctx.globalAlpha = 0.3 + rnd() * 0.2;
+      ctx.fillRect(rnd() * S, rnd() * S, s, s);
+    }
+    if (i < 900) {
+      rough.fillStyle = rnd() < 0.5 ? '#f2f2f2' : '#d6d6d6';
+      rough.fillRect(rnd() * S, rnd() * S, 2, 2);
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // pores — the cast fiberstone's pitted, sponge-like surface: small dark
+  // pits with a faint lit lower rim, recessed in the bump map
+  for (let i = 0; i < 650; i++) {
+    const x = rnd() * S;
+    const y = rnd() * S;
+    const r = 0.8 + rnd() * 2.4;
+    ctx.globalAlpha = 0.4 + rnd() * 0.4;
+    ctx.fillStyle = '#4A4740';
+    ctx.beginPath();
+    ctx.ellipse(x, y, r, r * (0.6 + rnd() * 0.4), rnd() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.18 + rnd() * 0.12;
+    ctx.fillStyle = '#C9C5BC';
+    ctx.beginPath();
+    ctx.ellipse(x, y + r * 0.9, r * 0.8, r * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    bump.fillStyle = '#282828';
+    (bump as CanvasRenderingContext2D).globalAlpha = 0.7;
+    bump.beginPath();
+    bump.ellipse(x, y, r, r * 0.8, 0, 0, Math.PI * 2);
+    bump.fill();
+    // pores hold shade — rougher than the surrounding skin
+    rough.fillStyle = '#ffffff';
+    rough.globalAlpha = 0.5;
+    rough.beginPath();
+    rough.ellipse(x, y, r, r * 0.8, 0, 0, Math.PI * 2);
+    rough.fill();
+    rough.globalAlpha = 1;
+  }
+  ctx.globalAlpha = 1;
+  bump.globalAlpha = 1;
+
+  // fine bump grain so the skin shimmers like rough cast stone
+  for (let i = 0; i < 2600; i++) {
+    bump.fillStyle = rnd() < 0.5 ? '#6a6a6a' : '#969696';
+    bump.globalAlpha = 0.5;
+    bump.fillRect(rnd() * S, rnd() * S, 1 + rnd() * 1.5, 1 + rnd() * 1.5);
+  }
+  bump.globalAlpha = 1;
+
+  const map = toTexture(ctx, true);
+  map.anisotropy = 8;
+  map.repeat.set(2, 1);
+  const roughnessMap = toTexture(rough, false);
+  roughnessMap.repeat.set(2, 1);
+  const bumpMap = toTexture(bump, false);
+  bumpMap.repeat.set(2, 1);
+  return { map, roughnessMap, bumpMap };
+}
+
+// ---------------------------------------------------------------------------
 // Live-oak bark — dark, deeply fissured; v runs along the limb.
 // ---------------------------------------------------------------------------
 

@@ -6,6 +6,8 @@ import {
   PLACEMENT_AREAS,
   isBarrier,
   isFigure,
+  isPlant,
+  isPlanter,
   isTable,
 } from '../constants';
 import type { ItemType, PlacedItem, Pose, Vec2 } from '../types';
@@ -58,16 +60,22 @@ export function isPoseValid(
     }
   }
 
-  // lanterns/settings are decor (may sit on tabletops); hedges and screens
-  // are solid and must not run through tables or each other
+  // lanterns/settings are decor (may sit on tabletops); plants may overlap
+  // planters (they sit inside them) but not each other — one plant per pot;
+  // hedges, screens, and planters are solid and must not run through tables
+  // or each other
   const collidesWith = (other: ItemType): boolean =>
     isTable(type)
-      ? isTable(other) || isBarrier(other)
+      ? isTable(other) || isBarrier(other) || isPlanter(other)
       : type === 'chair'
         ? other === 'chair'
         : isBarrier(type)
-          ? isBarrier(other) || isTable(other)
-          : false;
+          ? isBarrier(other) || isTable(other) || isPlanter(other)
+          : isPlanter(type)
+            ? isTable(other) || isBarrier(other) || isPlanter(other)
+            : isPlant(type)
+              ? isPlant(other)
+              : false;
 
   for (const it of items) {
     if (excluded.includes(it.id) || !collidesWith(it.type)) continue;

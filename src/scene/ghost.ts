@@ -12,12 +12,16 @@ import {
   HEDGE_H,
   LANTERN_SPECS,
   SCREEN_H,
+  PLANTER_SPECS,
+  PLANT_SPECS,
   isFigure,
   isLantern,
+  isPlant,
+  isPlanter,
   isTable,
   i2m,
 } from '../constants';
-import { tableTopUnder } from './itemMeshes';
+import { planterSoilUnder, tableTopUnder } from './itemMeshes';
 import { DEG } from '../core/geometry';
 import type { GhostState, ItemType, PlacedItem } from '../types';
 
@@ -91,6 +95,11 @@ function buildGhostMesh(type: ItemType): THREE.Group {
   } else if (isFigure(type)) {
     const h = FIGURE_HEIGHTS[type as 'figureW' | 'figureM'];
     const body = new THREE.Mesh(new THREE.CapsuleGeometry(i2m(w / 2), i2m(h - w), 4, 10), mat);
+    body.position.y = i2m(h / 2);
+    g.add(body);
+  } else if (isPlanter(type) || isPlant(type)) {
+    const h = isPlanter(type) ? PLANTER_SPECS[type].h : PLANT_SPECS[type].h;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(i2m(w / 2), i2m(w / 2), i2m(h), 20), mat);
     body.position.y = i2m(h / 2);
     g.add(body);
   } else {
@@ -176,7 +185,9 @@ export class GhostVisual {
     const gy =
       isLantern(ghost.type) || ghost.type === 'setting'
         ? tableTopUnder(items, ghost.x, ghost.z)
-        : 0;
+        : isPlant(ghost.type)
+          ? planterSoilUnder(items, ghost.x, ghost.z)
+          : 0;
     this.mesh.position.set(i2m(ghost.x), i2m(gy), i2m(ghost.z));
     this.mesh.rotation.y = ghost.yawDeg * DEG;
 

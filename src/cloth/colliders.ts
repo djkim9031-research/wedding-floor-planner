@@ -7,10 +7,15 @@ import {
   LANTERN_SPECS,
   SCREEN_H,
   TABLE_TOPS,
+  PLANTER_SPECS,
+  PLANT_SPECS,
   isFigure,
   isLantern,
+  isPlant,
+  isPlanter,
   isTable,
   type LanternType,
+  type PlantType,
 } from '../constants';
 import { DEG } from '../core/geometry';
 import type { PlacedItem } from '../types';
@@ -84,6 +89,19 @@ function mountTop(items: PlacedItem[], x: number, z: number): number {
   return top;
 }
 
+/** Tallest planter soil surface under (x,z) — plants mount there. */
+function planterSoilTop(items: PlacedItem[], x: number, z: number): number {
+  let top = 0;
+  for (const it of items) {
+    if (!isPlanter(it.type)) continue;
+    const spec = PLANTER_SPECS[it.type];
+    if (Math.hypot(x - it.x, z - it.z) <= spec.openingDia / 2) {
+      top = Math.max(top, spec.h - spec.soilDrop);
+    }
+  }
+  return top;
+}
+
 /** Slabs for one obstacle, in its local frame (matching the render meshes). */
 function slabsFor(it: PlacedItem, items: PlacedItem[]): SlabDef[] {
   const { w, d } = it.dims ?? ITEM_DIMS[it.type];
@@ -128,6 +146,18 @@ function slabsFor(it: PlacedItem, items: PlacedItem[]): SlabDef[] {
   if (isFigure(it.type)) {
     const h = FIGURE_HEIGHTS[it.type as 'figureW' | 'figureM'];
     return [{ ox: 0, oz: 0, hx: w / 2 - 1, hz: d / 2 - 1, top: h + 0.5, sideBottom: 0, ejectBelow: 0, band: 7 }];
+  }
+  if (isPlanter(it.type)) {
+    const spec = PLANTER_SPECS[it.type];
+    const hx = (spec.dia / 2) * 0.92; // square slab inscribed in the round pot
+    return [{ ox: 0, oz: 0, hx, hz: hx, top: spec.h, sideBottom: 0, ejectBelow: 0 }];
+  }
+  if (isPlant(it.type)) {
+    const soil = planterSoilTop(items, it.x, it.z);
+    const h = PLANT_SPECS[it.type as PlantType].h;
+    return [
+      { ox: 0, oz: 0, hx: w / 2 - 1, hz: d / 2 - 1, top: soil + h, sideBottom: soil, ejectBelow: soil, band: 8 },
+    ];
   }
   return [];
 }

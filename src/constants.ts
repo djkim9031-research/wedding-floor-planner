@@ -158,6 +158,16 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   setting: { w: 16, d: 12 },
   figureW: { w: 16, d: 11 },
   figureM: { w: 18, d: 12 },
+  planterHarithS: { w: 12.4, d: 12.4 },
+  planterCodyM: { w: 11.81, d: 11.81 },
+  planterJesslynXXS: { w: 12.99, d: 12.99 },
+  planterCodyL: { w: 14.57, d: 14.57 },
+  planterHarithM: { w: 16.5, d: 16.5 },
+  plantFern: { w: 10.5, d: 10.5 }, // opening of Harith S
+  plantBoxwood: { w: 10, d: 10 }, // opening of Cody M
+  plantSnake: { w: 11, d: 11 }, // opening of Jesslyn XXS
+  plantGrass: { w: 12.4, d: 12.4 }, // opening of Cody L
+  plantOlive: { w: 14, d: 14 }, // opening of Harith M
 };
 
 export const ITEM_LABELS: Record<ItemType, string> = {
@@ -178,6 +188,16 @@ export const ITEM_LABELS: Record<ItemType, string> = {
   setting: 'Place Setting',
   figureW: 'Guest · 5′5″',
   figureM: 'Guest · 5′10″',
+  planterHarithS: 'Harith S Planter',
+  planterCodyM: 'Cody M Planter',
+  planterJesslynXXS: 'Jesslyn XXS Planter',
+  planterCodyL: 'Cody L Planter',
+  planterHarithM: 'Harith M Planter',
+  plantFern: 'Boston Fern',
+  plantBoxwood: 'Boxwood Ball',
+  plantSnake: 'Snake Plant',
+  plantGrass: 'Fountain Grass',
+  plantOlive: 'Olive Tree',
 };
 
 export const isFigure = (t: ItemType): boolean => t === 'figureW' || t === 'figureM';
@@ -223,6 +243,46 @@ export const LANTERN_SPECS: Record<LanternType, { h: number; colorHex: number; c
 export const FIGURE_HEIGHTS: Record<'figureW' | 'figureM', number> = {
   figureW: 65, // 5'5"
   figureM: 70, // 5'10"
+};
+
+export const PLANTER_TYPES = [
+  'planterHarithS',
+  'planterCodyM',
+  'planterJesslynXXS',
+  'planterCodyL',
+  'planterHarithM',
+] as const;
+export type PlanterType = (typeof PLANTER_TYPES)[number];
+export const isPlanter = (t: ItemType): t is PlanterType =>
+  (PLANTER_TYPES as readonly string[]).includes(t);
+
+export const PLANT_TYPES = ['plantFern', 'plantBoxwood', 'plantSnake', 'plantGrass', 'plantOlive'] as const;
+export type PlantType = (typeof PLANT_TYPES)[number];
+export const isPlant = (t: ItemType): t is PlantType =>
+  (PLANT_TYPES as readonly string[]).includes(t);
+
+/** Pottery Pots "Diorite Grey" fiberstone rounds. openingDia = the soil bowl
+ * at the rim; soilDrop = how far the soil surface sits below the rim, so a
+ * plant dropped in mounts at h − soilDrop. */
+export const PLANTER_SPECS: Record<
+  PlanterType,
+  { dia: number; h: number; openingDia: number; soilDrop: number; family: 'harith' | 'cody' | 'jesslyn' }
+> = {
+  planterHarithS: { dia: 12.4, h: 11.02, openingDia: 10.5, soilDrop: 1.5, family: 'harith' },
+  planterCodyM: { dia: 11.81, h: 10.63, openingDia: 10, soilDrop: 1.5, family: 'cody' },
+  planterJesslynXXS: { dia: 12.99, h: 11.42, openingDia: 11, soilDrop: 1.5, family: 'jesslyn' },
+  planterCodyL: { dia: 14.57, h: 12.99, openingDia: 12.4, soilDrop: 1.8, family: 'cody' },
+  planterHarithM: { dia: 16.5, h: 15, openingDia: 14, soilDrop: 1.8, family: 'harith' },
+};
+
+/** Each plant is sized for one planter (its footprint = that pot's opening),
+ * but any plant may be dropped into any planter. h = foliage above the soil. */
+export const PLANT_SPECS: Record<PlantType, { planter: PlanterType; h: number }> = {
+  plantFern: { planter: 'planterHarithS', h: 20 },
+  plantBoxwood: { planter: 'planterCodyM', h: 14 },
+  plantSnake: { planter: 'planterJesslynXXS', h: 26 },
+  plantGrass: { planter: 'planterCodyL', h: 24 },
+  plantOlive: { planter: 'planterHarithM', h: 40 },
 };
 
 export const TABLE_TYPES = ['table', 'tableSq', 'tableQ', 'tableC'] as const;
@@ -296,6 +356,7 @@ export const SNAP = {
   minEdgeOverlap: 6,
   lateralMagnet: 4,
   normalAlignDeg: 10,
+  plantReleaseExtra: 3, // plant→planter center magnet lets go this far past the opening
 };
 
 /** Tables may sit flush; only treat deeper penetration as a collision. */
