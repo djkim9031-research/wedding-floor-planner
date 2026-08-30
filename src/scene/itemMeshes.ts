@@ -747,57 +747,80 @@ function buildPlantRosemary(): THREE.Group {
   const deep = new THREE.Color(0x7f927a);
   const tmpC = new THREE.Color();
 
-  const stems = 64;
-  const up = new THREE.Vector3(0, 1, 0);
-  for (let k = 0; k < stems; k++) {
-    const az = k * 2.39996;
-    const elev = 0.55 + 0.9 * Math.abs(Math.sin(k * 1.31)); // 31°–83° from horizontal
-    const len = 28 + 20 * Math.abs(Math.sin(k * 0.77)); // 28–48"
-    const droop = 0.18 + 0.25 * (1 - elev / 1.45); // flatter stems sag more
-    const dir = new THREE.Vector3(Math.cos(az) * Math.cos(elev), Math.sin(elev), Math.sin(az) * Math.cos(elev));
+  // one spray: a curved stem from `origin` along `dir`, clothed in needle whorls
+  const spray = (
+    origin: THREE.Vector3,
+    dir: THREE.Vector3,
+    len: number,
+    droop: number,
+    seed: number,
+    thick: number,
+  ) => {
     const side = new THREE.Vector3().crossVectors(dir, up).normalize();
     const pt = (t: number) => {
       const p = dir.clone().multiplyScalar(i2m(len) * t);
       p.y -= i2m(len) * droop * t * t;
-      p.addScaledVector(side, i2m(1.6) * Math.sin(t * 7 + k)); // gentle wander
-      p.y += i2m(0.6);
-      return p;
+      p.addScaledVector(side, i2m(1.4) * Math.sin(t * 7 + seed)); // gentle wander
+      return p.add(origin);
     };
-    // stem: chain of thin crossed quads
-    const segs = 9;
+    const segs = 8;
     for (let i = 0; i < segs; i++) {
       const p0 = pt(i / segs);
       const p1 = pt((i + 1) / segs);
       const mid = p0.clone().add(p1).multiplyScalar(0.5);
       const axis = p1.clone().sub(p0);
       const half = axis.clone().multiplyScalar(0.5);
-      const w = i2m(0.22 * (1 - 0.6 * (i / segs)));
+      const w = i2m(thick * (1 - 0.6 * (i / segs)));
       const n1 = new THREE.Vector3().crossVectors(axis, up).normalize().multiplyScalar(w);
       const n2 = new THREE.Vector3().crossVectors(axis, n1).normalize().multiplyScalar(w);
       quad(stemPos, mid, half, n1);
       quad(stemPos, mid, half, n2);
     }
-    // leaves: whorls of tiny needles along the outer 80 % of the stem
-    const whorls = Math.round(len / 1.1);
+    const whorls = Math.round(len / 0.95);
     for (let j = 0; j < whorls; j++) {
-      const t = 0.2 + 0.8 * (j / whorls);
+      const t = 0.15 + 0.85 * (j / whorls);
       const c = pt(t);
       const tangent = pt(t + 0.02).sub(c).normalize();
       const s1 = new THREE.Vector3().crossVectors(tangent, up).normalize();
       const s2 = new THREE.Vector3().crossVectors(tangent, s1).normalize();
-      const needles = 6;
+      const needles = 5;
       for (let n = 0; n < needles; n++) {
-        const ang = (n / needles) * Math.PI * 2 + j * 0.9 + k;
+        const ang = (n / needles) * Math.PI * 2 + j * 0.9 + seed;
         const out = s1.clone().multiplyScalar(Math.cos(ang)).addScaledVector(s2, Math.sin(ang));
-        const nl = i2m(1.0 + 0.7 * Math.abs(Math.sin(j * 2.1 + n)));
-        const centre = c.clone().addScaledVector(out, nl * 0.5).addScaledVector(tangent, nl * 0.35);
-        const u = out.clone().multiplyScalar(nl * 0.5).addScaledVector(tangent, nl * 0.35);
-        const v = new THREE.Vector3().crossVectors(u, tangent).normalize().multiplyScalar(i2m(0.15));
+        const nl = i2m(1.2 + 0.9 * Math.abs(Math.sin(j * 2.1 + n + seed)));
+        const centre = c.clone().addScaledVector(out, nl * 0.5).addScaledVector(tangent, nl * 0.4);
+        const u = out.clone().multiplyScalar(nl * 0.5).addScaledVector(tangent, nl * 0.4);
+        const v = new THREE.Vector3().crossVectors(u, tangent).normalize().multiplyScalar(i2m(0.09));
         quad(leafPos, centre, u, v);
-        // silvery base, paler toward the tips of the stem
         tmpC.copy(j % 3 === 0 ? deep : silver).lerp(pale, t * 0.5);
         for (let q = 0; q < 6; q++) leafCol.push(tmpC.r, tmpC.g, tmpC.b);
       }
+    }
+    return pt;
+  };
+
+  const stems = 78;
+  const up = new THREE.Vector3(0, 1, 0);
+  const base = new THREE.Vector3(0, i2m(0.6), 0);
+  for (let k = 0; k < stems; k++) {
+    const az = k * 2.39996;
+    const elev = 0.5 + 0.95 * Math.abs(Math.sin(k * 1.31)); // 29°–83° from horizontal
+    const len = 26 + 22 * Math.abs(Math.sin(k * 0.77)); // 26–48"
+    const droop = 0.18 + 0.25 * (1 - elev / 1.45);
+    const dir = new THREE.Vector3(Math.cos(az) * Math.cos(elev), Math.sin(elev), Math.sin(az) * Math.cos(elev));
+    const pt = spray(base, dir, len, droop, k, 0.2);
+    // two wispy side sprays off the upper half of each stem
+    for (let b = 0; b < 2; b++) {
+      const t0 = 0.45 + 0.25 * b + 0.1 * Math.abs(Math.sin(k * 3.7 + b));
+      const o = pt(t0);
+      const tan = pt(t0 + 0.02).sub(o).normalize();
+      const sideV = new THREE.Vector3().crossVectors(tan, up).normalize();
+      const bdir = tan
+        .clone()
+        .addScaledVector(sideV, (b ? -1 : 1) * (0.45 + 0.3 * Math.abs(Math.sin(k * 1.9))))
+        .addScaledVector(up, 0.25)
+        .normalize();
+      spray(o, bdir, 10 + 8 * Math.abs(Math.sin(k * 2.3 + b)), 0.35, k * 7 + b, 0.1);
     }
   }
 
