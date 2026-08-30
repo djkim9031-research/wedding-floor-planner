@@ -45,6 +45,7 @@ const CARD_TYPES: ItemType[] = [
   'plantSnake',
   'plantGrass',
   'plantOlive',
+  'plantMossTree',
   'setting',
   'figureW',
   'figureM',
@@ -167,6 +168,8 @@ export function buildPalette(
                 ? 'Lucca plates + glasses'
                 : isPlanter(type)
                   ? `${dims.w}"⌀ · ${Math.round(PLANTER_SPECS[type].h)}"h`
+                  : type === 'plantMossTree'
+                    ? `fits any planter · ${PLANT_SPECS[type].h}"h`
                   : isPlant(type)
                     ? `fits ${ITEM_LABELS[PLANT_SPECS[type].planter]}`
           : type === 'figureW' || type === 'figureM'

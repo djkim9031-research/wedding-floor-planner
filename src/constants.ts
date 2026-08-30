@@ -168,6 +168,7 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   plantSnake: { w: 11, d: 11 }, // opening of Jesslyn XXS
   plantGrass: { w: 12.4, d: 12.4 }, // opening of Cody L
   plantOlive: { w: 14, d: 14 }, // opening of Harith M
+  plantMossTree: { w: 10, d: 10 }, // fits every pot's opening
 };
 
 export const ITEM_LABELS: Record<ItemType, string> = {
@@ -198,6 +199,7 @@ export const ITEM_LABELS: Record<ItemType, string> = {
   plantSnake: 'Snake Plant',
   plantGrass: 'Fountain Grass',
   plantOlive: 'Olive Tree',
+  plantMossTree: 'Fern Moss Tree',
 };
 
 export const isFigure = (t: ItemType): boolean => t === 'figureW' || t === 'figureM';
@@ -256,7 +258,14 @@ export type PlanterType = (typeof PLANTER_TYPES)[number];
 export const isPlanter = (t: ItemType): t is PlanterType =>
   (PLANTER_TYPES as readonly string[]).includes(t);
 
-export const PLANT_TYPES = ['plantFern', 'plantBoxwood', 'plantSnake', 'plantGrass', 'plantOlive'] as const;
+export const PLANT_TYPES = [
+  'plantFern',
+  'plantBoxwood',
+  'plantSnake',
+  'plantGrass',
+  'plantOlive',
+  'plantMossTree',
+] as const;
 export type PlantType = (typeof PLANT_TYPES)[number];
 export const isPlant = (t: ItemType): t is PlantType =>
   (PLANT_TYPES as readonly string[]).includes(t);
@@ -283,6 +292,7 @@ export const PLANT_SPECS: Record<PlantType, { planter: PlanterType; h: number }>
   plantSnake: { planter: 'planterJesslynXXS', h: 26 },
   plantGrass: { planter: 'planterCodyL', h: 24 },
   plantOlive: { planter: 'planterHarithM', h: 40 },
+  plantMossTree: { planter: 'planterHarithS', h: 58 }, // ~5' weeping tree, fits any pot
 };
 
 export const TABLE_TYPES = ['table', 'tableSq', 'tableQ', 'tableC'] as const;

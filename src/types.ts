@@ -25,7 +25,8 @@ export type ItemType =
   | 'plantBoxwood'
   | 'plantSnake'
   | 'plantGrass'
-  | 'plantOlive';
+  | 'plantOlive'
+  | 'plantMossTree';
 
 export interface Vec2 {
   x: number;

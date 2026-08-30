@@ -599,6 +599,97 @@ function buildPlantOlive(): THREE.Group {
   return g;
 }
 
+/** Fern moss tree: ~5' weeping specimen — slender leaning trunk, a soft pale
+ * crown, and dozens of frost-green strands that arc out and drape toward the
+ * floor. Pale, slightly luminous leaf tones so it reads dreamy under the
+ * evening sun. Fits every planter (10" rootball). */
+function buildPlantMossTree(): THREE.Group {
+  const g = new THREE.Group();
+  const TOP = 58;
+  const bark = new THREE.MeshStandardMaterial({ color: 0x7a7266, roughness: 0.9, flatShading: true });
+  const trunkH = 36;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(i2m(0.7), i2m(1.3), i2m(trunkH), 7, 4), bark);
+  const tp = trunk.geometry.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < tp.count; i++) {
+    const t = tp.getY(i) / i2m(trunkH) + 0.5;
+    tp.setX(i, tp.getX(i) + i2m(1.4) * t * t);
+    tp.setZ(i, tp.getZ(i) + i2m(0.6) * Math.sin(t * Math.PI));
+  }
+  trunk.geometry.computeVertexNormals();
+  trunk.position.y = i2m(trunkH / 2);
+  trunk.castShadow = true;
+  g.add(trunk);
+
+  const leafA = new THREE.MeshStandardMaterial({
+    color: 0xd7e3cd,
+    emissive: 0x2a3326,
+    emissiveIntensity: 0.35,
+    roughness: 0.85,
+    side: THREE.DoubleSide,
+  });
+  const leafB = new THREE.MeshStandardMaterial({
+    color: 0xbfd0b3,
+    emissive: 0x1f2a1c,
+    emissiveIntensity: 0.3,
+    roughness: 0.85,
+    side: THREE.DoubleSide,
+  });
+  const mossMat = new THREE.MeshStandardMaterial({
+    color: 0xcbdbbf,
+    emissive: 0x24301f,
+    emissiveIntensity: 0.3,
+    roughness: 0.95,
+    flatShading: true,
+  });
+
+  // crown: three soft displaced blobs around the trunk top
+  const crown = (r: number, cx: number, cy: number, cz: number, seed: number) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(i2m(r), 14, 10), mossMat);
+    const pos = m.geometry.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const n = Math.sin(x * 61.7 + y * 43.3 + z * 89.1 + seed) * 0.5 + Math.sin(x * 17.9 - y * 23.7 + seed) * 0.5;
+      const sfc = 1 + 0.1 * n;
+      pos.setXYZ(i, x * sfc, y * sfc, z * sfc);
+    }
+    m.geometry.computeVertexNormals();
+    m.position.set(i2m(cx), i2m(cy), i2m(cz));
+    m.castShadow = true;
+    g.add(m);
+  };
+  const crownX = 1.4; // trunk lean at the top
+  crown(6.5, crownX, TOP - 7, 0, 0);
+  crown(4.8, crownX - 4, TOP - 11, 2.5, 3);
+  crown(4.4, crownX + 4.2, TOP - 12, -2.6, 6);
+
+  // draping strands: hang from the crown, drift outward, then fall
+  const strands = 96;
+  for (let k = 0; k < strands; k++) {
+    const a = k * 2.39996;
+    const len = 22 + 16 * Math.abs(Math.sin(k * 1.9)); // 22–38"
+    const geo = new THREE.PlaneGeometry(i2m(1.1), i2m(len), 1, 7);
+    geo.translate(0, -i2m(len / 2), 0); // hang downward from the origin
+    const pos = geo.getAttribute('position') as THREE.BufferAttribute;
+    const reach = 5 + 7 * Math.abs(Math.sin(k * 0.7));
+    for (let i = 0; i < pos.count; i++) {
+      const t = -pos.getY(i) / i2m(len); // 0 at the crown, 1 at the tip
+      pos.setZ(i, pos.getZ(i) + i2m(reach) * Math.sin(t * Math.PI * 0.55)); // arc outward then hang
+      pos.setX(i, pos.getX(i) * (1 - 0.6 * t) + i2m(0.7) * Math.sin(t * 6 + k)); // taper + gentle wave
+    }
+    geo.computeVertexNormals();
+    const strand = new THREE.Mesh(geo, k % 3 ? leafA : leafB);
+    const ring = 1.5 + 4.5 * ((k % 5) / 4);
+    const hangY = TOP - 6 - 8 * ((k % 7) / 6);
+    strand.position.set(i2m(crownX + ring * Math.cos(a)), i2m(hangY), i2m(ring * Math.sin(a)));
+    strand.rotation.y = Math.PI / 2 - a; // arc faces outward
+    strand.castShadow = true;
+    g.add(strand);
+  }
+  return g;
+}
+
 function buildPlant(type: PlantType): THREE.Group {
   switch (type) {
     case 'plantFern':
@@ -611,6 +702,8 @@ function buildPlant(type: PlantType): THREE.Group {
       return buildPlantGrass();
     case 'plantOlive':
       return buildPlantOlive();
+    case 'plantMossTree':
+      return buildPlantMossTree();
   }
 }
 

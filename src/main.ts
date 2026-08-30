@@ -307,6 +307,8 @@ if (params.get('demo') === 'tablec') {
   store.placeItem('planterHarithM', { x: 388, z: 300, yawDeg: 0 });
   store.placeItem('plantOlive', { x: 388, z: 300, yawDeg: 0 });
   store.placeItem('plantFern', { x: 280, z: 380, yawDeg: 0 });
+  store.placeItem('planterCodyM', { x: 445, z: 300, yawDeg: 0 });
+  store.placeItem('plantMossTree', { x: 445, z: 300, yawDeg: 0 });
 }
 const view = params.get('view');
 if (view === 'top') rig.toTopView();
@@ -436,6 +438,9 @@ if (params.get('cam') === 'close') {
 } else if (params.get('cam') === 'deckfloor') {
   rig.camera.position.set(5.5, 2.2, -3.2);
   rig.controls.target.set(7.5, 0, -5.2);
+} else if (params.get('cam') === 'planters') {
+  rig.camera.position.set(10.9, 1.6, 11.3);
+  rig.controls.target.set(11.1, 1.1, 7.62);
 } else if (params.get('cam') === 'hall') {
   rig.camera.position.set(7.6, 1.6, 12.6);
   rig.controls.target.set(3.3, 1.1, 16.3);

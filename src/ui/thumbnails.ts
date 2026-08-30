@@ -127,6 +127,13 @@ const oliveIcon = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org
   <ellipse cx="24" cy="42" rx="6" ry="2.2" fill="#2E2A24"/>
 </svg>`;
 
+const mossTreeIcon = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M24 42 q0.5 -14 0 -26" stroke="#7A7266" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <circle cx="24" cy="12" r="7" fill="#D9E4CF"/><circle cx="18" cy="15" r="4.5" fill="#C7D6BA"/><circle cx="30" cy="15" r="4.5" fill="#C7D6BA"/>
+  <path d="M15 17 q-4 8 -3 17 M19 19 q-2 9 -1 16 M24 19 q0 9 1 15 M29 19 q2 9 1 16 M33 17 q4 8 3 17" stroke="#CFDDC2" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+  <ellipse cx="24" cy="42" rx="6" ry="2.2" fill="#2E2A24"/>
+</svg>`;
+
 export const THUMBNAILS: Record<ItemType, string> = {
   table,
   tableSq,
@@ -155,4 +162,5 @@ export const THUMBNAILS: Record<ItemType, string> = {
   plantSnake: snakeIcon,
   plantGrass: grassIcon,
   plantOlive: oliveIcon,
+  plantMossTree: mossTreeIcon,
 };
