@@ -607,23 +607,31 @@ function buildPlantMossTree(): THREE.Group {
   const g = new THREE.Group();
   const TOP = 58;
   const frondA = new THREE.MeshStandardMaterial({
-    color: 0xd3e0c6,
-    emissive: 0x28301f,
+    color: 0xa3c48c,
+    emissive: 0x1f3018,
     emissiveIntensity: 0.35,
     roughness: 0.85,
     side: THREE.DoubleSide,
   });
   const frondB = new THREE.MeshStandardMaterial({
-    color: 0xb8ccae,
-    emissive: 0x1e2a1a,
+    color: 0x7fa66a,
+    emissive: 0x172a14,
     emissiveIntensity: 0.3,
     roughness: 0.85,
     side: THREE.DoubleSide,
   });
   const mossMat = new THREE.MeshStandardMaterial({
-    color: 0xe2ebd8,
-    emissive: 0x2a3323,
+    color: 0x8fb078,
+    emissive: 0x1c2c16,
     emissiveIntensity: 0.3,
+    roughness: 0.95,
+    side: THREE.DoubleSide,
+  });
+  // the only pale note: whitish moss threads hanging through the green
+  const threadMat = new THREE.MeshStandardMaterial({
+    color: 0xe6eddc,
+    emissive: 0x2a3323,
+    emissiveIntensity: 0.25,
     roughness: 0.95,
     side: THREE.DoubleSide,
   });
@@ -704,7 +712,7 @@ function buildPlantMossTree(): THREE.Group {
       const t = -pos.getY(i) / i2m(len);
       pos.setX(i, pos.getX(i) + i2m(0.6) * Math.sin(t * 5 + k));
     }
-    const strand = new THREE.Mesh(geo, mossMat);
+    const strand = new THREE.Mesh(geo, threadMat);
     const hangY = TOP - 12 - 14 * ((k % 4) / 3);
     strand.position.set(i2m(0.6 + r * Math.cos(a)), i2m(hangY), i2m(r * Math.sin(a)));
     strand.rotation.y = -a;
