@@ -142,10 +142,11 @@ export function applyAtmosphere(scene: THREE.Scene): Atmosphere {
     // far layers are part lit landscape, part aerial haze (the horizon sky)
     const ALB = 0.3;
     const HAZE_L = 1.6; // texel ≈ 0.6 → haze reads at the horizon luminance
-    const lit = (az: number, out: number[]): void => {
-      // landscape faces the viewer: normal = −view direction
-      const ar = (az * Math.PI) / 180;
-      const facing = Math.max(0, -(Math.sin(ar) * sd[0] - Math.cos(ar) * sd[2]) / sh);
+    const lit = (az: number | null, out: number[]): void => {
+      // landscape faces the viewer: normal = −view direction (null: the
+      // azimuth average of max(0, cos) = 1/π)
+      const ar = ((az ?? 0) * Math.PI) / 180;
+      const facing = az === null ? 1 / Math.PI : Math.max(0, -(Math.sin(ar) * sd[0] - Math.cos(ar) * sd[2]) / sh);
       const kSun = Math.max(0, 0.6 * Math.sin(alt) + 0.5 * facing * Math.cos(alt));
       for (let c = 0; c < 3; c++) out[c] = ((0.8 * eSky[c] + kSun * sunRgb[c]) / Math.PI) * ALB;
     };
@@ -172,13 +173,16 @@ export function applyAtmosphere(scene: THREE.Scene): Atmosphere {
     paint(valleyGeo, valleyAz, 0.3);
     paint(ringGeo, ringAz, 0.12);
 
-    // fog: aerial perspective over tens of metres (the linear ramp is strong,
-    // so the target sits between the lit landscape and the horizon haze)
-    lit(0, tmp);
+    // fog: the linear 45–160 m ramp is a stylistic blend toward the painted
+    // backdrop (real haze over 150 m is < 1 %), so its colour is mostly the
+    // lit landscape (albedo ≈ 0.25) with a little horizon haze — a bright
+    // horizon-coloured fog would make distant ground glow at dusk
+    lit(null, tmp);
+    const k = 0.25 / ALB;
     fog.color.setRGB(
-      0.6 * (hz[0] / n) + 0.4 * tmp[0] * 3,
-      0.6 * (hz[1] / n) + 0.4 * tmp[1] * 3,
-      0.6 * (hz[2] / n) + 0.4 * tmp[2] * 3,
+      0.3 * (hz[0] / n) + 0.7 * k * tmp[0],
+      0.3 * (hz[1] / n) + 0.7 * k * tmp[1],
+      0.3 * (hz[2] / n) + 0.7 * k * tmp[2],
       THREE.LinearSRGBColorSpace,
     );
   };

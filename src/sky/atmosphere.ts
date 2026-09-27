@@ -77,11 +77,16 @@ const DIP = Math.acos(RG / R0);
 const PI = Math.PI;
 const DEG = PI / 180;
 
-/** bg / env resolution (env is bg box-filtered 2×2) */
+/** bg / env resolution (bg is env upsampled 2×, plus stars and the moon) */
 export const BG_W = 1024;
 export const BG_H = 512;
 export const ENV_W = BG_W / 2;
 export const ENV_H = BG_H / 2;
+
+// the sky store's image buffers are recycled every other update
+const envPool: Float32Array[] = [];
+const bgPool: Float32Array[] = [];
+let poolSlot = 0;
 
 // ---------------------------------------------------------------------------
 // Transmittance LUT (Bruneton parameterisation, rays that miss the ground)
@@ -543,6 +548,9 @@ export interface SkyRequest {
   minutes?: number;
   /** skip the bg image (tests / exporters that only need env) */
   envOnly?: boolean;
+  /** reuse the store's double-buffered images (only the sky store sets
+   * this; direct callers get fresh arrays they can keep) */
+  recycle?: boolean;
 }
 
 export interface SkyResult {
@@ -655,7 +663,10 @@ export function computeSky(req: SkyRequest): SkyResult {
   // upsampled for bg; stars and the moon go into bg at full resolution
   const W = ENV_W;
   const H = ENV_H;
-  const img = new Float32Array(W * H * 4);
+  // double-buffered: an image stays valid until the update after next, and
+  // the slider doesn't churn 10 MB of garbage per step
+  const slot = req.recycle ? (poolSlot ^= 1) : -1;
+  const img = slot >= 0 ? (envPool[slot] ??= new Float32Array(W * H * 4)) : new Float32Array(W * H * 4);
 
   // per-column relative azimuth → LUT column
   const colI = new Int32Array(W);
@@ -841,7 +852,7 @@ export function computeSky(req: SkyRequest): SkyResult {
   let bg: EquirectImage | null = null;
   const tBg0 = now();
   if (!req.envOnly) {
-    bg = upsample2(img, W, H);
+    bg = upsample2(img, W, H, slot >= 0 ? (bgPool[slot] ??= new Float32Array(BG_W * BG_H * 4)) : new Float32Array(BG_W * BG_H * 4));
     const fadeClouds = (1 - c) ** 2;
     if (req.date !== undefined && req.minutes !== undefined && fadeClouds > 0.01) {
       addStars(bg, req.date, req.minutes, fadeClouds);
@@ -868,8 +879,10 @@ export function computeSky(req: SkyRequest): SkyResult {
 
 let hScratch = new Float32Array(0);
 
-/** 2× bilinear upsample (texel-centred, wraps in u, clamps in v). */
-function upsample2(src: Float32Array, W: number, H: number): EquirectImage {
+/** 2× bilinear upsample (texel-centred, wraps in u, clamps in v) into `out`.
+ * Rows more than ~25° below the horizon (always under the lawn/backdrop)
+ * skip the vertical blend. */
+function upsample2(src: Float32Array, W: number, H: number, out: Float32Array): EquirectImage {
   const w = W * 2;
   const h = H * 2;
   if (hScratch.length !== w * H * 3) hScratch = new Float32Array(w * H * 3);
@@ -892,13 +905,24 @@ function upsample2(src: Float32Array, W: number, H: number): EquirectImage {
     }
   }
   // vertical pass
-  const out = new Float32Array(w * h * 4);
+  const yLow = Math.floor(h * (0.5 - 25 / 180));
   for (let Y = 0; Y < h; Y++) {
     const j = Y >> 1;
-    const k = Y & 1 ? Math.min(j + 1, H - 1) : Math.max(j - 1, 0);
-    const a = j * w * 3;
-    const b = k * w * 3;
     const ob = Y * w * 4;
+    const a = j * w * 3;
+    if (Y < yLow) {
+      for (let x = 0; x < w; x++) {
+        const i = a + x * 3;
+        const o = ob + x * 4;
+        out[o] = hs[i];
+        out[o + 1] = hs[i + 1];
+        out[o + 2] = hs[i + 2];
+        out[o + 3] = 1;
+      }
+      continue;
+    }
+    const k = Y & 1 ? Math.min(j + 1, H - 1) : Math.max(j - 1, 0);
+    const b = k * w * 3;
     for (let x = 0; x < w; x++) {
       const i = x * 3;
       const o = ob + x * 4;
@@ -1036,9 +1060,11 @@ function addMoonDisc(bg: EquirectImage, m: Vec3, fraction: number, limbDeg: numb
   const cy = Math.floor(v0 * h);
   const SS = 6;
   const span = 2;
+  // texels narrow toward the zenith: widen the column window by 1/cos(el)
+  const spanX = Math.min(w >> 1, Math.ceil(span + (R * w) / (2 * PI * Math.max(Math.sqrt(1 - m[1] * m[1]), 0.02))));
   for (let yy = cy - span; yy <= cy + span; yy++) {
     if (yy < 0 || yy >= h) continue;
-    for (let xx0 = cx - span; xx0 <= cx + span; xx0++) {
+    for (let xx0 = cx - spanX; xx0 <= cx + spanX; xx0++) {
       const xx = ((xx0 % w) + w) % w;
       let acc = 0;
       for (let sy = 0; sy < SS; sy++) {
@@ -1092,18 +1118,36 @@ export function lastSkyExtras(): PhysicalSkyExtras | null {
   return lastExtras;
 }
 
-/** SkyModel for skyStore.setSkyModel(): physical env/bg + sun/moon light. */
+let memo: { key: string; r: SkyResult } | null = null;
+
+/** SkyModel for skyStore.setSkyModel(): physical env/bg + sun/moon light.
+ * Exposure-only changes (evComp, autoEV) reuse the last images. */
 export function physicalSkyModel(inp: SkyInput, base: Base) {
-  const r = computeSky({
-    sunDir: base.sun.dir,
-    moonDir: base.moon.dir,
-    moonFraction: base.moon.fraction,
-    moonBrightLimbDeg: base.moon.brightLimbDeg,
-    cloudPct: inp.cloudPct,
-    ridgeVisibility: base.sun.ridgeVisibility,
-    date: inp.date,
-    minutes: inp.minutes,
-  });
+  const key = [
+    ...base.sun.dir,
+    ...base.moon.dir,
+    base.moon.fraction,
+    base.moon.brightLimbDeg,
+    base.sun.ridgeVisibility,
+    inp.cloudPct,
+    inp.date,
+    inp.minutes,
+  ].join('|');
+  const r =
+    memo && memo.key === key
+      ? memo.r
+      : computeSky({
+          sunDir: base.sun.dir,
+          moonDir: base.moon.dir,
+          moonFraction: base.moon.fraction,
+          moonBrightLimbDeg: base.moon.brightLimbDeg,
+          cloudPct: inp.cloudPct,
+          ridgeVisibility: base.sun.ridgeVisibility,
+          date: inp.date,
+          minutes: inp.minutes,
+          recycle: true,
+        });
+  memo = { key, r };
   lastExtras = { globalHorizontalLux: r.globalHorizontalLux, skyHorizontalRgb: r.skyHorizontalRgb, timings: r.timings };
   const metered = inp.autoEV ? meteredEV100(r.globalHorizontalLux) : presetEV100(r.globalHorizontalLux);
   return {
@@ -1115,14 +1159,4 @@ export function physicalSkyModel(inp: SkyInput, base: Base) {
     sun: { illuminanceLux: r.sun.illuminanceLux, colorLinear: r.sun.colorLinear },
     moon: { illuminanceLux: r.moon.illuminanceLux, colorLinear: r.moon.colorLinear },
   };
-}
-
-/** @internal debug: raw sky-view entry (R single, M single, MS) */
-export function debugSkyView(sunElevDeg: number, elevDeg: number, phiDeg: number): number[] {
-  ensureLuts();
-  const lut = skyView(svSun, sunElevDeg * DEG);
-  const j = Math.round(elevRow(elevDeg * DEG));
-  const i = Math.round((phiDeg / 180) * (NA - 1));
-  const o = (j * NA + i) * 9;
-  return Array.from(lut.slice(o, o + 9)).map((v) => v * ATMOSPHERE.solarIlluminanceLux);
 }

@@ -184,7 +184,6 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
   cam.far = 95;
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.02;
-  sun.userData.lightDef = { id: 'sun', kind: 'directional', group: 'sky', position: [0, 0, 0], colorLinear: [1, 1, 1], ptMode: 'light' } satisfies LightDef;
   scene.add(sun, sun.target);
 
   // incoming-ray arrow over the room (planning aid, never rendered)
@@ -268,6 +267,8 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
     for (const f of fixtures) {
       const on = f.def.group === 'porch' || f.def.group === 'deck' ? porchLevel : 1;
       f.light.intensity = (f.light.userData.baseIntensity as number) * on;
+      // what a render export should use right now (photocell applied)
+      f.light.userData.lightDef = { ...f.def, intensityCd: (f.def.intensityCd ?? 0) * on } satisfies LightDef;
     }
   };
   /** representative interior illuminance from the fixtures, lux: ~30 % of
@@ -284,29 +285,40 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
 
   // --- per-sky update -------------------------------------------------------
   let sky: SkyState | null = null;
+  let lastBg: SkyState['bg'] | null = null;
+  let lastEnv: SkyState['env'] | null = null;
   const lastDir = new THREE.Vector3();
   let lastLux = -1;
   const dir = new THREE.Vector3();
 
   const applySky = (s: SkyState): void => {
+    const t0 = performance.now();
     sky = s;
     // backgrounds: the equirect → cube conversion is cached per texture, so
-    // a fresh upload also drops the cache (dispose) before the next frame
-    if (!bgTex || bgTex.image.width !== s.bg.w) {
-      bgTex?.dispose();
-      bgTex = makeEquirect(s.bg.w, s.bg.h);
-      scene.background = bgTex;
+    // a fresh upload also drops the cache (dispose) before the next frame.
+    // Exposure-only changes keep the same images: skip the uploads.
+    if (s.bg !== lastBg) {
+      lastBg = s.bg;
+      if (!bgTex || bgTex.image.width !== s.bg.w) {
+        bgTex?.dispose();
+        bgTex = makeEquirect(s.bg.w, s.bg.h);
+        scene.background = bgTex;
+      }
+      bgTex.image.data = toHalfArray(s.bg.data, bgTex.image.data as Uint16Array);
+      bgTex.dispose();
+      bgTex.needsUpdate = true;
     }
-    bgTex.image.data = toHalfArray(s.bg.data, bgTex.image.data as Uint16Array);
-    bgTex.dispose();
-    bgTex.needsUpdate = true;
-    if (!envTex || envTex.image.width !== s.env.w) {
-      envTex?.dispose();
-      envTex = makeEquirect(s.env.w, s.env.h);
+    const envChanged = s.env !== lastEnv;
+    if (envChanged) {
+      lastEnv = s.env;
+      if (!envTex || envTex.image.width !== s.env.w) {
+        envTex?.dispose();
+        envTex = makeEquirect(s.env.w, s.env.h);
+      }
+      envTex.image.data = toHalfArray(s.env.data, envTex.image.data as Uint16Array);
+      envTex.needsUpdate = true;
+      schedulePmrem();
     }
-    envTex.image.data = toHalfArray(s.env.data, envTex.image.data as Uint16Array);
-    envTex.needsUpdate = true;
-    schedulePmrem();
 
     // direct light: the sun while it is up, else the moon
     const sunUp = s.sun.illuminanceLux > 0.5;
@@ -323,6 +335,16 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
       sun.intensity = 0;
     }
     const lux = body ? body.illuminanceLux : 0;
+    sun.userData.lightDef = {
+      id: sunUp ? 'sun' : 'moon',
+      kind: 'directional',
+      group: 'sky',
+      position: [0, 0, 0],
+      direction: body ? [-body.dir[0], -body.dir[1], -body.dir[2]] : [0, -1, 0],
+      colorLinear: body ? [...body.colorLinear] : [1, 1, 1],
+      illuminanceLux: lux,
+      ptMode: 'light',
+    } satisfies LightDef;
     if (dir.angleTo(lastDir) > 1e-4 || (lux > 0) !== (lastLux > 0)) invalidateShadows();
     lastDir.copy(dir);
     lastLux = lux;
@@ -339,9 +361,11 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
     porchLevel = THREE.MathUtils.clamp((Math.log10(400) - Math.log10(Math.max(E, 1e-6))) / Math.log10(4), 0, 1);
     applyFixtureLevels();
 
-    atmo?.applySky(s);
+    if (envChanged) atmo?.applySky(s);
     updateExposure(0);
     invalidate();
+    // QA/diagnostics: cost of pushing a sky update to the GPU side (ms)
+    (window as unknown as { __wpSkyApplyMs?: number }).__wpSkyApplyMs = performance.now() - t0;
   };
 
   const outdoorLux = (s: SkyState): number =>

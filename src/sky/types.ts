@@ -54,9 +54,12 @@ export interface SkyState {
     illuminanceLux: number;
     colorLinear: Vec3;
   };
-  /** sky radiance without sun/moon discs (lighting) */
+  /** sky radiance without sun/moon discs (lighting), 512×256, cd/m².
+   * The physical model recycles its image buffers every other update: copy
+   * `data` if you need it after the next sky change. */
   env: EquirectImage;
-  /** sky as seen by the camera: env + stars + moon disc */
+  /** sky as seen by the camera: env (2× upsampled) + stars + moon disc,
+   * 1024×512, cd/m² (same buffer recycling as env) */
   bg: EquirectImage;
   /** illuminance on a horizontal plane from the sky dome alone, lux */
   skyHorizontalLux: number;
