@@ -94,7 +94,7 @@ const settings = new SettingsStore(settingsFile(userData));
   cl.appendSwitch('enable-unsafe-swiftshader');
   if (s.webgpu) cl.appendSwitch('enable-unsafe-webgpu'); // OIDN denoiser
   if (!cl.hasSwitch('use-angle')) cl.appendSwitch('use-angle', s.angleBackend);
-  log(`start ${APP_NAME} ${app.getVersion()} electron ${process.versions.electron} angle=${s.angleBackend} webgpu=${s.webgpu}${smokePng ? ' smoke=' + smokePng : ''}`);
+  log(`start ${APP_NAME} ${app.getVersion()} electron ${process.versions.electron} angle=${cl.getSwitchValue('use-angle') || s.angleBackend} webgpu=${s.webgpu}${smokePng ? ' smoke=' + smokePng : ''}`);
 }
 
 registerAppScheme();
