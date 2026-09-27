@@ -107,7 +107,7 @@ try {
       if (m.waitMs) await page.waitForTimeout(m.waitMs);
       // two more frames so the last render lands on the canvas
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-      await page.screenshot({ path: `${out}/${m.name}.png` });
+      await page.screenshot({ path: `${out}/${m.name}.png`, timeout });
       if (m.qa) {
         const qa = await page.evaluate(() => window.__wpQA ?? null);
         writeFileSync(`${out}/${m.name}.qa.json`, JSON.stringify(qa, null, 2));
@@ -115,7 +115,7 @@ try {
     } catch (e) {
       status = 'error: ' + String(e).split('\n')[0];
       try {
-        await page.screenshot({ path: `${out}/${m.name}.FAILED.png` });
+        await page.screenshot({ path: `${out}/${m.name}.FAILED.png`, timeout: 60000 });
       } catch {
         /* page gone */
       }

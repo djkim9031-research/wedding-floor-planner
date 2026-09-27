@@ -125,7 +125,8 @@ class PhotoMode {
     } catch (e) {
       console.error(e);
       this.exit();
-      ctx.toast('Photo mode is not available on this device');
+      const pending = e instanceof Error && /not available yet/.test(e.message);
+      ctx.toast(pending ? 'Photo mode is still being wired up — coming in a later build' : 'Photo mode is not available on this device');
       return;
     }
 

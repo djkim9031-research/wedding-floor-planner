@@ -21,6 +21,7 @@ const hash = opt('hash', 'preset=Wedding+layout&cam=close&sun=2026-09-20,19:15')
 const [rw, rh] = opt('res', '480x270').split('x').map(Number);
 const samples = opt('samples', '32');
 const python = opt('python', 'python3');
+const extra = opt('args', '').split(' ').filter(Boolean); // passed through to render_venue.py
 mkdirSync(out, { recursive: true });
 
 const port = Number(opt('port', String(4300 + Math.floor(Math.random() * 600))));
@@ -51,23 +52,30 @@ const browser = await chromium.launch({
 });
 let exitCode = 1;
 try {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  // small viewport: the export takes its aspect from --res, and software GL
+  // frames on a loaded machine are slow
+  const page = await browser.newPage({ viewport: { width: 640, height: 360 } });
+  page.setDefaultTimeout(300000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(`${base}/#${hash}&settle=fast&export=zip&w=${rw}&h=${rh}&samples=${samples}`);
-  await page.waitForFunction(() => window.__wpExport || window.__wpQA?.exportError, null, { timeout: 240000 });
-  await page.screenshot({ path: `${out}/app.png` });
+  await page.waitForFunction(() => window.__wpExport || window.__wpQA?.exportError, null, { timeout: 300000 });
   const exp = await page.evaluate(() => window.__wpExport);
   if (!exp) throw new Error('export failed: ' + errors.join('\n'));
   const zip = Buffer.from(exp.zipBase64, 'base64');
   writeFileSync(`${out}/package.zip`, zip);
+  try {
+    await page.screenshot({ path: `${out}/app.png`, timeout: 120000 });
+  } catch (e) {
+    console.log('app screenshot skipped: ' + String(e).split('\n')[0]);
+  }
   const job = `${out}/job`;
   mkdirSync(job, { recursive: true });
   for (const [name, data] of Object.entries(unzipSync(new Uint8Array(zip)))) writeFileSync(`${job}/${name}`, data);
   console.log(`package: ${(zip.length / 1e6).toFixed(2)} MB, lights ${exp.json.lights.length}, checkpoints ${exp.json.checkpoints.length}`);
 
   const t0 = Date.now();
-  const r = spawnSync(python, [`${job}/render_venue.py`, '--job', job, '--res', `${rw}x${rh}`, '--samples', samples], {
+  const r = spawnSync(python, [`${job}/render_venue.py`, '--job', job, '--res', `${rw}x${rh}`, '--samples', samples, ...extra], {
     encoding: 'utf8',
     maxBuffer: 64 << 20,
   });
