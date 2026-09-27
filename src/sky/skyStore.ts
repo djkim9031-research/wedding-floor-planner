@@ -133,6 +133,6 @@ function gradientSky(inp: SkyInput, base: Parameters<SkyModel>[1]): ReturnType<S
   }
   const env = { w, h, data };
   const skyHorizontalLux = Math.PI * zenith * 1.2;
-  const ev100 = Math.log2(((skyHorizontalLux + base.sun.illuminanceLux * Math.max(Math.sin((alt * Math.PI) / 180), 0)) * 0.18 * 100) / (Math.PI * 12.5)) + inp.evComp;
+  const ev100 = Math.log2(((skyHorizontalLux + base.sun.illuminanceLux * Math.max(Math.sin((alt * Math.PI) / 180), 0)) * 0.18 * 100) / (Math.PI * 12.5)) - inp.evComp;
   return { env, bg: env, skyHorizontalLux, ev100 };
 }

@@ -60,7 +60,8 @@ export interface SkyState {
   bg: EquirectImage;
   /** illuminance on a horizontal plane from the sky dome alone, lux */
   skyHorizontalLux: number;
-  /** exposure the scene should use (EV100) */
+  /** exposure the camera uses (EV100), compensation already applied:
+   * ev100 = metered − evComp (so +1 EV comp brightens) */
   ev100: number;
   /** bumps whenever any field changes */
   version: number;
