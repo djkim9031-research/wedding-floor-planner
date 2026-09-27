@@ -30,11 +30,6 @@ function toTexture(ctx: CanvasRenderingContext2D, srgb: boolean): THREE.CanvasTe
   return t;
 }
 
-const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
-const smooth = (a: number, b: number, x: number) => {
-  const t = clamp01((x - a) / (b - a));
-  return t * t * (3 - 2 * t);
-};
 
 /** Tangent-space normal map from a grayscale height canvas (tiling). Canvas
  * row 0 is the texture's top (flipY), so +v runs up the canvas. */

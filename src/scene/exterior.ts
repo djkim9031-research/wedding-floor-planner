@@ -19,9 +19,7 @@ import {
   farVariant,
   leafMaterial,
   type LimbSpec,
-  type Species,
   type TreeSpec,
-  type V3,
 } from './oak';
 import {
   DECK_TILE_U_IN,
