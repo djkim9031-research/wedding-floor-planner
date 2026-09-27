@@ -389,6 +389,27 @@ export function deckOakSpec(): TreeSpec {
       r: [3.4, 2.8, 2.2, 1.6],
     },
     {
+      // C-N and A-N fill the middle storey north of the trunks, over the
+      // rail (photo 04: foliage down to ~4–5 m there)
+      pts: [
+        [C.x + 12, 140, C.z + 10],
+        [C.x - 10, 170, C.z - 80],
+        [C.x - 30, 196, C.z - 170],
+        [C.x - 60, 214, C.z - 260],
+        [C.x - 90, 226, C.z - 340],
+      ],
+      r: [5, 4.4, 3.6, 2.6, 1.8],
+    },
+    {
+      pts: [
+        [A.x - 74, 172, A.z - 30],
+        [A.x - 60, 196, A.z - 110],
+        [A.x - 44, 216, A.z - 200],
+        [A.x - 30, 230, A.z - 290],
+      ],
+      r: [3.6, 3.1, 2.4, 1.6],
+    },
+    {
       // C-SE and B-S carry the crown south over the covered bay
       pts: [
         [C.x + 16, 280, C.z + 26],
@@ -1632,7 +1653,7 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
   const oaks = new TreeBatch({ ...COAST_LIVE_OAK, name: 'siteOak' });
   const oakSpots: [number, number, number, number, number, number?, number?][] = [
     // x, z, height, spread, seed, leanDeg, leanAz(true-ish model az)
-    [-150, -720, 440, 290, 31],
+    [-380, -700, 440, 290, 31],
     [-470, -300, 420, 260, 32],
     [-560, -1040, 470, 320, 33],
     [860, -440, 470, 280, 34, 14, 240],
@@ -1657,7 +1678,7 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
 
   const eucs = new TreeBatch(EUCALYPTUS);
   for (const [x, z, h, s, seed] of [
-    [360, -690, 800, 230, 51],
+    [360, -690, 390, 190, 51],
     [1180, -300, 760, 210, 52],
   ] as const) {
     eucs.add(autoTree(EUCALYPTUS, { x, z, y: at(x, z), height: h, spread: s, seed, leanDeg: 6 }), seed);

@@ -123,11 +123,11 @@ export const COAST_LIVE_OAK: Species = {
   levels: [
     { spacing: 30, len: [80, 150], angle: [35, 62], up: 0.02, droop: 0.2, wander: 0.2, segLen: 14, radial: 7 },
     { spacing: 15, len: [30, 62], angle: [30, 58], up: 0.06, droop: 0.1, wander: 0.22, segLen: 10, radial: 4 },
-    { spacing: 7, len: [11, 22], angle: [30, 55], up: 0.12, droop: 0.02, wander: 0.25, segLen: 6, radial: 3, renderOnly: true },
+    { spacing: 7.6, len: [11, 22], angle: [30, 55], up: 0.12, droop: 0.02, wander: 0.25, segLen: 6, radial: 3, renderOnly: true },
   ],
   tipRadius: 0.22,
   taper: 0.004,
-  cards: { live: 2, render: 13, sizeLive: 40, sizeRender: 18, spread: 8, crownNormals: 0.6 },
+  cards: { live: 2, render: 12, sizeLive: 40, sizeRender: 19, spread: 8, crownNormals: 0.6 },
   tints: [
     [0.92, 0.95, 0.9],
     [1.0, 1.0, 1.0],
