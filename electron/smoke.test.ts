@@ -64,8 +64,8 @@ describe('runSmoke', () => {
         isLoading: () => false,
         executeJavaScript: async (code: string) => {
           if (code.trim().startsWith('({ booted')) return { booted: false, err: bootErr };
-          if (code.includes('__wpIdle')) return true;
-          if (code.includes('requestAnimationFrame')) return undefined;
+          if (code === 'window.__wpIdle === true') return true;
+          if (code.startsWith('new Promise')) return undefined;
           return page;
         },
         capturePage: async () => ({
