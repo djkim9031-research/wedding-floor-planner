@@ -5,3 +5,5 @@ dist-single/
 *.log
 dist-base/
 .claude/worktrees/
+release/
+dist-electron/

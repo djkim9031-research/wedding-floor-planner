@@ -1,0 +1,65 @@
+# Wedding Venue Studio — macOS app (x64 .dmg, ad-hoc signed).
+#   npm run dist:mac   →  release/Wedding-Venue-Studio-<version>-x64.dmg
+# CI: .github/workflows/mac-app.yml (macos-15-intel).
+appId: com.djkim.weddingvenuestudio
+productName: Wedding Venue Studio
+copyright: Copyright © 2026 DJ Kim
+
+directories:
+  output: release
+  buildResources: build
+
+# The renderer is the vite build and the main process is one esbuild bundle,
+# so the app needs no node_modules at runtime. "!**/*" first keeps the
+# production dependencies (three, …) — already bundled into dist/ — out of
+# app.asar; the includes after it add back only what the app loads.
+files:
+  - "!**/*"
+  - dist/**
+  - dist-electron/**
+  - package.json
+asar: true
+npmRebuild: false
+nodeGypRebuild: false
+electronLanguages: [en]
+
+# Built by the Blender pipeline (blender/render_venue.py); Blender needs a
+# real file, so it lives outside app.asar in Contents/Resources/blender/.
+extraResources:
+  - from: blender/render_venue.py
+    to: blender/render_venue.py
+
+mac:
+  category: public.app-category.graphics-design
+  target:
+    - target: dmg
+      arch: [x64]
+  icon: build/icon.icns
+  # "-" = ad-hoc signature. Unsigned (null) bundles are reported as
+  # "damaged" by Gatekeeper on macOS 15; ad-hoc ones get "Open Anyway".
+  identity: "-"
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  minimumSystemVersion: "12.0"
+  darkModeSupport: true
+  notarize: false
+  artifactName: Wedding-Venue-Studio-${version}-${arch}.${ext}
+  extendInfo:
+    NSHighResolutionCapable: true
+    LSApplicationCategoryType: public.app-category.graphics-design
+
+dmg:
+  title: Wedding Venue Studio ${version}
+  # build/background.png (+ @2x) sets the 540×380 window
+  iconSize: 104
+  contents:
+    - x: 140
+      y: 178
+      type: file
+    - x: 400
+      y: 178
+      type: link
+      path: /Applications
+  writeUpdateInfo: false
+
+publish: null
