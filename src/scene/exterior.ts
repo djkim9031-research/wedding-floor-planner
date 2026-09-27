@@ -906,7 +906,8 @@ export function buildExterior(): THREE.Group {
 
   // island oak + scenery oaks flanking the wings (same generator as the
   // deck oak; the far ones in the cheap variant)
-  islandOak.add(autoTree(COAST_LIVE_OAK, { x: 272.5, z: 2020, y: -11, height: 300, spread: 200, seed: 21 }), 21);
+  // limbed up so the entry view (#cam=entry) looks under its crown
+  islandOak.add({ ...autoTree(COAST_LIVE_OAK, { x: 272.5, z: 2020, y: -11, height: 330, spread: 150, seed: 21 }), floorY: () => 160 }, 21);
   for (const [s, x, z, h, sp] of [
     [22, -430, 1150, 330, 220],
     [23, 740, 1170, 300, 200],
