@@ -29,6 +29,39 @@ export interface FixtureDef {
   nightOnly?: boolean;
 }
 
+import { cctToLinear } from '../sky/exposure';
+import type { LightDef } from '../render/types';
+
+const IN = 0.0254;
+
+/** Photometric fixture → the light contract the lighting rig, the path
+ * tracer and the Blender export share (meters, linear colour, half-angle). */
+export function fixtureToLightDef(f: FixtureDef): LightDef {
+  const position: [number, number, number] = [f.posIn[0] * IN, f.posIn[1] * IN, f.posIn[2] * IN];
+  let direction: [number, number, number] | undefined;
+  if (f.aimIn) {
+    const d = [f.aimIn[0] - f.posIn[0], f.aimIn[1] - f.posIn[1], f.aimIn[2] - f.posIn[2]];
+    const len = Math.hypot(d[0], d[1], d[2]) || 1;
+    direction = [d[0] / len, d[1] / len, d[2] / len];
+  }
+  return {
+    id: f.id,
+    kind: f.kind,
+    // night-only fixtures ride the rig's photocell like the porch lights
+    group: f.nightOnly && f.group === 'interior' ? 'porch' : f.group,
+    position,
+    direction,
+    colorLinear: cctToLinear(f.cct),
+    cct: f.cct,
+    intensityCd: f.intensityCd,
+    halfAngleDeg: f.beamDeg !== undefined ? f.beamDeg / 2 : undefined,
+    penumbra: 0.5,
+    radiusM: f.radiusIn * IN,
+    shadowlessEmitter: f.lensMaterial,
+    ptMode: 'light',
+  };
+}
+
 const registry = new Map<string, FixtureDef>();
 
 /** Venue/deck builders register their fixtures as they build geometry. */

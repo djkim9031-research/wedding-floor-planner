@@ -1,16 +1,34 @@
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { i2m, ROOM_W, ROOM_D } from '../constants';
+import { onAppReady, type AppContext } from '../app/context';
+import { BAY_X, i2m, IN, ROOM_D, ROOM_POLYGON, ROOM_W } from '../constants';
+import { excludeFromRender, pbrOf } from '../render/tags';
+import type { LightDef } from '../render/types';
+import { cctToLinear, exposureScale, luminance, meteredEV100 } from '../sky/exposure';
+import { toHalfArray } from '../sky/half';
+import { getSky, subscribeSky } from '../sky/skyStore';
+import type { SkyState } from '../sky/types';
+import { setViewEV100 } from '../sky/viewExposure';
 import type { Atmosphere } from './atmosphere';
-import { excludeFromRender } from '../render/tags';
 
-/** Live sun input: real solar altitude/azimuth (model frame) + cloud cover. */
+// ---------------------------------------------------------------------------
+// Photometric raster lighting, driven by the physical sky store.
+//
+// Units are real: DirectionalLight = lux, Point/SpotLight = candela (three
+// r155+ "physically correct" lights), scene.background / scene.environment =
+// cd/m². Everything is exposed once, in the tone mapper:
+//   renderer.toneMappingExposure = exposureScale(EV100) = 1 / (1.2 · 2^EV)
+// so sun, fixtures, lanterns, sky and emissive surfaces (tagged with a
+// luminance) combine the way a camera would see them. Unlit UI overlays are
+// switched to toneMapped = false so they keep their colours at any EV.
+// ---------------------------------------------------------------------------
+
+/** Legacy input from main.ts — the store now carries the real state; kept so
+ * host.applySun() keeps working as a thin adapter. */
 export interface SunInput {
   altitudeDeg: number;
   azimuthModelDeg: number;
   /** 0 = clear, 1 = fully overcast */
   clouds: number;
-  /** real moon state for the same instant (drives the night sky) */
   moon?: {
     altitudeDeg: number;
     azimuthModelDeg: number;
@@ -21,20 +39,139 @@ export interface SunInput {
 
 export interface Lighting {
   invalidateShadows(): void;
-  /** Drive the rig from a real sun state; null restores the showcase preset. */
+  /** Adapter: the sky store already holds the state; this just re-applies. */
   applySun(input: SunInput | null): void;
+  /** Replace the interior/porch fixtures (e.g. with scene/fixtures.ts data). */
+  setFixtures(defs: LightDef[]): void;
+  /** EV100 the view is exposed at right now (compensation applied). */
+  viewEV100(): number;
 }
 
 const DEG = Math.PI / 180;
 
-export function setupLighting(
-  scene: THREE.Scene,
-  renderer: THREE.WebGLRenderer,
-  atmo: Atmosphere | null,
-): Lighting {
+let active: Lighting | null = null;
+let pendingFixtures: LightDef[] | null = null;
+
+/** The app's lighting rig (one per SceneHost), once set up. */
+export function currentLighting(): Lighting | null {
+  return active;
+}
+
+/** Hook for the venue's fixture layout (e.g. scene/fixtures.ts): replaces the
+ * default track heads/porch lights with photometric defs (cd, CCT, beam).
+ * Safe to call before the scene exists — applied at setup. */
+export function setVenueFixtures(defs: LightDef[]): void {
+  if (active) active.setFixtures(defs);
+  else pendingFixtures = defs;
+}
+
+/** Fraction of the outdoor sky light that reaches the hall's interior with
+ * the roof on (glass walls NE + frosted panels S; no GI in raster). */
+export const INTERIOR_ENV_FACTOR = 0.18;
+/** Share of the direct sun metered inside (patches through the glazing). */
+const INTERIOR_SUN_SHARE = 0.1;
+/** Hall surfaces for the fixture-bounce estimate: floor + reed ceiling +
+ * walls ≈ 640 m², mean reflectance ≈ 0.45 (white walls, honey oak, reeds). */
+const HALL_SURFACE_M2 = 640;
+const HALL_REFLECTANCE = 0.45;
+
+const TRACK_CCT = 3000;
+const PORCH_CCT = 2700;
+
+/** Default fixtures: ~3000 K LED track heads (36° beam) just under the eight
+ * ceiling-disc props on the glulam beams, and three 2700 K porch lights.
+ * Replaced wholesale by setFixtures() once the venue's fixture layout lands. */
+export const DEFAULT_FIXTURES: LightDef[] = [
+  ...[BAY_X[1], BAY_X[2]].flatMap((x) =>
+    [150, 250, 350, 450].map(
+      (z): LightDef => ({
+        id: `track-${Math.round(x)}-${z}`,
+        kind: 'spot',
+        group: 'interior',
+        position: [i2m(x), i2m(98), i2m(z)],
+        direction: [0, -1, 0],
+        cct: TRACK_CCT,
+        colorLinear: cctToLinear(TRACK_CCT),
+        intensityCd: 2000,
+        // field half-angle 26°, soft edge: ~36–38° beam at 50 %
+        halfAngleDeg: 26,
+        penumbra: 0.55,
+        radiusM: 0.03,
+        ptMode: 'light',
+      }),
+    ),
+  ),
+  ...(
+    [
+      [180, 96, -30],
+      [400, 96, -30],
+      [272, 96, 690],
+    ] as const
+  ).map(
+    ([x, y, z], i): LightDef => ({
+      id: `porch-${i}`,
+      kind: 'point',
+      group: 'porch',
+      position: [i2m(x), i2m(y), i2m(z)],
+      cct: PORCH_CCT,
+      colorLinear: cctToLinear(PORCH_CCT),
+      // ~750 lm A19-class wall lantern
+      intensityCd: 60,
+      radiusM: 0.05,
+      ptMode: 'light',
+    }),
+  ),
+];
+
+// ---------------------------------------------------------------------------
+// Hall footprint (for the interior IBL factor and exposure metering)
+// ---------------------------------------------------------------------------
+
+const ROOF_TOP_IN = 200;
+const HALL_POLYGONS_IN: { x: number; z: number }[][] = [
+  ROOM_POLYGON,
+  // annex hallway along the south side
+  [
+    { x: -597, z: 593 },
+    { x: 700, z: 593 },
+    { x: 700, z: 659 },
+    { x: -597, z: 659 },
+  ],
+];
+
+function polySignedDist(poly: { x: number; z: number }[], px: number, pz: number): number {
+  // + inside, − outside, inches
+  let inside = false;
+  let best = Infinity;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[j];
+    const b = poly[i];
+    if (a.z > pz !== b.z > pz && px < ((b.x - a.x) * (pz - a.z)) / (b.z - a.z) + a.x) inside = !inside;
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (pz - a.z) * dz) / (dx * dx + dz * dz || 1)));
+    best = Math.min(best, Math.hypot(px - a.x - t * dx, pz - a.z - t * dz));
+  }
+  return inside ? best : -best;
+}
+
+/** 0..1 how far inside the hall footprint (smooth over ±18") a world point is. */
+function insideHall(x: number, y: number, z: number): number {
+  const px = x / IN;
+  const pz = z / IN;
+  let d = -Infinity;
+  for (const p of HALL_POLYGONS_IN) d = Math.max(d, polySignedDist(p, px, pz));
+  const plan = THREE.MathUtils.clamp(0.5 + d / 36, 0, 1);
+  const vert = THREE.MathUtils.clamp((ROOF_TOP_IN - y / IN) / 24 + 0.5, 0, 1);
+  return plan * vert;
+}
+
+// ---------------------------------------------------------------------------
+
+export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer, atmo: Atmosphere | null): Lighting {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMapping = THREE.AgXToneMapping;
+  renderer.toneMappingExposure = 1;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false; // on-demand via invalidateShadows()
@@ -45,8 +182,15 @@ export function setupLighting(
   const center = new THREE.Vector3(cx, 0, cz);
   const mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
-  // Showcase default: late-afternoon sun from the NW (~24° elevation)
-  const sun = new THREE.DirectionalLight(0xffd9a8, 2.4);
+  let ctx: AppContext | null = null;
+  const invalidate = (): void => ctx?.host.invalidate();
+  const invalidateShadows = (): void => {
+    renderer.shadowMap.needsUpdate = true;
+  };
+
+  // --- sun (or moon, once the sun is down): one shadow-casting directional,
+  // always present so the light count — and every shader — stays stable
+  const sun = new THREE.DirectionalLight(0xffffff, 0);
   sun.position.set(cx - 18, 14, cz - 26);
   sun.target.position.copy(center);
   sun.castShadow = true;
@@ -62,373 +206,381 @@ export function setupLighting(
   sun.shadow.normalBias = 0.02;
   scene.add(sun, sun.target);
 
-  const hemi = new THREE.HemisphereLight(0xbfd4ee, 0x8a6b4c, 0.5);
-  scene.add(hemi);
-
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  pmrem.dispose();
-  const sceneEnv = scene as THREE.Scene & { environmentIntensity?: number };
-  if ('environmentIntensity' in scene) sceneEnv.environmentIntensity = 0.35;
-
-  // Warm accent spots under the glulam beams (match the fixture props)
-  const spots: THREE.SpotLight[] = [];
-  for (const x of [183, 363]) {
-    for (const z of [150, 450]) {
-      const spot = new THREE.SpotLight(0xffe3bc, 50, 12, 0.5, 0.6, 2);
-      spot.position.set(i2m(x), i2m(100), i2m(z));
-      spot.target.position.set(i2m(x), 0, i2m(z));
-      spot.castShadow = false;
-      scene.add(spot, spot.target);
-      spots.push(spot);
-    }
-  }
-
-  // Night-only porch lights: two on the deck face, one over the entry porch
-  const porch: THREE.PointLight[] = [];
-  for (const [px, py, pz] of [
-    [180, 96, -30],
-    [400, 96, -30],
-    [272, 96, 690],
-  ]) {
-    const p = new THREE.PointLight(0xffd9a0, 0, 9, 2);
-    p.position.set(i2m(px), i2m(py), i2m(pz));
-    scene.add(p);
-    porch.push(p);
-  }
-
-  // Sun disc on the sky + incoming-ray arrow over the room
-  const disc = new THREE.Mesh(
-    new THREE.CircleGeometry(7, 24),
-    new THREE.MeshBasicMaterial({ color: 0xfff3d0, fog: false, transparent: true, opacity: 0.95, depthWrite: false }),
-  );
-  disc.visible = false;
-  scene.add(excludeFromRender(disc));
-  const arrow = new THREE.ArrowHelper(
-    new THREE.Vector3(0, -1, 0),
-    new THREE.Vector3(),
-    6,
-    0xb08d57,
-    1.4,
-    0.7,
-  );
+  // incoming-ray arrow over the room (planning aid, never rendered)
+  const arrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 6, 0xb08d57, 1.4, 0.7);
   arrow.visible = false;
   scene.add(excludeFromRender(arrow));
 
-  // Starfield: seeded canvas dome, faded in past nautical twilight
-  const starC = document.createElement('canvas');
-  starC.width = 2048;
-  starC.height = 1024;
-  {
-    const g = starC.getContext('2d')!;
-    let seed = 0x57a5;
-    const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
-    g.clearRect(0, 0, 2048, 1024);
-    // Bay Area sky: a decent scatter overhead, washed out toward the light
-    // dome at the horizon — the faintest stars only survive near the zenith
-    for (let i = 0; i < 1700; i++) {
-      const x = rnd() * 2048;
-      const y = rnd() * 690; // hemisphere v: 0 = zenith, ~1024 = horizon rim
-      const highSky = 1 - y / 690; // 1 at zenith band, 0 near the horizon
-      const mag = rnd();
-      if (mag < 0.55 && highSky < 0.45) continue; // faint stars drown low down
-      const r = mag < 0.9 ? 0.7 + rnd() * 0.9 : 1.6 + rnd() * 1.5;
-      const tint = rnd();
-      g.fillStyle = tint < 0.12 ? '#cfe0ff' : tint < 0.2 ? '#ffe9c9' : '#ffffff';
-      g.globalAlpha = (0.3 + mag * 0.7) * (0.45 + 0.55 * highSky);
-      g.beginPath();
-      g.arc(x, y, r, 0, Math.PI * 2);
-      g.fill();
-    }
-    // faint light-pollution dome hugging the horizon
-    const dome = g.createLinearGradient(0, 620, 0, 1024);
-    dome.addColorStop(0, 'rgba(70,72,88,0)');
-    dome.addColorStop(1, 'rgba(96,92,104,0.35)');
-    g.fillStyle = dome;
-    g.fillRect(0, 620, 2048, 404);
-    g.globalAlpha = 1;
-  }
-  const starTex = new THREE.CanvasTexture(starC);
-  starTex.colorSpace = THREE.SRGBColorSpace;
-  const starMat = new THREE.MeshBasicMaterial({
-    map: starTex,
-    transparent: true,
-    opacity: 0,
-    side: THREE.BackSide,
-    fog: false,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-  // upper hemisphere only — no stars can ever show below the horizon
-  const stars = new THREE.Mesh(new THREE.SphereGeometry(238, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), starMat);
-  stars.position.set(cx, 0, cz);
-  stars.renderOrder = -2;
-  stars.visible = false;
-  scene.add(excludeFromRender(stars));
-
-  // Moon: phase-correct disc painted per instant (bright limb toward the sun)
-  const moonC = document.createElement('canvas');
-  moonC.width = 256;
-  moonC.height = 256;
-  const moonTex = new THREE.CanvasTexture(moonC);
-  moonTex.colorSpace = THREE.SRGBColorSpace;
-  const moonMat = new THREE.SpriteMaterial({ map: moonTex, transparent: true, fog: false, depthWrite: false });
-  const moonSprite = new THREE.Sprite(moonMat);
-  moonSprite.scale.setScalar(4.6); // ≈0.55° at the dome distance
-  moonSprite.renderOrder = -2;
-  moonSprite.visible = false;
-  scene.add(excludeFromRender(moonSprite));
-  let moonKey = '';
-  const drawMoon = (fraction: number, limbDeg: number): void => {
-    const key = `${fraction.toFixed(3)}|${limbDeg.toFixed(1)}`;
-    if (key === moonKey) return;
-    moonKey = key;
-    const g = moonC.getContext('2d')!;
-    const R = 108;
-    g.clearRect(0, 0, 256, 256);
-    g.save();
-    g.translate(128, 128);
-    // canonical bright limb at +x, then swing it toward the real sun
-    g.rotate((limbDeg - 90) * DEG);
-    // dark side first (earthshine-dark)
-    g.fillStyle = '#232733';
-    g.globalAlpha = 0.95;
-    g.beginPath();
-    g.arc(0, 0, R, 0, Math.PI * 2);
-    g.fill();
-    g.globalAlpha = 1;
-    // lit region: right semicircle closed by the terminator half-ellipse
-    const rx = Math.abs(2 * fraction - 1) * R;
-    g.fillStyle = '#E9E6DC';
-    g.beginPath();
-    g.arc(0, 0, R, -Math.PI / 2, Math.PI / 2, false);
-    g.ellipse(0, 0, rx, R, 0, Math.PI / 2, Math.PI * 1.5, fraction < 0.5);
-    g.fill();
-    // mare blotches, clipped to the disc
-    g.save();
-    g.beginPath();
-    g.arc(0, 0, R, 0, Math.PI * 2);
-    g.clip();
-    let seed = 0x300d;
-    const rnd = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
-    g.fillStyle = '#b9b5a8';
-    for (let i = 0; i < 9; i++) {
-      g.globalAlpha = 0.25 + rnd() * 0.2;
-      g.beginPath();
-      g.ellipse((rnd() - 0.5) * 150, (rnd() - 0.5) * 150, 14 + rnd() * 26, 10 + rnd() * 20, rnd() * 3, 0, Math.PI * 2);
-      g.fill();
-    }
-    g.restore();
-    g.restore();
-    moonTex.needsUpdate = true;
+  // --- sky: background (bg, with stars + moon) and IBL (env → PMREM) -------
+  const makeEquirect = (w: number, h: number): THREE.DataTexture => {
+    const t = new THREE.DataTexture(new Uint16Array(w * h * 4), w, h, THREE.RGBAFormat, THREE.HalfFloatType);
+    t.mapping = THREE.EquirectangularReflectionMapping;
+    t.colorSpace = THREE.LinearSRGBColorSpace;
+    t.magFilter = THREE.LinearFilter;
+    t.minFilter = THREE.LinearFilter;
+    t.generateMipmaps = false;
+    t.wrapS = THREE.RepeatWrapping;
+    t.wrapT = THREE.ClampToEdgeWrapping;
+    return t;
   };
+  let bgTex: THREE.DataTexture | null = null;
+  let envTex: THREE.DataTexture | null = null;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  let envRT: THREE.WebGLRenderTarget | null = null;
+  let lastPmrem = -Infinity;
+  let pmremTimer: ReturnType<typeof setTimeout> | null = null;
+  const regenPmrem = (): void => {
+    pmremTimer = null;
+    if (!envTex) return;
+    lastPmrem = performance.now();
+    envRT = pmrem.fromEquirectangular(envTex, envRT);
+    scene.environment = envRT.texture;
+    invalidate();
+  };
+  const schedulePmrem = (): void => {
+    // the slider can fire every frame; PMREM at most every 100 ms, with a
+    // trailing update so the final position always lands
+    const wait = 100 - (performance.now() - lastPmrem);
+    if (wait <= 0 && !pmremTimer) regenPmrem();
+    else if (!pmremTimer) pmremTimer = setTimeout(regenPmrem, Math.max(wait, 0));
+  };
+  scene.backgroundIntensity = 1;
 
-  // Sunset glow: a soft orange arc hugging the horizon around the sun azimuth
-  const glowC = document.createElement('canvas');
-  glowC.width = 256;
-  glowC.height = 256;
-  {
-    const g = glowC.getContext('2d')!;
-    const img = g.createImageData(256, 256);
-    for (let y = 0; y < 256; y++) {
-      const vy = 1 - y / 255; // 1 at top
-      const vert = Math.max(0, 1 - vy * 1.45); // strongest at the bottom
-      for (let x = 0; x < 256; x++) {
-        const hx = 1 - Math.abs(x - 127.5) / 127.5;
-        const a = Math.pow(vert, 1.6) * Math.pow(hx, 1.5);
-        const o = (y * 256 + x) * 4;
-        img.data[o] = 255;
-        img.data[o + 1] = 255;
-        img.data[o + 2] = 255;
-        img.data[o + 3] = Math.round(a * 255);
+  // --- fixtures -------------------------------------------------------------
+  interface Fixture {
+    def: LightDef;
+    light: THREE.SpotLight | THREE.PointLight;
+  }
+  let fixtures: Fixture[] = [];
+  const setFixtures = (defs: LightDef[]): void => {
+    for (const f of fixtures) {
+      scene.remove(f.light);
+      if (f.light instanceof THREE.SpotLight) scene.remove(f.light.target);
+      f.light.dispose();
+    }
+    fixtures = defs
+      .filter((d) => d.kind !== 'directional')
+      .map((def) => {
+        const col = new THREE.Color().setRGB(...def.colorLinear, THREE.LinearSRGBColorSpace);
+        const cd = def.intensityCd ?? 0;
+        const light =
+          def.kind === 'spot'
+            ? new THREE.SpotLight(col, 0, 0, (def.halfAngleDeg ?? 25) * DEG, def.penumbra ?? 0.5, 2)
+            : new THREE.PointLight(col, 0, 0, 2);
+        light.position.set(...def.position);
+        if (light instanceof THREE.SpotLight) {
+          const d = def.direction ?? [0, -1, 0];
+          light.target.position.set(def.position[0] + d[0], def.position[1] + d[1], def.position[2] + d[2]);
+          scene.add(light.target);
+        }
+        light.castShadow = false;
+        light.userData.lightDef = def;
+        light.userData.baseIntensity = cd / Math.max(luminance(def.colorLinear), 1e-3);
+        scene.add(light);
+        return { def, light };
+      });
+    applyFixtureLevels();
+    invalidate();
+  };
+  let porchLevel = 0;
+  const applyFixtureLevels = (): void => {
+    for (const f of fixtures) {
+      const on = f.def.group === 'porch' || f.def.group === 'deck' ? porchLevel : 1;
+      f.light.intensity = (f.light.userData.baseIntensity as number) * on;
+      // what a render export should use right now (photocell applied)
+      f.light.userData.lightDef = { ...f.def, intensityCd: (f.def.intensityCd ?? 0) * on } satisfies LightDef;
+    }
+  };
+  /** Indirect light the fixtures put into the hall, lux — the GI a raster
+   * pass lacks. Integrating-sphere estimate E = Φ·ρ / (A·(1 − ρ)) from the
+   * interior fixtures' own flux (so it scales with the real fixture layout),
+   * not a free ambient. */
+  const bounceLux = (): number => {
+    let flux = 0;
+    for (const f of fixtures) {
+      if (f.def.group !== 'interior') continue;
+      const cd = f.def.intensityCd ?? 0;
+      if (f.def.kind === 'spot') {
+        // effective cone: full to the inner edge, ~half through the penumbra
+        const outer = (f.def.halfAngleDeg ?? 25) * DEG;
+        const eff = outer * (1 - 0.5 * (f.def.penumbra ?? 0.5));
+        flux += cd * 2 * Math.PI * (1 - Math.cos(eff));
+      } else {
+        flux += cd * 4 * Math.PI;
       }
     }
-    g.putImageData(img, 0, 0);
-  }
-  const glowTex = new THREE.CanvasTexture(glowC);
-  const glowMat = new THREE.MeshBasicMaterial({
-    map: glowTex,
-    color: 0xff9a3c,
-    transparent: true,
-    opacity: 0,
-    side: THREE.BackSide,
-    fog: false,
-    depthWrite: false,
-  });
-  const glow = new THREE.Mesh(new THREE.CylinderGeometry(230, 230, 120, 48, 1, true, -0.95, 1.9), glowMat);
-  glow.position.set(cx, 34, cz);
-  glow.renderOrder = -2;
-  glow.visible = false;
-  scene.add(excludeFromRender(glow));
+    return (flux * HALL_REFLECTANCE) / (HALL_SURFACE_M2 * (1 - HALL_REFLECTANCE));
+  };
+  const bounce = new THREE.AmbientLight(new THREE.Color().setRGB(...cctToLinear(TRACK_CCT), THREE.LinearSRGBColorSpace), 0);
+  bounce.userData.lightDef = { id: 'hall-bounce', kind: 'point', group: 'interior', position: [cx, 1.5, cz], colorLinear: cctToLinear(TRACK_CCT), ptMode: 'omit' } satisfies LightDef;
+  scene.add(excludeFromRender(bounce)); // the path tracer computes real GI
+  const bouncePerLux = 1 / Math.max(luminance(cctToLinear(TRACK_CCT)), 1e-3);
 
-  const setNightSky = (input: SunInput | null, nightF: number): void => {
-    const c = input ? THREE.MathUtils.clamp(input.clouds, 0, 1) : 0;
-    starMat.opacity = nightF * (1 - 0.97 * c); // overcast blots the stars out
-    stars.visible = starMat.opacity > 0.02;
-    const m = input?.moon;
-    if (m && m.altitudeDeg > 0) {
-      drawMoon(m.fraction, m.brightLimbDeg);
-      const ma = m.azimuthModelDeg * DEG;
-      const mh = m.altitudeDeg * DEG;
-      moonSprite.position
-        .set(Math.sin(ma) * Math.cos(mh), Math.sin(mh), -Math.cos(ma) * Math.cos(mh))
-        .multiplyScalar(232)
-        .add(new THREE.Vector3(cx, 0, cz));
-      moonMat.opacity = (0.3 + 0.7 * nightF) * (1 - 0.94 * c); // clouds hide the moon
-      moonSprite.visible = moonMat.opacity > 0.04;
+  /** representative interior illuminance from the fixtures, lux: ~30 % of
+   * the brightest pool (metering target, not a light) */
+  const fixtureLux = (): number => {
+    let peak = 0;
+    for (const f of fixtures) {
+      if (f.def.group !== 'interior') continue;
+      const h = Math.max(f.def.position[1], 1);
+      peak = Math.max(peak, (f.def.intensityCd ?? 0) / (h * h));
+    }
+    return 0.3 * peak;
+  };
+
+  // --- per-sky update -------------------------------------------------------
+  let sky: SkyState | null = null;
+  let lastBg: SkyState['bg'] | null = null;
+  let lastEnv: SkyState['env'] | null = null;
+  const lastDir = new THREE.Vector3();
+  let lastLux = -1;
+  const dir = new THREE.Vector3();
+
+  const applySky = (s: SkyState): void => {
+    const t0 = performance.now();
+    sky = s;
+    // backgrounds: the equirect → cube conversion is cached per texture, so
+    // a fresh upload also drops the cache (dispose) before the next frame.
+    // Exposure-only changes keep the same images: skip the uploads.
+    if (s.bg !== lastBg) {
+      lastBg = s.bg;
+      if (!bgTex || bgTex.image.width !== s.bg.w) {
+        bgTex?.dispose();
+        bgTex = makeEquirect(s.bg.w, s.bg.h);
+        scene.background = bgTex;
+      }
+      bgTex.image.data = toHalfArray(s.bg.data, bgTex.image.data as Uint16Array);
+      bgTex.dispose();
+      bgTex.needsUpdate = true;
+    }
+    const envChanged = s.env !== lastEnv;
+    if (envChanged) {
+      lastEnv = s.env;
+      if (!envTex || envTex.image.width !== s.env.w) {
+        envTex?.dispose();
+        envTex = makeEquirect(s.env.w, s.env.h);
+      }
+      envTex.image.data = toHalfArray(s.env.data, envTex.image.data as Uint16Array);
+      envTex.needsUpdate = true;
+      schedulePmrem();
+    }
+
+    // direct light: the sun while it is up, else the moon
+    const sunUp = s.sun.illuminanceLux > 0.5;
+    const moonUp = !sunUp && s.moon.illuminanceLux > 1e-4 && s.moon.altDeg > 0;
+    const body = sunUp ? s.sun : moonUp ? s.moon : null;
+    if (body) {
+      dir.set(...body.dir);
+      // keep the light a hair above the horizon plane for the shadow camera
+      if (dir.y < 0.02) dir.setY(0.02).normalize();
+      sun.color.setRGB(...body.colorLinear, THREE.LinearSRGBColorSpace);
+      sun.intensity = body.illuminanceLux / Math.max(luminance(body.colorLinear), 1e-3);
+      sun.position.copy(center).addScaledVector(dir, 40);
     } else {
-      moonSprite.visible = false;
+      sun.intensity = 0;
     }
+    const lux = body ? body.illuminanceLux : 0;
+    sun.userData.lightDef = {
+      id: sunUp ? 'sun' : 'moon',
+      kind: 'directional',
+      group: 'sky',
+      position: [0, 0, 0],
+      direction: body ? [-body.dir[0], -body.dir[1], -body.dir[2]] : [0, -1, 0],
+      colorLinear: body ? [...body.colorLinear] : [1, 1, 1],
+      illuminanceLux: lux,
+      ptMode: 'light',
+    } satisfies LightDef;
+    if (dir.angleTo(lastDir) > 1e-4 || (lux > 0) !== (lastLux > 0)) invalidateShadows();
+    lastDir.copy(dir);
+    lastLux = lux;
+
+    arrow.visible = sunUp;
+    if (sunUp) {
+      const sd = new THREE.Vector3(...s.sun.dir);
+      arrow.position.copy(center).addScaledVector(sd, 14);
+      arrow.setDirection(sd.clone().negate());
+    }
+
+    // porch/deck lights: photocell, on as the light falls below ~400 lux
+    const E = outdoorLux(s);
+    porchLevel = THREE.MathUtils.clamp((Math.log10(400) - Math.log10(Math.max(E, 1e-6))) / Math.log10(4), 0, 1);
+    applyFixtureLevels();
+
+    if (envChanged) atmo?.applySky(s);
+    updateExposure(0);
+    invalidate();
+    // QA/diagnostics: cost of pushing a sky update to the GPU side (ms)
+    (window as unknown as { __wpSkyApplyMs?: number }).__wpSkyApplyMs = performance.now() - t0;
   };
 
-  const setGlow = (altDeg: number, azModelDeg: number, clouds: number): void => {
-    // peaks as the sun touches the horizon, gone by −9° and by +14°
-    const up = THREE.MathUtils.clamp(1 - Math.abs(altDeg - 1.5) / (altDeg > 1.5 ? 12 : 10), 0, 1);
-    const op = Math.pow(up, 1.35) * (1 - 0.9 * clouds);
-    glowMat.opacity = op * 0.85;
-    glow.visible = op > 0.02;
-    if (!glow.visible) return;
-    glow.rotation.y = Math.PI - azModelDeg * DEG;
-    // deep orange at the horizon, rosier as the sun sinks below
-    glowMat.color.copy(
-      altDeg >= 0
-        ? colA.setHex(0xff9a3c).lerp(colB.setHex(0xffc37a), THREE.MathUtils.clamp(altDeg / 12, 0, 1))
-        : colA.setHex(0xff8a48).lerp(colB.setHex(0xc2547e), THREE.MathUtils.clamp(-altDeg / 9, 0, 1)),
-    );
-  };
+  const outdoorLux = (s: SkyState): number =>
+    s.skyHorizontalLux +
+    s.sun.illuminanceLux * Math.max(Math.sin(s.sun.altDeg * DEG), 0) +
+    s.moon.illuminanceLux * Math.max(Math.sin(s.moon.altDeg * DEG), 0);
 
-  const invalidateShadows = () => {
-    renderer.shadowMap.needsUpdate = true;
-  };
+  // --- camera-aware exposure + interior IBL ---------------------------------
+  let envFactor = 1;
+  let ev = 12;
+  let evTarget = 12;
+  let envTarget = 1;
+  let bounceW = 0;
+  let bounceTarget = 0;
+  let lastW = 0;
+  const ray = new THREE.Vector3();
+  const camPos = new THREE.Vector3();
+  const SAMPLES: [number, number, number][] = [
+    [0, 0, 0.4],
+    [-0.55, -0.45, 0.15],
+    [0.55, -0.45, 0.15],
+    [-0.55, 0.45, 0.15],
+    [0.55, 0.45, 0.15],
+  ];
 
-  const colA = new THREE.Color();
-  const colB = new THREE.Color();
-  const lerpHex = (a: number, b: number, t: number): THREE.Color =>
-    colA.setHex(a).lerp(colB.setHex(b), THREE.MathUtils.clamp(t, 0, 1));
-
-  const fogCol = new THREE.Color();
-  const setAtmo = (sky: THREE.Color, valley: THREE.Color, fog: THREE.Color) => {
-    if (!atmo) return;
-    atmo.skyMat.color.copy(sky);
-    atmo.valleyMat.color.copy(valley);
-    atmo.ringMat.color.copy(valley).multiplyScalar(0.92); // near canopy a shade deeper
-    atmo.fog.color.copy(fog);
-  };
-
-  const applySun = (input: SunInput | null): void => {
-    if (!input) {
-      sun.visible = true;
-      sun.color.setHex(0xffd9a8);
-      sun.intensity = 2.4;
-      sun.position.set(cx - 18, 14, cz - 26);
-      hemi.color.setHex(0xbfd4ee);
-      hemi.groundColor.setHex(0x8a6b4c);
-      hemi.intensity = 0.5;
-      for (const s of spots) s.intensity = 50;
-      for (const p of porch) p.intensity = 0;
-      sceneEnv.environmentIntensity = 0.35;
-      setAtmo(colA.setHex(0xffffff).clone(), colB.setHex(0xffffff).clone(), fogCol.setHex(0xe8eef2));
-      disc.visible = false;
-      arrow.visible = false;
-      stars.visible = false;
-      moonSprite.visible = false;
-      glow.visible = false;
-      invalidateShadows();
+  /** targets from the camera: inside the hall with the roof on, the IBL is
+   * mostly occluded and the fixtures set the exposure; with the roof off, the
+   * share of the view that lands on the hall floor decides */
+  const computeTargets = (): void => {
+    if (!sky) return;
+    const camera = ctx?.host.getCamera();
+    const roofOn = ctx?.host.roofVisible() ?? false;
+    let w = 0;
+    let inside = 0;
+    if (camera) {
+      camera.getWorldPosition(camPos);
+      inside = insideHall(camPos.x, camPos.y, camPos.z);
+      if (roofOn) {
+        w = inside;
+      } else {
+        for (const [nx, ny, k] of SAMPLES) {
+          ray.set(nx, ny, 0.5).unproject(camera).sub(camPos).normalize();
+          if (ray.y >= -1e-3) continue;
+          const t = -camPos.y / ray.y;
+          if (t > 60) continue;
+          w += k * insideHall(camPos.x + ray.x * t, 0.5, camPos.z + ray.z * t);
+        }
+      }
+    }
+    envTarget = roofOn ? THREE.MathUtils.lerp(1, INTERIOR_ENV_FACTOR, inside) : 1;
+    // fixture bounce where the view is the hall (no ceiling → ~60 % of it)
+    bounceTarget = roofOn ? inside : 0.6 * w;
+    lastW = w;
+    const inp = sky.input;
+    if (!inp.autoEV) {
+      evTarget = sky.ev100;
       return;
     }
+    const Eout = outdoorLux(sky);
+    const sunH = sky.sun.illuminanceLux * Math.max(Math.sin(sky.sun.altDeg * DEG), 0);
+    const Ein = roofOn
+      ? INTERIOR_ENV_FACTOR * sky.skyHorizontalLux + INTERIOR_SUN_SHARE * sunH + fixtureLux()
+      : Eout + fixtureLux();
+    evTarget = meteredEV100((1 - w) * Eout + w * Ein) - inp.evComp;
+  };
 
-    const { altitudeDeg: alt, azimuthModelDeg: azm } = input;
-    const c = THREE.MathUtils.clamp(input.clouds, 0, 1);
-    const a = azm * DEG;
-    const h = Math.max(alt, 1) * DEG; // keep the light above the horizon plane
-    const dir = new THREE.Vector3(Math.sin(a) * Math.cos(h), Math.sin(h), -Math.cos(a) * Math.cos(h));
+  const updateExposure = (dt: number): boolean => {
+    computeTargets();
+    // eye-like adaptation: ~0.25 s time constant; snap on sky changes and
+    // when frames are slow (software GL, hitches) so it never drags on
+    const k = dt > 0 && dt < 0.09 ? 1 - Math.exp(-dt / 0.25) : 1;
+    const evPrev = ev;
+    const envPrev = envFactor;
+    const bouncePrev = bounceW;
+    ev += (evTarget - ev) * k;
+    envFactor += (envTarget - envFactor) * k;
+    bounceW += (bounceTarget - bounceW) * k;
+    if (Math.abs(evTarget - ev) < 0.01) ev = evTarget;
+    if (Math.abs(envTarget - envFactor) < 0.002) envFactor = envTarget;
+    if (Math.abs(bounceTarget - bounceW) < 0.002) bounceW = bounceTarget;
+    renderer.toneMappingExposure = exposureScale(ev);
+    scene.environmentIntensity = envFactor;
+    bounce.intensity = bounceLux() * bounceW * bouncePerLux;
+    setViewEV100(ev);
+    // QA/diagnostics: what the view is exposed at and why
+    (window as unknown as { __wpExposure?: object }).__wpExposure = { ev, evTarget, envFactor, envTarget, meterWeight: lastW, bounceLux: bounceLux() * bounceW };
+    return ev !== evPrev || envFactor !== envPrev || bounceW !== bouncePrev;
+  };
 
-    if (alt < 0) {
-      // smooth twilight ladder: sunset → civil (−6°) → nautical (−12°) →
-      // astronomical (−18°) → night; every quantity interpolates between
-      // keyframes so the evening fades naturally
-      const KEYS = [
-        { a: 0, hemi: 0xf0a45c, hemiI: 0.42, sky: 0xa06a44, valley: 0x8a6a52, fog: 0xd8bfa5, spot: 60, porch: 12, env: 0.22 },
-        { a: -6, hemi: 0x4a5a86, hemiI: 0.34, sky: 0x4a5064, valley: 0x3c4152, fog: 0x2a3145, spot: 85, porch: 26, env: 0.15 },
-        { a: -12, hemi: 0x2a3658, hemiI: 0.26, sky: 0x232c47, valley: 0x242938, fog: 0x17203a, spot: 85, porch: 26, env: 0.12 },
-        { a: -18, hemi: 0x1b2440, hemiI: 0.22, sky: 0x141d33, valley: 0x1c2434, fog: 0x0e1626, spot: 85, porch: 26, env: 0.12 },
-      ];
-      const aa = Math.max(alt, -18);
-      let k = 0;
-      while (k < KEYS.length - 2 && aa < KEYS[k + 1].a) k++;
-      const k0 = KEYS[k];
-      const k1 = KEYS[k + 1];
-      const t = THREE.MathUtils.clamp((k0.a - aa) / (k0.a - k1.a), 0, 1);
-      sun.visible = false;
-      hemi.color.copy(lerpHex(k0.hemi, k1.hemi, t).clone());
-      hemi.groundColor.setHex(0x14100c);
-      hemi.intensity = THREE.MathUtils.lerp(k0.hemiI, k1.hemiI, t);
-      const spotI = THREE.MathUtils.lerp(k0.spot, k1.spot, t);
-      for (const s of spots) s.intensity = spotI;
-      const porchI = THREE.MathUtils.lerp(k0.porch, k1.porch, t);
-      for (const p of porch) p.intensity = porchI;
-      sceneEnv.environmentIntensity = THREE.MathUtils.lerp(k0.env, k1.env, t);
-      const sky = lerpHex(k0.sky, k1.sky, t).clone();
-      const val = lerpHex(k0.valley, k1.valley, t).clone();
-      setAtmo(sky, val, fogCol.copy(lerpHex(k0.fog, k1.fog, t)));
-      disc.visible = false;
-      arrow.visible = false;
-      setGlow(alt, azm, c);
-      setNightSky(input, THREE.MathUtils.clamp((-alt - 6) / 8, 0, 1));
-      invalidateShadows();
+  // --- material hygiene under physical exposure -----------------------------
+  // Emitters tagged with a luminance (cd/m²) get the matching emissive
+  // intensity; untagged unlit UI (ghost plates, outlines, rings, arrows)
+  // opts out of tone mapping so it reads the same at EV 1 and EV 15.
+  const seenUi = new WeakSet<THREE.Material>();
+  const fixMaterial = (m: THREE.Material): void => {
+    const tagInfo = pbrOf(m);
+    if (tagInfo?.luminance !== undefined && 'emissive' in m) {
+      const em = (m as THREE.MeshStandardMaterial).emissive;
+      const y = luminance([em.r, em.g, em.b]);
+      if (y > 1e-6) {
+        const want = tagInfo.luminance / y;
+        const sm = m as THREE.MeshStandardMaterial;
+        if (Math.abs(sm.emissiveIntensity - want) > 1e-3 * want) sm.emissiveIntensity = want;
+      }
       return;
     }
+    if (tagInfo || seenUi.has(m)) return;
+    if (
+      m instanceof THREE.MeshBasicMaterial ||
+      m instanceof THREE.LineBasicMaterial ||
+      m instanceof THREE.SpriteMaterial ||
+      m instanceof THREE.PointsMaterial
+    ) {
+      seenUi.add(m);
+      if (m.toneMapped) {
+        m.toneMapped = false;
+        m.needsUpdate = true;
+      }
+    }
+  };
+  const sweepMaterials = (): void => {
+    scene.traverse((o) => {
+      const mat = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      if (!mat) return;
+      if (Array.isArray(mat)) mat.forEach(fixMaterial);
+      else fixMaterial(mat);
+    });
+  };
 
-    // Daytime: color/intensity ramp by altitude, damped by cloud cover
-    sun.visible = true;
-    const warm =
-      alt < 8
-        ? lerpHex(0xff8c4a, 0xffb877, alt / 8)
-        : alt < 25
-          ? lerpHex(0xffb877, 0xffd9a8, (alt - 8) / 17)
-          : lerpHex(0xffd9a8, 0xfff2dc, (alt - 25) / 40);
-    sun.color.copy(warm).lerp(colB.setHex(0xe6e6e6), c * 0.7);
-    const altBoost = THREE.MathUtils.clamp(alt / 30, 0.6, 1.15);
-    // dramatic reading: hot direct beam over a subdued ambient, so the sun's
-    // pools and window patterns clearly dominate the scene
-    sun.intensity = 4.3 * altBoost * (1 - 0.88 * c);
-    sun.position.copy(center).addScaledVector(dir, 40);
+  // --- boot -----------------------------------------------------------------
+  setFixtures(pendingFixtures ?? DEFAULT_FIXTURES);
+  subscribeSky(applySky);
+  applySky(getSky());
+  sweepMaterials();
 
-    // ambient follows the day cycle: sky-blue at midday, golden near the
-    // horizon — outdoors reads bright while the hot direct beam still
-    // dominates indoors through the glazing
-    const golden = THREE.MathUtils.clamp(1 - alt / 25, 0, 1);
-    hemi.color.copy(lerpHex(0xbfd9f5, 0xf0a45c, golden).clone().lerp(colB.setHex(0xaab2bc), c * 0.7));
-    hemi.groundColor.setHex(0x8a6b4c);
-    hemi.intensity = 0.5 + 0.12 * (1 - golden) + 0.4 * c;
-    const duskFade = THREE.MathUtils.clamp(1 - alt / 6, 0, 1);
-    for (const s of spots) s.intensity = 50 + 10 * duskFade;
-    for (const p of porch) p.intensity = 12 * duskFade;
-    sceneEnv.environmentIntensity = 0.3 - 0.08 * c - 0.08 * duskFade;
-
-    const skyTint = lerpHex(0xffffff, 0xffb066, golden)
-      .clone()
-      .multiplyScalar(1.14 - 0.38 * golden) // bright clear blue at midday
-      .lerp(colB.setHex(0x6f767e), c * 0.75);
-    setAtmo(
-      skyTint,
-      lerpHex(0xffffff, 0xe0b894, golden).clone().multiplyScalar(0.72).lerp(colB.setHex(0x777d85), c * 0.7),
-      fogCol.setHex(c > 0.5 ? 0x9b9ea3 : golden > 0.5 ? 0xd8bfa5 : 0xc9d2dc),
-    );
-
-    disc.visible = true;
-    disc.material.opacity = 0.95 - 0.75 * c;
-    disc.position.copy(center).addScaledVector(dir, 230);
-    disc.lookAt(center);
-
-    arrow.visible = true;
-    const origin = center.clone().addScaledVector(dir, 14);
-    arrow.position.copy(origin);
-    arrow.setDirection(dir.clone().negate());
-    setGlow(alt, azm, c);
-    setNightSky(input, 0); // daytime: stars off; a risen moon shows faintly
+  onAppReady((c) => {
+    ctx = c;
+    // the roof shadows the room whenever it is shown (hidden objects never
+    // reach the shadow map, so no toggling is needed)
+    c.host.roof.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) {
+        o.castShadow = true;
+        o.receiveShadow = true;
+      }
+    });
     invalidateShadows();
-  };
+    let sweepT = 0;
+    c.host.onFrame((dt) => {
+      sweepT += dt;
+      if (sweepT > 0.5) {
+        sweepT = 0;
+        sweepMaterials();
+      }
+      // invalidate (not `return true`): a returned true also re-renders the
+      // shadow map every frame, which adaptation doesn't need
+      if (updateExposure(dt)) c.host.invalidate();
+    });
+    sweepMaterials();
+    updateExposure(0);
+    invalidate();
+  });
 
-  return { invalidateShadows, applySun };
+  active = {
+    invalidateShadows,
+    applySun: () => {
+      // the sky store is the source of truth (main.ts set it just before)
+      invalidate();
+    },
+    setFixtures,
+    viewEV100: () => ev,
+  };
+  return active;
 }

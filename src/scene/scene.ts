@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { applyAtmosphere } from './atmosphere';
 import { buildExterior } from './exterior';
-import { setupLighting } from './lighting';
+import { DEFAULT_FIXTURES, setVenueFixtures, setupLighting } from './lighting';
+import { allFixtures, fixtureToLightDef } from './fixtures';
 import { buildVenue } from './venue';
 
 /** What a render override gets each frame (photo mode replaces the raster
@@ -64,6 +65,12 @@ export function createSceneHost(container: HTMLElement): SceneHost {
   const exteriorGroup = buildExterior();
   scene.add(exteriorGroup);
   const atmo = applyAtmosphere(scene);
+  // the venue registered its track heads while building; the rig keeps its
+  // own porch/deck lights alongside them
+  const registered = allFixtures();
+  if (registered.length) {
+    setVenueFixtures([...registered.map(fixtureToLightDef), ...DEFAULT_FIXTURES.filter((d) => d.group !== 'interior')]);
+  }
   const lighting = setupLighting(scene, renderer, atmo);
 
   const itemsGroup = new THREE.Group();

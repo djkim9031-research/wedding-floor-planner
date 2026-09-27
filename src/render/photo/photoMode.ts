@@ -3,6 +3,7 @@ import { appContext, settleCloth } from '../../app/context';
 import { creatorIsOpen } from '../../creator/creatorWindow';
 import { exposureScale } from '../../sky/exposure';
 import { getSky, subscribeSky } from '../../sky/skyStore';
+import { getViewEV100 } from '../../sky/viewExposure';
 import * as store from '../../state/store';
 import { buildRenderScene } from '../renderScene';
 import { AovRenderer } from './aov';
@@ -202,7 +203,7 @@ class PhotoMode {
   private applyExposure(): void {
     if (!this.pt) return;
     const { host } = appContext();
-    host.renderer.toneMappingExposure = exposureScale(getSky().ev100);
+    host.renderer.toneMappingExposure = exposureScale(viewEV());
   }
 
   private restart(): void {
@@ -294,7 +295,7 @@ class PhotoMode {
     const aov = this.aov.render(scene, pt.camera, rad.width, rad.height);
     const t0 = performance.now();
     const out = await denoise(
-      { color: rad.data, albedo: aov.albedo, normal: aov.normal, width: rad.width, height: rad.height, scale: exposureScale(getSky().ev100), kind },
+      { color: rad.data, albedo: aov.albedo, normal: aov.normal, width: rad.width, height: rad.height, scale: exposureScale(viewEV()), kind },
       signal,
     );
     if (signal.aborted || this.pt !== pt) {
@@ -324,7 +325,7 @@ class PhotoMode {
       const cap = this.capture;
       this.capture = null;
       const img = data && w && h ? { data, width: w, height: h } : this.pt.readRadiance();
-      const px = agxToImage(img.data, img.width, img.height, exposureScale(getSky().ev100));
+      const px = agxToImage(img.data, img.width, img.height, exposureScale(viewEV()));
       this.pt.pt.renderScale = this.preset!.renderScale;
       void imageToPng(px, img.width, img.height).then(cap.resolve, () => cap.resolve(null));
     }
@@ -372,6 +373,11 @@ class PhotoMode {
     if (saved) ctx.toast(`Saved ${name}`);
     if (longEdge) this.restart();
   }
+}
+
+/** the exposure the live view uses (interior metering, auto EV, comp) */
+function viewEV(): number {
+  return getViewEV100() ?? getSky().ev100;
 }
 
 function nextFrame(): Promise<void> {

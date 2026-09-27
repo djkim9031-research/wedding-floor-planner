@@ -6,3 +6,4 @@ import './render/photo';
 import './render/export';
 import './app/qaUi';
 import './scene/venueQa';
+import './sky/qaSky';

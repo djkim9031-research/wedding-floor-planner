@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { i2m } from '../../constants';
 import { FACADE_AZ_DEG, VENUE, tzOffsetMinutes } from '../../scene/sun';
 import type { SkyState } from '../../sky/types';
+import { getViewEV100 } from '../../sky/viewExposure';
 import type { LightDef, PbrTag } from '../types';
 
 /** The Blender job contract ("wp-scene/1", see blender/README.md). All
@@ -142,7 +143,8 @@ export function buildSceneJson(p: {
       far: 2000,
       dof: settings.dof,
     },
-    exposure: { ev100: sky.ev100 + inp.evComp, evComp: inp.evComp, view: 'AgX', look: 'None', auto: inp.autoEV },
+    // metered EV of the live view (interior metering included); Blender applies evComp itself
+    exposure: { ev100: (getViewEV100() ?? sky.ev100) + inp.evComp, evComp: inp.evComp, view: 'AgX', look: 'None', auto: inp.autoEV },
     render: {
       w: settings.panorama ? Math.max(settings.w, 2 * settings.h) : settings.w,
       h: settings.panorama ? Math.max(settings.w, 2 * settings.h) / 2 : settings.h,
