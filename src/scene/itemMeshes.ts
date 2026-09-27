@@ -240,7 +240,7 @@ function buildLantern(type: LanternType): THREE.Group {
   g.add(candle);
   const flame = new THREE.Mesh(
     new THREE.SphereGeometry(i2m(Math.max(0.7, w * 0.075)), 10, 8),
-    tag(new THREE.MeshStandardMaterial({ color: 0xffdf9e, emissive: 0xffa63c, emissiveIntensity: 2.4 }), 'emitter-flame', { luminance: 8000, castShadow: false }, 'flame'),
+    tag(new THREE.MeshStandardMaterial({ color: 0xffdf9e, emissive: 0xffa63c, emissiveIntensity: 2.4 }), 'emitter-flame', { luminance: 1200, castShadow: false }, 'flame'),
   );
   flame.scale.y = 1.6;
   flame.position.y = i2m(baseH + candleH + 1.1);

@@ -5,3 +5,4 @@ export {};
 import './render/photo';
 import './render/export';
 import './app/qaUi';
+import './scene/venueQa';

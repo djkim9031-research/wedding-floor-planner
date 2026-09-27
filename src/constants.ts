@@ -52,17 +52,24 @@ export interface ColumnDef {
   height: number;
 }
 
-/** Two interior structural columns carrying the glulam beams. */
+/** Two interior structural posts carrying the glulam beams. Reference photo 05
+ * shows slim ~6" square white posts running up to the beams, which sit right
+ * under the rafters (beam soffit ≈ 13'8"). */
 export const COLUMNS: ColumnDef[] = [
-  { cx: 183, cz: 300, size: 10, height: 102 },
-  { cx: 365, cz: 300, size: 10, height: 102 },
+  { cx: 183, cz: 300, size: 6, height: 165 },
+  { cx: 365, cz: 300, size: 6, height: 165 },
 ];
 
 // Structural grid used by the venue builder (thirds of the room width).
 export const BAY_X = [0, 181.7, 363.3, 545];
 
 // Heights (inches)
+/** Eave of the annex wings and the entry breezeway. */
 export const EAVE_Y = 108;
+/** Hall wall-top line: where the reed ceiling plane meets the east/west walls.
+ * Measured from reference photos 02/05 (rails at 36", window-wall header
+ * ≈ 10'–11', rake at the corners ≈ 12'); the ridge stays at RIDGE_Y. */
+export const HALL_EAVE_Y = 144;
 export const RIDGE_Y = 210;
 export const RIDGE_X = 272.5;
 export const DOOR_HEAD_Y = 84;
