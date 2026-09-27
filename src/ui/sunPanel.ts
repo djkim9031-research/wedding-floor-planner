@@ -1,4 +1,5 @@
 import { fmtClock, hillSetTime, horizonAltDeg, moonState, moonTimes, phaseName, sunPosition, sunTimes, twilightTimes } from '../scene/sun';
+import { subscribeViewEV100 } from '../sky/viewExposure';
 
 export interface SunPanelState {
   enabled: boolean;
@@ -105,6 +106,11 @@ export function buildSunPanel(
   const evCompEl = el<HTMLInputElement>('evComp');
   const evEl = el<HTMLSpanElement>('ev');
   const autoEVEl = el<HTMLInputElement>('autoEV');
+  const evRow = panel.querySelector('.sun-exposure') as HTMLDivElement;
+  // live readout of what the view is exposed at (auto meters per camera)
+  subscribeViewEV100((ev) => {
+    evRow.title = `Exposure EV100 ${ev.toFixed(1)}${s.autoEV ? ' (auto: metered from the view)' : ' (sky preset)'}`;
+  });
 
   const fmtTimeInput = (min: number) =>
     `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;

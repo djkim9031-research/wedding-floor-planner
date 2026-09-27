@@ -41,14 +41,15 @@ function interp(table: readonly (readonly [number, number])[], x: number): numbe
 
 /** "Sky preset" exposure — what a photographer shooting the scene outdoors
  * would dial in, keeping sunsets and dusk moody: noon ≈ EV 15, sunset ≈ 11,
- * civil dusk ≈ 7, deep night ≈ 1. Keyed on the global horizontal
- * illuminance (lux) as log2(E) → EV100. */
+ * civil twilight 8 (−3°) … 6 (−6°), deep night ≈ 1. Keyed on the global
+ * horizontal illuminance (lux) as log2(E) → EV100. */
 const PRESET: readonly (readonly [number, number])[] = [
   [-6, 0.6],
-  [-2, 1.8],
-  [2, 4.6],
-  [5, 7.0],
-  [8, 9.7],
+  [-2, 2.0],
+  [1, 4.0],
+  [3.2, 6.0],
+  [5.5, 7.0],
+  [7.3, 8.0],
   [10, 11.2],
   [13, 13.1],
   [17, 15.0],

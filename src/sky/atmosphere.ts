@@ -391,7 +391,7 @@ function buildSkyView(lightElev: number, out: Float32Array): void {
     const se = Math.sin(e);
     const ce = Math.cos(e);
     const tMax = -R0 * se + Math.sqrt(R0 * R0 * se * se - R0 * R0 + RT * RT);
-    const N = Math.min(MAX_STEPS, Math.round(12 + 22 * Math.min(tMax / 600, 1)));
+    const N = Math.min(MAX_STEPS, Math.round(10 + 16 * Math.min(tMax / 600, 1)));
     // everything but the sun geometry is azimuth-independent: heights,
     // densities and the view transmittance depend on (e, t) only
     let v0 = 1;

@@ -49,6 +49,22 @@ export interface Lighting {
 
 const DEG = Math.PI / 180;
 
+let active: Lighting | null = null;
+let pendingFixtures: LightDef[] | null = null;
+
+/** The app's lighting rig (one per SceneHost), once set up. */
+export function currentLighting(): Lighting | null {
+  return active;
+}
+
+/** Hook for the venue's fixture layout (e.g. scene/fixtures.ts): replaces the
+ * default track heads/porch lights with photometric defs (cd, CCT, beam).
+ * Safe to call before the scene exists — applied at setup. */
+export function setVenueFixtures(defs: LightDef[]): void {
+  if (active) active.setFixtures(defs);
+  else pendingFixtures = defs;
+}
+
 /** Fraction of the outdoor sky light that reaches the hall's interior with
  * the roof on (glass walls NE + frosted panels S; no GI in raster). */
 export const INTERIOR_ENV_FACTOR = 0.18;
@@ -488,7 +504,7 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
   };
 
   // --- boot -----------------------------------------------------------------
-  setFixtures(DEFAULT_FIXTURES);
+  setFixtures(pendingFixtures ?? DEFAULT_FIXTURES);
   subscribeSky(applySky);
   applySky(getSky());
   sweepMaterials();
@@ -520,7 +536,7 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
     invalidate();
   });
 
-  return {
+  active = {
     invalidateShadows,
     applySun: () => {
       // the sky store is the source of truth (main.ts set it just before)
@@ -529,4 +545,5 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
     setFixtures,
     viewEV100: () => ev,
   };
+  return active;
 }

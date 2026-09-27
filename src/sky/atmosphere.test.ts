@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BG_H, BG_W, computeSky, ENV_H, ENV_W, moonIlluminanceTOA, type SkyRequest } from './atmosphere';
 import { dirFromEquirectUv, dirFromModelAzEl, equirectUv, sampleEquirect } from './equirect';
+import { meteredEV100, presetEV100 } from './exposure';
 import type { EquirectImage, Vec3 } from './types';
 
 const sunAt = (altDeg: number, azModelDeg = 180): Vec3 => dirFromModelAzEl(azModelDeg, altDeg);
@@ -70,6 +71,27 @@ describe('physical sky — illuminance', () => {
     const hidden = computeSky({ sunDir: sunAt(1.5), envOnly: true, ridgeVisibility: 0 });
     expect(hidden.sun.illuminanceLux).toBe(0);
     expect(hidden.skyHorizontalLux).toBeCloseTo(open.skyHorizontalLux, 6);
+  });
+});
+
+describe('physical sky — exposure through the day', () => {
+  it('sky preset: noon 14–15.5, sunset 10.5–12, civil twilight 6–8.5, night 0–2', () => {
+    const ev = (alt: number) => presetEV100(ghi(alt));
+    expect(ev(60)).toBeGreaterThan(14);
+    expect(ev(60)).toBeLessThan(15.5);
+    expect(ev(0)).toBeGreaterThan(10.5);
+    expect(ev(0)).toBeLessThan(12);
+    for (const a of [-3, -4, -6]) {
+      expect(ev(a)).toBeGreaterThan(5.8);
+      expect(ev(a)).toBeLessThan(8.5);
+    }
+    expect(ev(-18)).toBeGreaterThanOrEqual(0);
+    expect(ev(-18)).toBeLessThan(2);
+  });
+
+  it('auto (metered) exposure keeps every time readable: brighter than preset after sunset', () => {
+    for (const a of [0, -3, -6, -12]) expect(meteredEV100(ghi(a))).toBeLessThan(presetEV100(ghi(a)));
+    expect(meteredEV100(ghi(60))).toBeGreaterThan(14);
   });
 });
 
