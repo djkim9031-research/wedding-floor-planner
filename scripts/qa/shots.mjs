@@ -7,7 +7,7 @@
 //   node scripts/qa/shots.mjs --matrix scripts/qa/matrix.core.json --out .shots/base
 //   node scripts/qa/shots.mjs --hash "demo=dinner&cam=close" --name dinner --out .shots/x
 //   options: --serve preview|dev|none  --base http://host:port  --size 1280x800
-//            --only name1,name2  --timeout 90000  --keep-going  --dist dist
+//            --only name1,name2  --timeout 90000  --keep-going  --dist dist  --port N
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -39,11 +39,19 @@ mkdirSync(out, { recursive: true });
 
 async function startServer() {
   if (serve === 'none') return { base: opt('base', 'http://localhost:4173'), stop() {} };
-  const port = serve === 'dev' ? 5199 : 4199;
+  // random port so parallel runs (git worktrees on one machine) never collide
+  const port = Number(opt('port', String(4300 + Math.floor(Math.random() * 600))));
   const cmd =
     serve === 'dev'
       ? ['vite', '--port', String(port), '--strictPort']
       : ['vite', 'preview', '--port', String(port), '--strictPort', '--outDir', opt('dist', 'dist')];
+  // a server left over from an earlier run would silently serve a stale build
+  try {
+    await fetch(`http://localhost:${port}/`);
+    throw new Error(`port ${port} is already in use — kill the stale server (pkill -f "vite preview") and retry`);
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('port ')) throw e;
+  }
   const child = spawn('npx', cmd, { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
   let log = '';
   child.stdout.on('data', (d) => (log += d));

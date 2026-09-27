@@ -23,7 +23,13 @@ const samples = opt('samples', '32');
 const python = opt('python', 'python3');
 mkdirSync(out, { recursive: true });
 
-const port = 4211;
+const port = Number(opt('port', String(4300 + Math.floor(Math.random() * 600))));
+try {
+  await fetch(`http://localhost:${port}/`);
+  throw new Error(`port ${port} is already in use — kill the stale server (pkill -f "vite preview") and retry`);
+} catch (e) {
+  if (e instanceof Error && e.message.startsWith('port ')) throw e;
+}
 const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort', '--outDir', opt('dist', 'dist')], {
   stdio: 'ignore',
   detached: true,
