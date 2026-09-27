@@ -88,8 +88,28 @@ export const DECK_POLY: Vec2[] = [
   { x: 551, z: 0 },
 ];
 
-/** The single oak rising through the central deck (per the venue photos). */
-export const DECK_TREES: Vec2[] = [{ x: 287, z: -190 }];
+/** Horizontal ellipse (inches, model frame). `rotDeg` turns the local +x
+ * axis like an item yaw (positive rotates +x toward −z). */
+export interface TrunkFootprint {
+  x: number;
+  z: number;
+  /** semi-axis along the rotated local x */
+  rx: number;
+  /** semi-axis along the rotated local z */
+  rz: number;
+  rotDeg: number;
+}
+
+/** The deck oak's trunks where they pass through the deck: the scribed board
+ * opening around each flared base (the trunk itself sits ~1.25" inside it).
+ * Photos 03/04: a strongly leaning main trunk (A, leaning west) and an
+ * upright companion (B) behind it off one root crown, plus a massive upright
+ * stem (C) just east. Nothing may be placed over an opening. */
+export const DECK_TRUNKS: TrunkFootprint[] = [
+  { x: 406, z: -324, rx: 13.5, rz: 10.5, rotDeg: 4 }, // A — leaning main trunk
+  { x: 432, z: -364, rx: 9.5, rz: 9.5, rotDeg: 0 }, // B — upright companion
+  { x: 452, z: -334, rx: 11.5, rz: 11, rotDeg: -10 }, // C — upright east stem
+];
 
 /** Zones where items may be placed: the room, and the Tree Deck (an item
  * must fit fully inside one zone — nothing halfway through the glass wall). */
