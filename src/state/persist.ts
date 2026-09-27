@@ -1,3 +1,4 @@
+import { platform } from '../platform/bridge';
 import type { LayoutFile, PlacedItem } from '../types';
 
 const AUTOSAVE_KEY = 'wp:autosave';
@@ -139,16 +140,16 @@ export function deleteLayout(name: string): void {
   }
 }
 
-export function exportLayout(items: PlacedItem[], name = 'wedding-layout'): void {
-  const blob = new Blob([JSON.stringify(makeFile(items, name), null, 2)], {
-    type: 'application/json',
+export const LAYOUT_FILTERS = [{ name: 'Layout', extensions: ['json'] }];
+
+/** Save the layout as a .json file: a download on the web, the native save
+ * panel in the Mac app. Resolves the saved path/name, or null if cancelled. */
+export function exportLayout(items: PlacedItem[], name = 'wedding-layout'): Promise<string | null> {
+  return platform().saveFile({
+    name: `${name}.json`,
+    filters: LAYOUT_FILTERS,
+    data: JSON.stringify(makeFile(items, name), null, 2),
   });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${name}.json`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 export function importLayoutFile(file: File): Promise<PlacedItem[] | null> {

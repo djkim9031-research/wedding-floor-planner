@@ -7,8 +7,8 @@
 //   node scripts/qa/shots.mjs --matrix scripts/qa/matrix.core.json --out .shots/base
 //   node scripts/qa/shots.mjs --hash "demo=dinner&cam=close" --name dinner --out .shots/x
 //   options: --serve preview|dev|none  --base http://host:port  --size 1280x800
-//            --only name1,name2  --timeout 90000  --keep-going  --dist dist
-//            --port N (default random)  --qa  --wait-for "<js expr>" (with --hash)
+//            --only name1,name2  --timeout 90000  --keep-going  --dist dist  --port N
+//            --qa  --wait-for "<js expr>" (with --hash)
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -42,13 +42,19 @@ mkdirSync(out, { recursive: true });
 
 async function startServer() {
   if (serve === 'none') return { base: opt('base', 'http://localhost:4173'), stop() {} };
-  // --port N, else a random port: several worktrees share this machine and a
-  // fixed port would let one runner silently capture another's build
-  const port = Number(opt('port', String((serve === 'dev' ? 5200 : 4200) + Math.floor(Math.random() * 700))));
+  // random port so parallel runs (git worktrees on one machine) never collide
+  const port = Number(opt('port', String(4300 + Math.floor(Math.random() * 600))));
   const cmd =
     serve === 'dev'
       ? ['vite', '--port', String(port), '--strictPort']
       : ['vite', 'preview', '--port', String(port), '--strictPort', '--outDir', opt('dist', 'dist')];
+  // a server left over from an earlier run would silently serve a stale build
+  try {
+    await fetch(`http://localhost:${port}/`);
+    throw new Error(`port ${port} is already in use — kill the stale server (pkill -f "vite preview") and retry`);
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('port ')) throw e;
+  }
   const child = spawn('npx', cmd, { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
   let log = '';
   let exited = null;
@@ -111,7 +117,7 @@ try {
       if (m.waitMs) await page.waitForTimeout(m.waitMs);
       // two more frames so the last render lands on the canvas
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-      await page.screenshot({ path: `${out}/${m.name}.png`, timeout }); // software GL frames can exceed the 30 s default
+      await page.screenshot({ path: `${out}/${m.name}.png`, timeout });
       if (m.qa) {
         const qa = await page.evaluate(() => window.__wpQA ?? null);
         writeFileSync(`${out}/${m.name}.qa.json`, JSON.stringify(qa, null, 2));
@@ -119,7 +125,7 @@ try {
     } catch (e) {
       status = 'error: ' + String(e).split('\n')[0];
       try {
-        await page.screenshot({ path: `${out}/${m.name}.FAILED.png` });
+        await page.screenshot({ path: `${out}/${m.name}.FAILED.png`, timeout: 60000 });
       } catch {
         /* page gone */
       }
