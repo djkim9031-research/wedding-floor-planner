@@ -53,22 +53,38 @@ onAppReady((ctx) => {
   });
 });
 
-// QA: #photo=1[&spp=N][&denoise=0] — enter photo mode after boot, report when N samples are in
+// QA: #photo=1[&spp=N][&denoise=0][&shot=1] — enter photo mode after boot,
+// report when N samples are in; shot=1 then saves the photo (a download in
+// the browser) and reports the PNG size in __wpPhoto.shot
 registerQaHook((_ctx, params) => {
   if (params.get('photo') !== '1') return;
   const spp = Number(params.get('spp') ?? '16');
+  const shot = params.get('shot') === '1';
   if (params.get('denoise') === '0') photoMode.setDenoise(false);
   void (async () => {
     await settleCloth();
     await new Promise((r) => setTimeout(r, 300));
     const t0 = performance.now();
     await photoMode.enter();
+    let fired = false;
     const unsub = photoMode.subscribe((s) => {
       qaReport('photo', { ...s, ms: performance.now() - t0 });
-      if (s.samples >= spp || s.phase === 'done') {
-        (window as unknown as { __wpPhoto?: unknown }).__wpPhoto = { ...s, ms: performance.now() - t0, done: true };
-        queueMicrotask(() => unsub());
+      if (fired || !(s.samples >= spp || s.phase === 'done')) return;
+      fired = true;
+      queueMicrotask(() => unsub());
+      const w = window as unknown as { __wpPhoto?: unknown };
+      if (!shot) {
+        w.__wpPhoto = { ...s, ms: performance.now() - t0, done: true };
+        return;
       }
+      void photoMode
+        .savePhoto()
+        .then(() => {
+          w.__wpPhoto = { ...s, ms: performance.now() - t0, done: true, shot: photoMode.lastShot };
+        })
+        .catch((e) => {
+          w.__wpPhoto = { ...s, done: true, shotError: String(e) };
+        });
     });
   })();
 });

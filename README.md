@@ -35,6 +35,41 @@ npm run dev
 Presets menu has both sticky-note layouts. Layouts autosave locally; use
 Export/Import to move them between devices.
 
+## Sunlight, sky and exposure
+
+The **Sunlight** panel sets the date and time (venue-local) for a physically based sky: real
+sun and moon positions for The Quad Conference Center (Menlo Park), atmospheric scattering
+with twilight, the Earth's shadow and the pink band opposite the sunset, stars and a
+phase-correct moon at night, and a cloud-cover slider. Exposure is metered like a camera:
+**Auto** meters the view; **±EV** brightens or darkens it. The same sky and exposure feed the
+editor, Photo mode and the Blender export, so a scene looks the same at every quality tier.
+
+## Photo mode
+
+**📷 Photo** (or `P`) turns the view into a progressive path-traced render on your GPU: real
+bounced light, soft shadows, glass, linen sheen. It is view-only — orbit, walk (`V`), change the
+date/time, exposure or focus and the image keeps refining; editing the layout returns to the
+planner. When enough samples are in, the AI denoiser (Open Image Denoise, needs WebGPU) cleans
+the image. **Focus blur** with click-to-focus and an f-stop slider gives depth of field.
+**Save photo** writes a PNG at the viewport size, **Save 4K** renders at 3840 px. Quality presets
+are picked from the GPU (the Radeon Pro 5300M/5500M gets the "mid" preset).
+
+## Render in Blender (final quality)
+
+**🎬 Blender** exports the exact view — settled linens, camera, physical sky, every light — and
+renders it with Blender's Cycles path tracer for the most realistic result. In the Mac app it
+runs Blender for you and shows progress; in the browser it downloads a zip
+(`scene.glb`, `scene.json`, `sky.exr`, `render_venue.py`, `render.sh`) to render by hand:
+
+```sh
+unzip wedding-venue-*-blender.zip -d job && cd job && ./render.sh   # → render.png, scene.blend
+```
+
+Presets: **Draft** 960×540 / 128 samples (~1–3 min on an i9), **Standard** 1920×1080 / 256
+(~4–10 min), **Final** 2560×1440 / 1024 (~15–40 min); optional 360° panorama and depth of
+field. Cycles runs on the CPU on Intel Macs (Blender dropped AMD Metal in 4.3). The saved
+`scene.blend` opens in Blender for further tweaks.
+
 ## Single-file build
 
 ```sh
@@ -70,7 +105,7 @@ built for Intel Macs such as the MacBook Pro 16" (2019), macOS 12 or later.
 
 ### Render in Blender
 
-**File → Render in Blender…** path-traces the current view with Cycles. It needs
+**File → Render in Blender…** (or the 🎬 toolbar button) path-traces the current view with Cycles. It needs
 [Blender 4.5 LTS](https://www.blender.org/download/lts/4-5/) (the last release with an Intel Mac
 build; 4.2–4.5 work, 5.x is not supported) installed in **Applications**. The app finds it
 automatically (also `~/Applications` and Spotlight), or pick it in **Settings… (⌘,)**. Renders go

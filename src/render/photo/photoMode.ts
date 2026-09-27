@@ -56,6 +56,9 @@ class PhotoMode {
   private prevExposure = 1;
   private capture: { longEdge: number; resolve: (b: Blob | null) => void } | null = null;
   private busy = false;
+  /** last saved photo (QA): pixel size and PNG bytes */
+  lastShot: { width: number; height: number; bytes: number; name: string } | null = null;
+  private lastShotSize = { width: 0, height: 0 };
 
   private blank(): PhotoStatus {
     return {
@@ -326,6 +329,7 @@ class PhotoMode {
       this.capture = null;
       const img = data && w && h ? { data, width: w, height: h } : this.pt.readRadiance();
       const px = agxToImage(img.data, img.width, img.height, exposureScale(viewEV()));
+      this.lastShotSize = { width: img.width, height: img.height };
       this.pt.pt.renderScale = this.preset!.renderScale;
       void imageToPng(px, img.width, img.height).then(cap.resolve, () => cap.resolve(null));
     }
@@ -369,6 +373,7 @@ class PhotoMode {
     if (!blob) return;
     const inp = getSky().input;
     const name = photoFileName(inp.date, inp.minutes, longEdge ? `-${longEdge}` : '');
+    this.lastShot = { ...this.lastShotSize, bytes: blob.size, name };
     const saved = await saveBlob(blob, name);
     if (saved) ctx.toast(`Saved ${name}`);
     if (longEdge) this.restart();
