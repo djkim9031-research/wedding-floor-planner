@@ -9,8 +9,8 @@ import type { ObjectRenderTag } from '../render/types';
  * toward −x), pitch up positive, eye height inches, vertical FOV (the
  * iPhone main camera in 4:3 is ≈53°). */
 export const REF_CAMS: Record<string, { x: number; z: number; yaw: number; pitch: number; eye: number; fov: number }> = {
-  // 01 — at the NW part of the top-edge rail looking E-NE along it
-  '1': { x: 120, z: -420, yaw: -32, pitch: -2, eye: 62, fov: 53.1 },
+  // 01 — by the NW chamfer rail, looking NE along it over the lot
+  '1': { x: -100, z: -330, yaw: -30, pitch: -2, eye: 62, fov: 53.1 },
   // 03 — from the covered bay looking N with the leaning trunk at right
   '3': { x: 150, z: -60, yaw: -12, pitch: 1, eye: 60, fov: 53.1 },
   // 04 — a few steps east, trunks at right, trailer beyond the rail
@@ -80,6 +80,41 @@ registerQaHook((ctx, params) => {
   if (params.get('clean') === '1') {
     for (const el of Array.from(ctx.root.children)) {
       if (el !== ctx.host.canvas) (el as HTMLElement).style.display = 'none';
+    }
+  }
+  const texName = params.get('tex');
+  if (texName) {
+    // inspect a generated texture: #tex=<material name>[,<map slot>]
+    const [matName, slot = 'map'] = texName.split(',');
+    let img: CanvasImageSource | null = null;
+    ctx.host.scene.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+      if (!img && m && !Array.isArray(m) && m.name === matName) {
+        const t = (m as unknown as Record<string, THREE.Texture | undefined>)[slot];
+        const src = t?.image as { data?: Uint8Array; width: number; height: number } | HTMLCanvasElement | undefined;
+        if (src instanceof HTMLCanvasElement) img = src;
+        else if (src?.data) {
+          const c = document.createElement('canvas');
+          c.width = src.width;
+          c.height = src.height;
+          const id = new ImageData(new Uint8ClampedArray(src.data), src.width, src.height);
+          c.getContext('2d')!.putImageData(id, 0, 0);
+          img = c;
+        }
+      }
+    });
+    if (img) {
+      const view = document.createElement('canvas');
+      const w = window.innerWidth;
+      const src = img as HTMLCanvasElement;
+      view.width = w;
+      view.height = Math.round((src.height * w) / src.width);
+      const g = view.getContext('2d')!;
+      g.fillStyle = '#9fb7d6'; // a stand-in sky so transparent texels show
+      g.fillRect(0, 0, view.width, view.height);
+      g.drawImage(src, 0, 0, view.width, view.height);
+      view.style.cssText = 'position:fixed;left:0;top:0;z-index:1000';
+      document.body.appendChild(view);
     }
   }
   if (params.get('lod') === 'render') {

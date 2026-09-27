@@ -596,7 +596,7 @@ export function leafAtlasTexture(kind: LeafKind): THREE.DataTexture {
       const twigs: { x0: number; y0: number; x1: number; y1: number }[] = [];
       for (let t = 0; t < nTw; t++) {
         const a = -Math.PI / 2 + (t / (nTw - 1) - 0.5) * 1.9 + (rnd() - 0.5) * 0.3;
-        const L = C * (0.5 + rnd() * 0.25);
+        const L = C * (0.4 + rnd() * 0.16);
         const x1 = bx + Math.cos(a) * L;
         const y1 = by + Math.sin(a) * L;
         twigs.push({ x0: bx, y0: by, x1, y1 });
@@ -1014,12 +1014,12 @@ export function bayPanoramaTextureImpl(): THREE.CanvasTexture {
       if (w <= 0.01) return NaN;
       // Mission Peak massif rises toward ~95°, lower toward Oakland (N)
       const lift = 0.45 + 0.5 * Math.exp(-(dAz(az, 96) ** 2) / 300) + 0.25 * Math.exp(-(dAz(az, 40) ** 2) / 500);
-      return -0.2 + w * (lift + eastN(az));
+      return -0.5 + w * (0.3 + lift + eastN(az));
     },
     -0.5,
     [
-      [0, 'rgba(160,164,180,0.45)'],
-      [1, 'rgba(170,176,188,0.6)'],
+      [0, 'rgba(150,152,172,0.62)'],
+      [1, 'rgba(166,172,186,0.72)'],
     ],
   );
 
@@ -1060,7 +1060,7 @@ export function bayPanoramaTextureImpl(): THREE.CanvasTexture {
       const w = sector(az, 175, 345, 30);
       if (w <= 0.01) return NaN;
       const ridge = 2.2 + 1.6 * Math.exp(-(dAz(az, 250) ** 2) / 2600) + scN(az);
-      return 0.2 + w * ridge;
+      return -0.4 + w * (0.6 + ridge);
     },
     -0.4,
     [
@@ -1080,7 +1080,7 @@ export function bayPanoramaTextureImpl(): THREE.CanvasTexture {
       const w = sector(az, 150, 20, 25);
       if (w <= 0.01) return NaN;
       const west = sector(az, 190, 320, 30);
-      return -0.1 + w * (0.55 + 0.9 * west + fhN(az));
+      return -1.2 + w * (1.1 + 0.55 + 0.9 * west + fhN(az));
     },
     -1.2,
     [
@@ -1105,7 +1105,7 @@ export function bayPanoramaTextureImpl(): THREE.CanvasTexture {
     [80, 0.18],
     [400, 0.07],
   ]);
-  const shelfTops = band((az) => -0.55 + shelfN(az) - 0.25 * sector(az, 150, 330, 30), -3.2, [
+  const shelfTops = band((az) => -0.55 + shelfN(az) - 0.25 * sector(az, 150, 330, 30), -6, [
     [0, 'rgba(128,138,120,1)'],
     [1, 'rgba(96,108,84,1)'],
   ]);

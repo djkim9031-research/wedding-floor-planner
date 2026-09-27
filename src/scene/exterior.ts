@@ -88,10 +88,10 @@ const DECK_SLAB_T = 12;
 
 /** Parking lot below the deck to the N/NE (inches, model frame). */
 export const LOT_POLY: Vec2[] = [
-  { x: -320, z: -940 },
-  { x: 1020, z: -900 },
-  { x: 1100, z: -1380 },
-  { x: -280, z: -1440 },
+  { x: -360, z: -1150 },
+  { x: 1060, z: -1110 },
+  { x: 1140, z: -1590 },
+  { x: -320, z: -1650 },
 ];
 export const LOT_Y = -150;
 
@@ -217,7 +217,7 @@ function insideTrunk(p: Vec2, grow: number): boolean {
 // big upright east trunk. Points in inches, model frame.
 // ---------------------------------------------------------------------------
 
-function deckOakSpec(): TreeSpec {
+export function deckOakSpec(): TreeSpec {
   const [A, B, C] = DECK_TRUNKS;
   const flare = (fp: TrunkFootprint) => ({ footprint: fp, deckY: DECK_TOP_Y, height: 30, clearance: 1.25 });
   const limbs: LimbSpec[] = [
@@ -232,7 +232,7 @@ function deckOakSpec(): TreeSpec {
         [A.x - 58, 70, A.z - 8],
         [A.x - 72, 84, A.z - 12],
       ],
-      r: [11.5, 9, 8.7, 8.4, 8.1, 7.8],
+      r: [12.5, 9.8, 9.4, 9, 8.6, 8.2],
       sprout: 1,
       flare: flare(A),
     },
@@ -267,18 +267,18 @@ function deckOakSpec(): TreeSpec {
         [A.x - 78, 396, A.z - 52],
       ],
       r: [6.4, 6, 5.5, 4.8, 3.9, 2.9, 1.9],
-      sprout: 0.3,
+      sprout: 0.12,
     },
     {
-      // A-NW: off the west limb, out over the NW corner and the slope
+      // A-NW: off the rising west limb, high out over the NW corner
       pts: [
-        [A.x - 156, 96, A.z - 44],
-        [A.x - 196, 118, A.z - 110],
-        [A.x - 240, 140, A.z - 180],
-        [A.x - 290, 162, A.z - 244],
-        [A.x - 336, 180, A.z - 300],
+        [A.x - 222, 190, A.z - 66],
+        [A.x - 262, 228, A.z - 126],
+        [A.x - 310, 258, A.z - 196],
+        [A.x - 360, 282, A.z - 266],
+        [A.x - 402, 298, A.z - 326],
       ],
-      r: [3.8, 3.4, 2.9, 2.3, 1.7],
+      r: [3.6, 3.2, 2.7, 2.1, 1.5],
       sprout: 0.2,
     },
     {
@@ -310,7 +310,7 @@ function deckOakSpec(): TreeSpec {
         [B.x + 9, 470, B.z - 62],
       ],
       r: [9.5, 7.4, 7.1, 6.8, 6.4, 5.9, 5.2, 4.4, 3.3, 2.2],
-      sprout: 0.55,
+      sprout: 0.32,
       flare: flare(B),
     },
     {
@@ -356,7 +356,7 @@ function deckOakSpec(): TreeSpec {
         [C.x + 18, 480, C.z + 40],
       ],
       r: [12, 9.6, 9.2, 8.7, 8.1, 7.2, 6, 4.5, 3],
-      sprout: 0.5,
+      sprout: 0.3,
       flare: flare(C),
     },
     {
@@ -428,7 +428,9 @@ function deckOakSpec(): TreeSpec {
     reach: 1.3,
     // clear headroom over the deck, and stay above the hall roof
     // (the covered bay near the building stays open below ~14')
-    floorY: (x, z) => (x > -30 && x < 575 && z > -10 && z < 630 ? 250 : onDeck(x, z) ? (z > -220 ? 170 : 100) : 40),
+    // the west half of the crown sits high (sky under it in photo 03)
+    floorY: (x, z) =>
+      x > -30 && x < 575 && z > -10 && z < 630 ? 250 : x < 260 ? 200 : onDeck(x, z) ? (z > -220 ? 170 : 100) : 60,
   };
 }
 
@@ -1487,8 +1489,8 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
 
   // tall lot light west of the lot (photos 01/03)
   {
-    const px = -420;
-    const pz = -1200;
+    const px = -470;
+    const pz = -1400;
     const py = terrainY(px, pz);
     const poleG: Geo[] = [];
     poleG.push(new THREE.CylinderGeometry(i2m(1.6), i2m(2.6), i2m(300), 10).translate(i2m(px), i2m(py + 150), i2m(pz)));
@@ -1502,8 +1504,8 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
 
   // --- white/blue modular construction trailer on the lot's east end ------
   {
-    const tx = 800;
-    const tz = -1012;
+    const tx = 820;
+    const tz = -1222;
     const L = 480;
     const D = 144;
     const base = LOT_Y;
@@ -1565,15 +1567,15 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
     let guard = 0;
     // drifts: clusters around random centres
     while (placed < n && guard++ < n * 40) {
-      const ccx = -300 + r2() * 1200;
-      const ccz = -900 + r2() * 480;
+      const ccx = -320 + r2() * 1250;
+      const ccz = -1100 + r2() * 640;
       const inDrift = 3 + ((r2() * 8) | 0);
       for (let k = 0; k < inDrift && placed < n; k++) {
         const x = ccx + (r2() - 0.5) * 140;
         const z = ccz + (r2() - 0.5) * 90;
         const p = { x, z };
         const dD = sdPoly(p, DECK_POLY);
-        if (dD < 20 || dD > 480 || sdPoly(p, LOT_POLY) < 30) continue;
+        if (dD < 20 || dD > 640 || sdPoly(p, LOT_POLY) < 30) continue;
         if (z > -380 && x > -150 && x < 720) continue; // not under the deck
         const y = terrainY(x, z);
         const w = size[0] + r2() * (size[1] - size[0]);
@@ -1621,8 +1623,8 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
     m.name = `slope-${kind}`;
     group.add(m);
   };
-  plantCards('lavender', 150, [26, 40], [22, 34], 0x1a7e);
-  plantCards('shrub', 90, [40, 70], [34, 62], 0x5b5b);
+  plantCards('lavender', 200, [26, 40], [22, 34], 0x1a7e);
+  plantCards('shrub', 150, [40, 70], [34, 62], 0x5b5b);
 
   // --- trees ---------------------------------------------------------------
   const at = (x: number, z: number) => terrainY(x, z);
@@ -1631,7 +1633,7 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
     // x, z, height, spread, seed, leanDeg, leanAz(true-ish model az)
     [-150, -720, 440, 290, 31],
     [-470, -300, 420, 260, 32],
-    [-520, -960, 470, 320, 33],
+    [-560, -1040, 470, 320, 33],
     [860, -440, 470, 280, 34, 14, 240],
     [990, -130, 420, 260, 35],
     [-470, 110, 380, 230, 36],
@@ -1644,7 +1646,7 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
   const pineBark = barkMaterial('pine', 'pineBark');
   const pines = new TreeBatch(STONE_PINE);
   for (const [x, z, h, s, seed] of [
-    [1200, -1120, 640, 300, 41],
+    [1250, -1300, 640, 300, 41],
     [1270, -620, 600, 280, 42],
     [-820, -760, 620, 290, 43],
   ] as const) {
