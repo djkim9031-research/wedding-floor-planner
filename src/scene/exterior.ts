@@ -1574,6 +1574,24 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
       m.receiveShadow = true;
     }
     group.add(sign, skirt, roof);
+    // bundled lumber on pallets by the trailer's west end (photo 01)
+    const lumberG: Geo[] = [];
+    const palletG: Geo[] = [];
+    for (const [lx, lz, h] of [
+      [tx - L / 2 - 70, tz + 30, 34],
+      [tx - L / 2 - 70, tz - 30, 26],
+      [tx - L / 2 - 130, tz + 20, 40],
+    ] as const) {
+      palletG.push(box(lx - 24, lx + 24, base, base + 5, lz - 22, lz + 22));
+      lumberG.push(box(lx - 23, lx + 23, base + 5, base + 5 + h, lz - 20, lz + 20));
+    }
+    const lumber = merged(lumberG, tag(new THREE.MeshStandardMaterial({ color: 0xc9a77a, roughness: 0.85, metalness: 0 }), 'generic', {}, 'lumber'));
+    const pallets = merged(palletG, tag(new THREE.MeshStandardMaterial({ color: 0x7d6a52, roughness: 0.9, metalness: 0 }), 'generic', {}, 'pallets'));
+    for (const m of [lumber, pallets]) {
+      m.castShadow = true;
+      m.receiveShadow = true;
+    }
+    group.add(lumber, pallets);
   }
 
   // --- slope planting between the deck and the lot: lavender drifts,
@@ -1688,7 +1706,7 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
   const olives = new TreeBatch(OLIVE);
   for (const [x, z, h, s, seed] of [
     [640, -660, 260, 150, 61],
-    [-40, -640, 240, 140, 62],
+    [-210, -800, 240, 140, 62],
   ] as const) {
     olives.add(autoTree(OLIVE, { x, z, y: at(x, z), height: h, spread: s, seed }), seed);
   }
@@ -1696,8 +1714,8 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
 
   const crapes = new TreeBatch(CRAPE_MYRTLE);
   for (const [x, z, h, s, seed] of [
-    [90, -610, 200, 100, 71],
-    [-60, -575, 180, 90, 72],
+    [60, -720, 200, 100, 71],
+    [-130, -690, 180, 90, 72],
     [470, -640, 190, 95, 73],
   ] as const) {
     crapes.add(autoTree(CRAPE_MYRTLE, { x, z, y: at(x, z), height: h, spread: s, seed }), seed);
