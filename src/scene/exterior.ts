@@ -1489,14 +1489,15 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
 
   // tall lot light west of the lot (photos 01/03)
   {
-    const px = -470;
-    const pz = -1400;
+    const px = -500;
+    const pz = -1650;
     const py = terrainY(px, pz);
+    const H = 240; // 20' pole: its head sits about at deck level (photos 03/04)
     const poleG: Geo[] = [];
-    poleG.push(new THREE.CylinderGeometry(i2m(1.6), i2m(2.6), i2m(300), 10).translate(i2m(px), i2m(py + 150), i2m(pz)));
+    poleG.push(new THREE.CylinderGeometry(i2m(1.6), i2m(2.6), i2m(H), 10).translate(i2m(px), i2m(py + H / 2), i2m(pz)));
     poleG.push(new THREE.CylinderGeometry(i2m(6), i2m(7), i2m(18), 10).translate(i2m(px), i2m(py + 9), i2m(pz))); // footing
-    poleG.push(box(px - 1, px + 30, py + 296, py + 299, pz - 1, pz + 1));
-    poleG.push(box(px + 22, px + 42, py + 292, py + 298, pz - 6, pz + 6)); // shoebox head
+    poleG.push(box(px - 1, px + 30, py + H - 4, py + H - 1, pz - 1, pz + 1));
+    poleG.push(box(px + 22, px + 42, py + H - 8, py + H - 2, pz - 6, pz + 6)); // shoebox head
     const pole = merged(poleG, tag(new THREE.MeshStandardMaterial({ color: 0x3d3f42, roughness: 0.55, metalness: 0.6 }), 'metal-dark', {}, 'lotPole'));
     pole.castShadow = true;
     group.add(pole);

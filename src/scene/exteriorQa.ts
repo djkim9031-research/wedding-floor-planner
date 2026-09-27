@@ -33,26 +33,21 @@ export function lodTriangles(root: THREE.Object3D): { live: number; render: numb
   let render = 0;
   let renderOnly = 0;
   let liveOnly = 0;
-  const walk = (o: THREE.Object3D, parentVisible: boolean) => {
+  // live: the visible chain. render: the visible chain plus anything under
+  // a lod:'render' tag (hidden live), minus lod:'live' and excluded objects.
+  const walk = (o: THREE.Object3D, visChain: boolean, renderChain: boolean) => {
     const tagR = o.userData.render as ObjectRenderTag | undefined;
     const lod = tagR?.lod;
     const t = triCount(o);
-    const vis = parentVisible && o.visible;
-    if (!tagR?.exclude) {
-      if (lod === 'render') {
-        render += t;
-        renderOnly += t;
-      } else if (lod === 'live') {
-        if (vis) live += t;
-        liveOnly += t;
-      } else {
-        if (vis) live += t;
-        if (parentVisible || o.visible) render += t;
-      }
-    }
-    for (const c of o.children) walk(c, vis || lod === 'render');
+    const vis = visChain && o.visible;
+    const inRender = !tagR?.exclude && lod !== 'live' && (lod === 'render' || renderChain || vis);
+    if (vis) live += t;
+    if (inRender) render += t;
+    if (lod === 'render' || (renderChain && lod !== 'live')) renderOnly += vis ? 0 : t;
+    if (lod === 'live') liveOnly += t;
+    for (const c of o.children) walk(c, vis, inRender && (lod === 'render' || renderChain));
   };
-  walk(root, true);
+  walk(root, true, false);
   return { live, render, renderOnly, liveOnly };
 }
 
