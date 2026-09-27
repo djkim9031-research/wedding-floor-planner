@@ -8,6 +8,7 @@
 //   node scripts/qa/shots.mjs --hash "demo=dinner&cam=close" --name dinner --out .shots/x
 //   options: --serve preview|dev|none  --base http://host:port  --size 1280x800
 //            --only name1,name2  --timeout 90000  --keep-going  --dist dist
+//            --port N (default random)  --qa  --wait-for "<js expr>" (with --hash)
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -30,7 +31,9 @@ const only = opt('only', '')
 
 let matrix;
 if (opt('hash')) {
-  matrix = [{ name: opt('name', 'shot'), hash: opt('hash'), waitMs: Number(opt('wait', '0')) }];
+  // --qa dumps window.__wpQA to <name>.qa.json; --wait-for "<js expr>" waits
+  // for an async QA hook (e.g. "window.__wpQA?.renderscene") before the shot
+  matrix = [{ name: opt('name', 'shot'), hash: opt('hash'), waitMs: Number(opt('wait', '0')), qa: flag('qa'), waitFor: opt('wait-for', undefined) }];
 } else {
   matrix = JSON.parse(readFileSync(resolve(opt('matrix', 'scripts/qa/matrix.core.json')), 'utf8'));
 }
@@ -39,21 +42,30 @@ mkdirSync(out, { recursive: true });
 
 async function startServer() {
   if (serve === 'none') return { base: opt('base', 'http://localhost:4173'), stop() {} };
-  const port = serve === 'dev' ? 5199 : 4199;
+  // --port N, else a random port: several worktrees share this machine and a
+  // fixed port would let one runner silently capture another's build
+  const port = Number(opt('port', String((serve === 'dev' ? 5200 : 4200) + Math.floor(Math.random() * 700))));
   const cmd =
     serve === 'dev'
       ? ['vite', '--port', String(port), '--strictPort']
       : ['vite', 'preview', '--port', String(port), '--strictPort', '--outDir', opt('dist', 'dist')];
   const child = spawn('npx', cmd, { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
   let log = '';
+  let exited = null;
   child.stdout.on('data', (d) => (log += d));
   child.stderr.on('data', (d) => (log += d));
+  child.on('exit', (code) => (exited = code));
   const base = `http://localhost:${port}`;
   const t0 = Date.now();
   for (;;) {
+    // strictPort exits when the port is taken — never capture someone else's
+    // server: trust the port only once OUR vite has printed its URL
+    if (exited !== null) throw new Error(`server exited (${exited}) — port ${port} in use?\n` + log);
     try {
-      const r = await fetch(base + '/');
-      if (r.ok) break;
+      // eslint-disable-next-line no-control-regex
+      const ours = log.replace(/\x1b\[[0-9;]*m/g, '').includes(`:${port}/`);
+      const r = ours ? await fetch(base + '/') : null;
+      if (r?.ok) break;
     } catch {
       /* not up yet */
     }
@@ -99,7 +111,7 @@ try {
       if (m.waitMs) await page.waitForTimeout(m.waitMs);
       // two more frames so the last render lands on the canvas
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-      await page.screenshot({ path: `${out}/${m.name}.png` });
+      await page.screenshot({ path: `${out}/${m.name}.png`, timeout }); // software GL frames can exceed the 30 s default
       if (m.qa) {
         const qa = await page.evaluate(() => window.__wpQA ?? null);
         writeFileSync(`${out}/${m.name}.qa.json`, JSON.stringify(qa, null, 2));
