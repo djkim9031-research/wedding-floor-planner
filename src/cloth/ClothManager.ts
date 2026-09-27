@@ -240,6 +240,39 @@ export class ClothManager {
     return lift;
   }
 
+  /** Render snapshot: every visible cloth's current drape as a deep-cloned
+   * geometry in world meters (the mesh's matrixWorld — inches→meters group
+   * scale + stacking lift — applied), with the live (shared) material.
+   * `source` is the live mesh, so render builders can skip it. */
+  snapshot(): {
+    id: string;
+    geometry: THREE.BufferGeometry;
+    material: THREE.Material;
+    settled: boolean;
+    source: THREE.Mesh;
+  }[] {
+    this.group.updateWorldMatrix(true, true);
+    let o: THREE.Object3D | null = this.group;
+    while (o) {
+      if (!o.visible) return [];
+      o = o.parent;
+    }
+    const out: ReturnType<ClothManager['snapshot']> = [];
+    for (const [id, inst] of this.instances) {
+      const mesh = inst.sim.mesh;
+      if (!mesh.visible) continue;
+      if (inst.dirty) {
+        inst.sim.updateMesh();
+        inst.dirty = false;
+      }
+      const geometry = mesh.geometry.clone();
+      geometry.applyMatrix4(mesh.matrixWorld);
+      geometry.name = `cloth:${id}`;
+      out.push({ id, geometry, material: mesh.material as THREE.Material, settled: inst.sim.state === 'settled', source: mesh });
+    }
+    return out;
+  }
+
   /** QA: per-instance state summary. */
   debugStates(): string {
     const parts: string[] = [];

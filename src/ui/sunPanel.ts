@@ -1,4 +1,5 @@
 import { fmtClock, hillSetTime, horizonAltDeg, moonState, moonTimes, phaseName, sunPosition, sunTimes, twilightTimes } from '../scene/sun';
+import { subscribeViewEV100 } from '../sky/viewExposure';
 
 export interface SunPanelState {
   enabled: boolean;
@@ -6,6 +7,10 @@ export interface SunPanelState {
   minutes: number; // minutes after midnight, venue-local
   clouds: boolean;
   cloudPct: number;
+  /** exposure compensation, EV (+ brightens) */
+  evComp: number;
+  /** meter the exposure from the scene (camera-aware) vs the sky preset */
+  autoEV: boolean;
 }
 
 const KEY = 'wp:sun';
@@ -52,13 +57,15 @@ export function buildSunPanel(
   root: HTMLElement,
   onChange: (s: SunPanelState) => void,
 ): SunPanel {
-  let s: SunPanelState = { enabled: true, clouds: false, cloudPct: 30, ...todayLocal() };
+  let s: SunPanelState = { enabled: true, clouds: false, cloudPct: 30, evComp: 0, autoEV: true, ...todayLocal() };
   try {
     const saved = localStorage.getItem(KEY);
     if (saved) s = { ...s, ...(JSON.parse(saved) as Partial<SunPanelState>) };
   } catch {
     /* ignore */
   }
+  s.evComp = Number.isFinite(s.evComp) ? Math.min(Math.max(s.evComp, -3), 3) : 0;
+  s.autoEV = s.autoEV !== false;
 
   const panel = document.createElement('div');
   panel.className = 'sun-panel';
@@ -79,6 +86,12 @@ export function buildSunPanel(
       <label class="sun-toggle"><input type="checkbox" data-k="clouds"> clouds</label>
       <input type="range" data-k="cloudPct" min="0" max="100" step="5" class="sun-slider cloud-slider">
       <span class="sun-pct" data-k="pct"></span>
+    </div>
+    <div class="sun-row sun-exposure">
+      <span class="sun-ev-label" title="Exposure compensation">± EV</span>
+      <input type="range" data-k="evComp" min="-3" max="3" step="0.1" class="sun-slider ev-slider" title="Exposure compensation (double-click to reset)">
+      <span class="sun-pct" data-k="ev"></span>
+      <label class="sun-toggle" title="Meter from what the camera sees (inside the hall the lights set the exposure)"><input type="checkbox" data-k="autoEV"> auto</label>
     </div>`;
 
   const el = <T extends HTMLElement>(k: string): T => panel.querySelector(`[data-k="${k}"]`) as T;
@@ -90,6 +103,14 @@ export function buildSunPanel(
   const cloudsEl = el<HTMLInputElement>('clouds');
   const cloudPctEl = el<HTMLInputElement>('cloudPct');
   const pctEl = el<HTMLSpanElement>('pct');
+  const evCompEl = el<HTMLInputElement>('evComp');
+  const evEl = el<HTMLSpanElement>('ev');
+  const autoEVEl = el<HTMLInputElement>('autoEV');
+  const evRow = panel.querySelector('.sun-exposure') as HTMLDivElement;
+  // live readout of what the view is exposed at (auto meters per camera)
+  subscribeViewEV100((ev) => {
+    evRow.title = `Exposure EV100 ${ev.toFixed(1)}${s.autoEV ? ' (auto: metered from the view)' : ' (sky preset)'}`;
+  });
 
   const fmtTimeInput = (min: number) =>
     `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
@@ -102,6 +123,9 @@ export function buildSunPanel(
     cloudsEl.checked = s.clouds;
     cloudPctEl.value = String(s.cloudPct);
     pctEl.textContent = `${s.cloudPct}%`;
+    evCompEl.value = String(s.evComp);
+    evEl.textContent = `${s.evComp > 0 ? '+' : s.evComp < 0 ? '−' : ''}${Math.abs(s.evComp).toFixed(1)}`;
+    autoEVEl.checked = s.autoEV;
     dateEl.disabled = timeEl.disabled = sliderEl.disabled = !s.enabled;
     cloudsEl.disabled = cloudPctEl.disabled = !s.enabled;
     if (s.enabled) {
@@ -160,6 +184,18 @@ export function buildSunPanel(
   });
   cloudPctEl.addEventListener('input', () => {
     s.cloudPct = parseInt(cloudPctEl.value, 10);
+    commit();
+  });
+  evCompEl.addEventListener('input', () => {
+    s.evComp = Math.round(parseFloat(evCompEl.value) * 10) / 10;
+    commit();
+  });
+  evCompEl.addEventListener('dblclick', () => {
+    s.evComp = 0;
+    commit();
+  });
+  autoEVEl.addEventListener('change', () => {
+    s.autoEV = autoEVEl.checked;
     commit();
   });
 

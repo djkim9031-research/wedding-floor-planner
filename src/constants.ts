@@ -52,17 +52,24 @@ export interface ColumnDef {
   height: number;
 }
 
-/** Two interior structural columns carrying the glulam beams. */
+/** Two interior structural posts carrying the glulam beams. Reference photo 05
+ * shows slim ~6" square white posts running up to the beams, which sit right
+ * under the rafters (beam soffit ≈ 13'8"). */
 export const COLUMNS: ColumnDef[] = [
-  { cx: 183, cz: 300, size: 10, height: 102 },
-  { cx: 365, cz: 300, size: 10, height: 102 },
+  { cx: 183, cz: 300, size: 6, height: 165 },
+  { cx: 365, cz: 300, size: 6, height: 165 },
 ];
 
 // Structural grid used by the venue builder (thirds of the room width).
 export const BAY_X = [0, 181.7, 363.3, 545];
 
 // Heights (inches)
+/** Eave of the annex wings and the entry breezeway. */
 export const EAVE_Y = 108;
+/** Hall wall-top line: where the reed ceiling plane meets the east/west walls.
+ * Measured from reference photos 02/05 (rails at 36", window-wall header
+ * ≈ 10'–11', rake at the corners ≈ 12'); the ridge stays at RIDGE_Y. */
+export const HALL_EAVE_Y = 144;
 export const RIDGE_Y = 210;
 export const RIDGE_X = 272.5;
 export const DOOR_HEAD_Y = 84;
@@ -88,8 +95,28 @@ export const DECK_POLY: Vec2[] = [
   { x: 551, z: 0 },
 ];
 
-/** The single oak rising through the central deck (per the venue photos). */
-export const DECK_TREES: Vec2[] = [{ x: 287, z: -190 }];
+/** Horizontal ellipse (inches, model frame). `rotDeg` turns the local +x
+ * axis like an item yaw (positive rotates +x toward −z). */
+export interface TrunkFootprint {
+  x: number;
+  z: number;
+  /** semi-axis along the rotated local x */
+  rx: number;
+  /** semi-axis along the rotated local z */
+  rz: number;
+  rotDeg: number;
+}
+
+/** The deck oak's trunks where they pass through the deck: the scribed board
+ * opening around each flared base (the trunk itself sits ~1.25" inside it).
+ * Photos 03/04: a strongly leaning main trunk (A, leaning west) and an
+ * upright companion (B) behind it off one root crown, plus a massive upright
+ * stem (C) just east. Nothing may be placed over an opening. */
+export const DECK_TRUNKS: TrunkFootprint[] = [
+  { x: 406, z: -324, rx: 13.5, rz: 10.5, rotDeg: 4 }, // A — leaning main trunk
+  { x: 432, z: -364, rx: 9.5, rz: 9.5, rotDeg: 0 }, // B — upright companion
+  { x: 452, z: -334, rx: 11.5, rz: 11, rotDeg: -10 }, // C — upright east stem
+];
 
 /** Zones where items may be placed: the room, and the Tree Deck (an item
  * must fit fully inside one zone — nothing halfway through the glass wall). */

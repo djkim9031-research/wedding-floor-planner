@@ -1,0 +1,4 @@
+{
+  "note": "iPhone main camera, 4:3 → vertical FOV ≈ 53.1°. Positions in inches (model frame), yaw 0 = toward model −z (deck), positive yaw turns toward −x. Fitted in calibration.",
+  "cameras": {}
+}

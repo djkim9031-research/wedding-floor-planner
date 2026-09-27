@@ -121,6 +121,18 @@ export class CameraRig {
     this.onModeChange?.('stand');
   }
 
+  /** Stand at an exact spot and heading (inches; degrees, yaw 0 looks toward
+   * model −z, positive turns toward −x; pitch up positive) — used for
+   * camera-matched reference views, which orbit mode can't express because
+   * its target is pinned to the floor. */
+  enterStandAt(at: Vec2, yawDeg: number, pitchDeg: number, eyeIn: number = EYE_HEIGHT): void {
+    this.enterStand(at);
+    this.standPos.set(i2m(at.x), i2m(eyeIn), i2m(at.z));
+    this.standYaw = (yawDeg * Math.PI) / 180;
+    this.standPitch = THREE.MathUtils.clamp((pitchDeg * Math.PI) / 180, -1.05, 1.05);
+    this.applyStand();
+  }
+
   exitStand(): void {
     if (this.mode !== 'stand') return;
     this.mode = 'orbit';

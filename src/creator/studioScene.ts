@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { tag } from '../render/tags';
 import { i2m } from '../constants';
 import { floorWoodTextures } from '../scene/textures';
 
@@ -42,12 +43,12 @@ export function createStudioScene(): StudioScene {
   const floorSize = i2m(STUDIO_HALF * 2 + 240);
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(floorSize, floorSize),
-    new THREE.MeshStandardMaterial({
+    tag(new THREE.MeshStandardMaterial({
       map: wood.map,
       roughnessMap: wood.roughnessMap,
       roughness: 1,
       metalness: 0,
-    }),
+    }), 'wood-floor', { clearcoat: 0.35, clearcoatRoughness: 0.2 }, 'studioFloor'),
   );
   wood.map.repeat.setScalar(floorSize / i2m(128));
   wood.roughnessMap.repeat.copy(wood.map.repeat);

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { tag } from '../render/tags';
 import {
   CHAIR_BACK_H,
   CHAIR_SEAT_H,
@@ -34,13 +35,13 @@ function tableMaterial(type: TableType | 'chair'): THREE.MeshStandardMaterial {
   let mat = woodMaterials.get(key);
   if (!mat) {
     const tex = key === 'teak' ? teakTableTextures() : oakTableTextures();
-    mat = new THREE.MeshStandardMaterial({
+    mat = tag(new THREE.MeshStandardMaterial({
       map: tex.map,
       bumpMap: tex.bumpMap,
       bumpScale: 0.015,
       roughness: key === 'teak' ? 0.45 : 0.5,
       metalness: 0,
-    });
+    }), 'wood-table', {}, key);
     woodMaterials.set(key, mat);
   }
   return mat;
@@ -139,12 +140,12 @@ function buildChair(): THREE.Group {
 function buildHuman(type: 'figureW' | 'figureM'): THREE.Group {
   const H = i2m(FIGURE_HEIGHTS[type]);
   const woman = type === 'figureW';
-  const skin = new THREE.MeshStandardMaterial({
+  const skin = tag(new THREE.MeshStandardMaterial({
     color: woman ? 0x8a7466 : 0x6f665c,
     roughness: 0.85,
     metalness: 0,
-  });
-  const hair = new THREE.MeshStandardMaterial({ color: 0x3d332a, roughness: 0.9 });
+  }), 'skin', {}, 'skin');
+  const hair = tag(new THREE.MeshStandardMaterial({ color: 0x3d332a, roughness: 0.9 }), 'generic', {}, 'hair');
   const g = new THREE.Group();
   const add = (mesh: THREE.Mesh) => {
     mesh.castShadow = true;
@@ -199,7 +200,7 @@ function buildLantern(type: LanternType): THREE.Group {
   const spec = LANTERN_SPECS[type];
   const { w } = ITEM_DIMS[type];
   const h = spec.h;
-  const frame = new THREE.MeshStandardMaterial({ color: spec.colorHex, roughness: 0.6, metalness: 0.05 });
+  const frame = tag(new THREE.MeshStandardMaterial({ color: spec.colorHex, roughness: 0.6, metalness: 0.05 }), 'metal-dark', {}, 'lanternFrame');
   const g = new THREE.Group();
   const add = (m: THREE.Mesh) => {
     m.castShadow = true;
@@ -233,13 +234,13 @@ function buildLantern(type: LanternType): THREE.Group {
   const candleH = h * 0.2;
   const candle = new THREE.Mesh(
     new THREE.CylinderGeometry(i2m(w * 0.14), i2m(w * 0.14), i2m(candleH), 12),
-    new THREE.MeshStandardMaterial({ color: 0xf6efdf, roughness: 0.7, emissive: 0x241505, emissiveIntensity: 0.4 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0xf6efdf, roughness: 0.7, emissive: 0x241505, emissiveIntensity: 0.4 }), 'generic', {}, 'candle'),
   );
   candle.position.y = i2m(baseH + candleH / 2);
   g.add(candle);
   const flame = new THREE.Mesh(
     new THREE.SphereGeometry(i2m(Math.max(0.7, w * 0.075)), 10, 8),
-    new THREE.MeshStandardMaterial({ color: 0xffdf9e, emissive: 0xffa63c, emissiveIntensity: 2.4 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0xffdf9e, emissive: 0xffa63c, emissiveIntensity: 2.4 }), 'emitter-flame', { luminance: 1200, castShadow: false }, 'flame'),
   );
   flame.scale.y = 1.6;
   flame.position.y = i2m(baseH + candleH + 1.1);
@@ -257,7 +258,7 @@ function buildLantern(type: LanternType): THREE.Group {
 function buildHedge(): THREE.Group {
   const { w, d } = ITEM_DIMS.hedge;
   const g = new THREE.Group();
-  const leaf = new THREE.MeshStandardMaterial({ color: 0x44543a, roughness: 0.95, flatShading: true });
+  const leaf = tag(new THREE.MeshStandardMaterial({ color: 0x44543a, roughness: 0.95, flatShading: true }), 'foliage', { translucency: 0.25 }, 'hedgeLeaf');
   const body = new THREE.Mesh(new THREE.BoxGeometry(i2m(w - 1), i2m(HEDGE_H - 11), i2m(d - 2), 12, 20, 2), leaf);
   const pos = body.geometry.getAttribute('position') as THREE.BufferAttribute;
   for (let k = 0; k < pos.count; k++) {
@@ -274,7 +275,7 @@ function buildHedge(): THREE.Group {
   g.add(body);
   const planter = new THREE.Mesh(
     new THREE.BoxGeometry(i2m(w), i2m(10), i2m(d)),
-    new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.75, metalness: 0.05 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.75, metalness: 0.05 }), 'metal-dark', {}, 'hedgeBox'),
   );
   planter.position.y = i2m(5);
   planter.castShadow = planter.receiveShadow = true;
@@ -286,15 +287,15 @@ function buildHedge(): THREE.Group {
  * (48×21×21) on casters, single ivory fabric panel (48×2) rising to 90". */
 function buildScreen(): THREE.Group {
   const g = new THREE.Group();
-  const fabric = new THREE.MeshStandardMaterial({ color: 0xf4efe3, roughness: 0.9 });
-  const walnut = new THREE.MeshStandardMaterial({ color: 0x5a4633, roughness: 0.6 });
+  const fabric = tag(new THREE.MeshStandardMaterial({ color: 0xf4efe3, roughness: 0.9 }), 'fabric', {}, 'screenPanel');
+  const walnut = tag(new THREE.MeshStandardMaterial({ color: 0x5a4633, roughness: 0.6 }), 'wood-table', {}, 'screenWalnut');
   const base = new THREE.Mesh(new THREE.BoxGeometry(i2m(48), i2m(18), i2m(21)), walnut);
   base.position.y = i2m(3 + 9);
   base.castShadow = base.receiveShadow = true;
   g.add(base);
   const casterGeo = new THREE.CylinderGeometry(i2m(1.5), i2m(1.5), i2m(1.6), 10);
   casterGeo.rotateZ(Math.PI / 2);
-  const casterMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.5, metalness: 0.4 });
+  const casterMat = tag(new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.5, metalness: 0.4 }), 'metal-dark', {}, 'caster');
   for (const [sx, sz] of [
     [1, 1],
     [1, -1],
@@ -318,8 +319,8 @@ function buildScreen(): THREE.Group {
  * Glass is transparent and catches sun/candle light; plates shade softly. */
 function buildSetting(): THREE.Group {
   const g = new THREE.Group();
-  const stoneware = new THREE.MeshStandardMaterial({ color: 0xefe9dc, roughness: 0.55 });
-  const glass = new THREE.MeshPhysicalMaterial({
+  const stoneware = tag(new THREE.MeshStandardMaterial({ color: 0xefe9dc, roughness: 0.55 }), 'ceramic', {}, 'stoneware');
+  const glass = tag(new THREE.MeshPhysicalMaterial({
     color: 0xf2f7fa,
     transparent: true,
     opacity: 0.22,
@@ -327,7 +328,7 @@ function buildSetting(): THREE.Group {
     metalness: 0,
     side: THREE.DoubleSide,
     depthWrite: false,
-  });
+  }), 'glass-tableware', { transmission: 1, ior: 1.5 }, 'tableGlass');
   const plate = (r: number, x: number, z: number, y: number, h = 0.9) => {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(i2m(r), i2m(r * 0.82), i2m(h), 20), stoneware);
     m.position.set(i2m(x), i2m(y + h / 2), i2m(z));
@@ -340,8 +341,8 @@ function buildSetting(): THREE.Group {
 
   // menu card crowning the plate stack: ivory face inside green bridal edges
   const menuY = 1.8; // dinner + salad
-  const menuGreen = new THREE.MeshStandardMaterial({ color: 0x5c7053, roughness: 0.8 });
-  const menuIvory = new THREE.MeshStandardMaterial({ color: 0xfbf8ef, roughness: 0.72 });
+  const menuGreen = tag(new THREE.MeshStandardMaterial({ color: 0x5c7053, roughness: 0.8 }), 'generic', {}, 'menuGreen');
+  const menuIvory = tag(new THREE.MeshStandardMaterial({ color: 0xfbf8ef, roughness: 0.72 }), 'generic', {}, 'menuIvory');
   const menuBorder = new THREE.Mesh(new THREE.BoxGeometry(i2m(4.5), i2m(0.12), i2m(8.75)), menuGreen);
   menuBorder.position.set(i2m(-1.5), i2m(menuY + 0.06), 0);
   menuBorder.castShadow = menuBorder.receiveShadow = true;
@@ -350,7 +351,7 @@ function buildSetting(): THREE.Group {
   menuFace.position.set(i2m(-1.5), i2m(menuY + 0.14), 0);
   menuFace.receiveShadow = true;
   g.add(menuFace);
-  const ink = new THREE.MeshStandardMaterial({ color: 0x76806b, roughness: 0.9 });
+  const ink = tag(new THREE.MeshStandardMaterial({ color: 0x76806b, roughness: 0.9 }), 'generic', {}, 'ink');
   const menuLine = (zOff: number, wIn: number) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(i2m(wIn), i2m(0.03), i2m(0.32)), ink);
     m.position.set(i2m(-1.5), i2m(menuY + 0.19), i2m(zOff));
@@ -376,7 +377,7 @@ function buildSetting(): THREE.Group {
   g.add(stemless);
   const napkin = new THREE.Mesh(
     new THREE.BoxGeometry(i2m(3.4), i2m(0.5), i2m(8.4)),
-    new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.85 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.85 }), 'linen', { sheen: 0.5 }, 'napkin'),
   );
   napkin.position.set(i2m(-8.6), i2m(0.25), i2m(0));
   napkin.castShadow = napkin.receiveShadow = true;
@@ -392,21 +393,21 @@ let dioriteMat: THREE.MeshStandardMaterial | null = null;
 function dioriteMaterial(): THREE.MeshStandardMaterial {
   if (!dioriteMat) {
     const tex = dioriteTextures();
-    dioriteMat = new THREE.MeshStandardMaterial({
+    dioriteMat = tag(new THREE.MeshStandardMaterial({
       map: tex.map,
       roughnessMap: tex.roughnessMap,
       bumpMap: tex.bumpMap,
       bumpScale: 0.012,
       roughness: 0.9,
       metalness: 0,
-    });
+    }), 'stone', {}, 'diorite');
   }
   return dioriteMat;
 }
 
 let soilMat: THREE.MeshStandardMaterial | null = null;
 function soilMaterial(): THREE.MeshStandardMaterial {
-  if (!soilMat) soilMat = new THREE.MeshStandardMaterial({ color: 0x2e2a24, roughness: 1, metalness: 0 });
+  if (!soilMat) soilMat = tag(new THREE.MeshStandardMaterial({ color: 0x2e2a24, roughness: 1, metalness: 0 }), 'soil', {}, 'potSoil');
   return soilMat;
 }
 
@@ -463,8 +464,8 @@ function buildPlanter(type: PlanterType): THREE.Group {
 /** Boston fern: 22 tapered fronds arching outward on golden-angle spokes. */
 function buildPlantFern(): THREE.Group {
   const g = new THREE.Group();
-  const dark = new THREE.MeshStandardMaterial({ color: 0x3e5a34, roughness: 0.9, flatShading: true, side: THREE.DoubleSide });
-  const light = new THREE.MeshStandardMaterial({ color: 0x4e6a40, roughness: 0.9, flatShading: true, side: THREE.DoubleSide });
+  const dark = tag(new THREE.MeshStandardMaterial({ color: 0x3e5a34, roughness: 0.9, flatShading: true, side: THREE.DoubleSide }), 'foliage', { translucency: 0.3 }, 'fernDark');
+  const light = tag(new THREE.MeshStandardMaterial({ color: 0x4e6a40, roughness: 0.9, flatShading: true, side: THREE.DoubleSide }), 'foliage', { translucency: 0.3 }, 'fernLight');
   for (let k = 0; k < 22; k++) {
     const len = 11 + 4 * Math.abs(Math.sin(k * 2.7));
     const geo = new THREE.PlaneGeometry(i2m(1.7), i2m(len), 1, 4);
@@ -489,7 +490,7 @@ function buildPlantFern(): THREE.Group {
 /** Boxwood ball: displaced sphere, same leaf noise as the hedge. */
 function buildPlantBoxwood(): THREE.Group {
   const g = new THREE.Group();
-  const leaf = new THREE.MeshStandardMaterial({ color: 0x44543a, roughness: 0.95, flatShading: true });
+  const leaf = tag(new THREE.MeshStandardMaterial({ color: 0x44543a, roughness: 0.95, flatShading: true }), 'foliage', { translucency: 0.2 }, 'boxwood');
   const ball = new THREE.Mesh(new THREE.SphereGeometry(i2m(7), 20, 14), leaf);
   const pos = ball.geometry.getAttribute('position') as THREE.BufferAttribute;
   for (let k = 0; k < pos.count; k++) {
@@ -510,8 +511,8 @@ function buildPlantBoxwood(): THREE.Group {
 /** Snake plant: 11 upright pinched blades on two rings, two-tone greens. */
 function buildPlantSnake(): THREE.Group {
   const g = new THREE.Group();
-  const dark = new THREE.MeshStandardMaterial({ color: 0x3c5232, roughness: 0.85, flatShading: true, side: THREE.DoubleSide });
-  const light = new THREE.MeshStandardMaterial({ color: 0x59714a, roughness: 0.85, flatShading: true, side: THREE.DoubleSide });
+  const dark = tag(new THREE.MeshStandardMaterial({ color: 0x3c5232, roughness: 0.85, flatShading: true, side: THREE.DoubleSide }), 'foliage', { translucency: 0.2 }, 'snakeDark');
+  const light = tag(new THREE.MeshStandardMaterial({ color: 0x59714a, roughness: 0.85, flatShading: true, side: THREE.DoubleSide }), 'foliage', { translucency: 0.2 }, 'snakeLight');
   for (let k = 0; k < 11; k++) {
     const len = 18 + 8 * Math.abs(Math.sin(k * 1.7));
     const geo = new THREE.PlaneGeometry(i2m(2.4), i2m(len), 1, 3);
@@ -538,8 +539,8 @@ function buildPlantSnake(): THREE.Group {
 /** Fountain grass: 48 thin blades arcing outward from a golden-angle spiral. */
 function buildPlantGrass(): THREE.Group {
   const g = new THREE.Group();
-  const green = new THREE.MeshStandardMaterial({ color: 0x6a7a4a, roughness: 0.95, flatShading: true, side: THREE.DoubleSide });
-  const straw = new THREE.MeshStandardMaterial({ color: 0x8a9464, roughness: 0.95, flatShading: true, side: THREE.DoubleSide });
+  const green = tag(new THREE.MeshStandardMaterial({ color: 0x6a7a4a, roughness: 0.95, flatShading: true, side: THREE.DoubleSide }), 'foliage', { translucency: 0.35 }, 'grassGreen');
+  const straw = tag(new THREE.MeshStandardMaterial({ color: 0x8a9464, roughness: 0.95, flatShading: true, side: THREE.DoubleSide }), 'foliage', { translucency: 0.35 }, 'grassStraw');
   for (let k = 0; k < 48; k++) {
     const len = 14 + 10 * Math.abs(Math.sin(k * 2.1));
     const geo = new THREE.PlaneGeometry(i2m(0.55), i2m(len), 1, 3);
@@ -565,7 +566,7 @@ function buildPlantGrass(): THREE.Group {
 /** Small olive tree: leaning kinked trunk, three silvery displaced canopies. */
 function buildPlantOlive(): THREE.Group {
   const g = new THREE.Group();
-  const bark = new THREE.MeshStandardMaterial({ color: 0x6e6154, roughness: 0.9, flatShading: true });
+  const bark = tag(new THREE.MeshStandardMaterial({ color: 0x6e6154, roughness: 0.9, flatShading: true }), 'bark', {}, 'oliveBark');
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(i2m(0.9), i2m(1.5), i2m(24), 7, 3), bark);
   const tp = trunk.geometry.getAttribute('position') as THREE.BufferAttribute;
   for (let i = 0; i < tp.count; i++) {
@@ -576,7 +577,7 @@ function buildPlantOlive(): THREE.Group {
   trunk.position.y = i2m(12);
   trunk.castShadow = true;
   g.add(trunk);
-  const leaf = new THREE.MeshStandardMaterial({ color: 0x7d8a6a, roughness: 0.95, flatShading: true });
+  const leaf = tag(new THREE.MeshStandardMaterial({ color: 0x7d8a6a, roughness: 0.95, flatShading: true }), 'foliage', { translucency: 0.3 }, 'oliveLeaf');
   const canopy = (r: number, cx: number, cy: number, cz: number, seed: number) => {
     const s = new THREE.Mesh(new THREE.SphereGeometry(i2m(r), 14, 10), leaf);
     const pos = s.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -606,35 +607,35 @@ function buildPlantOlive(): THREE.Group {
 function buildPlantMossTree(): THREE.Group {
   const g = new THREE.Group();
   const TOP = 58;
-  const frondA = new THREE.MeshStandardMaterial({
+  const frondA = tag(new THREE.MeshStandardMaterial({
     color: 0xa3c48c,
     emissive: 0x1f3018,
     emissiveIntensity: 0.35,
     roughness: 0.85,
     side: THREE.DoubleSide,
-  });
-  const frondB = new THREE.MeshStandardMaterial({
+  }), 'foliage', { translucency: 0.3 }, 'mossFrondA');
+  const frondB = tag(new THREE.MeshStandardMaterial({
     color: 0x7fa66a,
     emissive: 0x172a14,
     emissiveIntensity: 0.3,
     roughness: 0.85,
     side: THREE.DoubleSide,
-  });
-  const mossMat = new THREE.MeshStandardMaterial({
+  }), 'foliage', { translucency: 0.3 }, 'mossFrondB');
+  const mossMat = tag(new THREE.MeshStandardMaterial({
     color: 0x8fb078,
     emissive: 0x1c2c16,
     emissiveIntensity: 0.3,
     roughness: 0.95,
     side: THREE.DoubleSide,
-  });
+  }), 'foliage', { translucency: 0.2 }, 'mossStem');
   // the only pale note: whitish moss threads hanging through the green
-  const threadMat = new THREE.MeshStandardMaterial({
+  const threadMat = tag(new THREE.MeshStandardMaterial({
     color: 0xe6eddc,
     emissive: 0x2a3323,
     emissiveIntensity: 0.25,
     roughness: 0.95,
     side: THREE.DoubleSide,
-  });
+  }), 'foliage', { translucency: 0.3 }, 'mossThread');
 
   // moss-clad stem: a lumpy pale column, no bare bark
   const stemH = TOP - 10;
@@ -829,7 +830,7 @@ function buildPlantRosemary(): THREE.Group {
   stemGeo.computeVertexNormals();
   const stemMesh = new THREE.Mesh(
     stemGeo,
-    new THREE.MeshStandardMaterial({ color: 0x8a8272, roughness: 0.9, side: THREE.DoubleSide }),
+    tag(new THREE.MeshStandardMaterial({ color: 0x8a8272, roughness: 0.9, side: THREE.DoubleSide }), 'bark', {}, 'rosemaryStem'),
   );
   stemMesh.castShadow = true;
   g.add(stemMesh);
@@ -840,13 +841,13 @@ function buildPlantRosemary(): THREE.Group {
   leafGeo.computeVertexNormals();
   const leafMesh = new THREE.Mesh(
     leafGeo,
-    new THREE.MeshStandardMaterial({
+    tag(new THREE.MeshStandardMaterial({
       vertexColors: true,
       emissive: 0x1c2219,
       emissiveIntensity: 0.15,
       roughness: 0.9,
       side: THREE.DoubleSide,
-    }),
+    }), 'foliage', { translucency: 0.3 }, 'rosemaryLeaf'),
   );
   leafMesh.castShadow = true;
   g.add(leafMesh);

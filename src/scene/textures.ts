@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { barkTextures, bayPanoramaTextureImpl, deckIpeTextures, treetopRingTextureImpl } from './texturesExterior';
 
 // All textures are Canvas2D-generated (single-file CSP: no external assets)
 // and seeded so they come out identical on every load.
@@ -29,24 +30,28 @@ function toTexture(ctx: CanvasRenderingContext2D, srgb: boolean): THREE.CanvasTe
 }
 
 // ---------------------------------------------------------------------------
-// Hardwood floor — 1024px == one 128" tile (8 px/inch), ~5" planks along v.
+// Hardwood floor — 2048px == one 128" tile (16 px/in).
 // ---------------------------------------------------------------------------
 
 export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture } {
-  // 2048px == one 128" tile (16 px/in). Classic 2.5" red-oak strip flooring
-  // per the venue photos: boards run E-W (u axis), satin sheen, honey→amber.
+  // Honey-toned select red oak, 2¼" strips (reference photos 02/05): the
+  // board seams run parallel to the image horizon in both hall photos — one
+  // looks south, one north — so the strips run E-W (u axis), not N-S. Satin
+  // finish (clearcoat in the render tag), random-length boards, open grain.
   const S = 2048;
+  const PX = 16; // px per inch
   const rnd = mulberry32(0xf100d);
-  const rows = 51; // 128/51 ≈ 2.5" strips
+  const rows = 57; // 128/57 ≈ 2.25" strips
   const h = S / rows;
-  const palette = ['#9C6C41', '#AA7A4B', '#855832', '#B4885A', '#8F6139', '#A17044', '#764C2A'];
+  // honey → amber with the odd pale sapwood and deeper heart board
+  const palette = ['#C8904F', '#C08849', '#CF9A5A', '#B98046', '#D6A566', '#C38C4D', '#AE7640', '#CB9556', '#DCAD6E', '#BA8347'];
 
   const ctx = makeCanvas(S, S);
   const rough = makeCanvas(S, S);
   const bump = makeCanvas(S, S);
-  ctx.fillStyle = '#7E5230';
+  ctx.fillStyle = '#8A5A30';
   ctx.fillRect(0, 0, S, S);
-  rough.fillStyle = '#4a4a4a'; // satin base ~0.29
+  rough.fillStyle = '#5a5a5a';
   rough.fillRect(0, 0, S, S);
   bump.fillStyle = '#808080';
   bump.fillRect(0, 0, S, S);
@@ -54,10 +59,10 @@ export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: T
   for (let r = 0; r < rows; r++) {
     const y = r * h;
     const segs: { x0: number; x1: number; c: string; ro: number }[] = [];
-    let x = -(60 + rnd() * 700);
+    let x = -(40 + rnd() * 900);
     while (x < S) {
-      const len = (24 + rnd() * 60) * 16; // 24–84" boards
-      segs.push({ x0: x, x1: x + len, c: palette[(rnd() * palette.length) | 0], ro: 0.2 + rnd() * 0.18 });
+      const len = (14 + rnd() * 62) * PX; // 14–76" boards
+      segs.push({ x0: x, x1: x + len, c: palette[(rnd() * palette.length) | 0], ro: 0.26 + rnd() * 0.12 });
       x += len;
     }
     segs[segs.length - 1].c = segs[0].c;
@@ -70,72 +75,81 @@ export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: T
       rough.fillStyle = `rgb(${g},${g},${g})`;
       rough.fillRect(sg.x0, y + 0.6, w - 1.2, h - 1.2);
 
-      // fine straight grain: many low-alpha length-wise streaks
-      const nGrain = 8 + ((rnd() * 6) | 0);
+      // open red-oak grain: long dark streaks, pale latewood lines
+      const nGrain = 10 + ((rnd() * 8) | 0);
       for (let i = 0; i < nGrain; i++) {
-        const dark = rnd() < 0.68;
-        ctx.strokeStyle = dark ? '#5E3B1E' : '#D8AC72';
-        ctx.globalAlpha = 0.05 + rnd() * 0.1;
-        ctx.lineWidth = 0.6 + rnd() * 1.1;
+        const dark = rnd() < 0.72;
+        ctx.strokeStyle = dark ? '#6A3F1C' : '#E8C48A';
+        ctx.globalAlpha = dark ? 0.07 + rnd() * 0.13 : 0.05 + rnd() * 0.08;
+        ctx.lineWidth = 0.5 + rnd() * 1.3;
         const gy = y + 2 + rnd() * (h - 4);
         ctx.beginPath();
         ctx.moveTo(sg.x0 + 2, gy);
         let gx = sg.x0 + 2;
         let cy = gy;
         while (gx < sg.x1 - 4) {
-          gx += 90 + rnd() * 140;
-          cy = Math.min(y + h - 1.5, Math.max(y + 1.5, cy + (rnd() - 0.5) * 3));
+          gx += 60 + rnd() * 120;
+          cy = Math.min(y + h - 1.5, Math.max(y + 1.5, cy + (rnd() - 0.5) * 2.4));
           ctx.lineTo(Math.min(gx, sg.x1 - 4), cy);
         }
         ctx.stroke();
       }
-      // occasional cathedral arcs
-      if (rnd() < 0.4 && w > 300) {
-        const cxr = sg.x0 + w * (0.25 + rnd() * 0.5);
-        ctx.strokeStyle = '#6B441F';
-        for (let a = 0; a < 4; a++) {
-          ctx.globalAlpha = 0.1 - a * 0.018;
-          ctx.lineWidth = 1;
+      // pore flecks
+      ctx.fillStyle = '#4F2E12';
+      const nPore = (w / 12) | 0;
+      for (let i = 0; i < nPore; i++) {
+        ctx.globalAlpha = 0.12 + rnd() * 0.18;
+        ctx.fillRect(sg.x0 + rnd() * w, y + 1.5 + rnd() * (h - 3), 3 + rnd() * 9, 0.9);
+      }
+      // flat-sawn cathedral arches
+      if (rnd() < 0.55 && w > 260) {
+        const cxr = sg.x0 + w * (0.2 + rnd() * 0.6);
+        ctx.strokeStyle = '#6E421E';
+        const n = 3 + ((rnd() * 3) | 0);
+        for (let a = 0; a < n; a++) {
+          ctx.globalAlpha = 0.13 - a * 0.02;
+          ctx.lineWidth = 1 + rnd() * 0.6;
           ctx.beginPath();
-          ctx.ellipse(cxr, y + h * 0.5, 60 + a * 34, h * (0.16 + a * 0.09), 0, Math.PI, Math.PI * 2);
+          ctx.ellipse(cxr + a * 10, y + h * 0.5, 50 + a * 38 + rnd() * 20, h * (0.14 + a * 0.08), 0, Math.PI, Math.PI * 2);
           ctx.stroke();
         }
       }
       ctx.globalAlpha = 1;
 
-      // end joint
+      // end joint (butt seam)
       if (sg.x0 > 0 && sg.x0 < S) {
-        ctx.fillStyle = '#4E3115';
-        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = '#4A2C12';
+        ctx.globalAlpha = 0.6;
         ctx.fillRect(sg.x0 - 0.8, y + 0.6, 1.6, h - 1.2);
         ctx.globalAlpha = 1;
         rough.fillStyle = '#8c8c8c';
         rough.fillRect(sg.x0 - 0.8, y + 0.6, 1.6, h - 1.2);
-        bump.fillStyle = '#5a5a5a';
-        bump.fillRect(sg.x0 - 0.8, y + 0.6, 1.6, h - 1.2);
+        bump.fillStyle = '#4a4a4a';
+        bump.fillRect(sg.x0 - 1, y + 0.6, 2, h - 1.2);
       }
-      // per-board tone drift along the length (sun bleach / wear)
+      // per-board tone drift along the length (wear, finish build-up)
       const nW = 3 + ((rnd() * 3) | 0);
       for (let i = 0; i < nW; i++) {
-        ctx.fillStyle = rnd() < 0.5 ? 'rgba(236,200,148,1)' : 'rgba(72,44,20,1)';
+        ctx.fillStyle = rnd() < 0.5 ? 'rgba(244,210,150,1)' : 'rgba(96,56,24,1)';
         ctx.globalAlpha = 0.03 + rnd() * 0.05;
-        ctx.fillRect(sg.x0 + rnd() * w, y + 0.6, 60 + rnd() * 220, h - 1.2);
+        ctx.fillRect(sg.x0 + rnd() * w, y + 0.6, 50 + rnd() * 200, h - 1.2);
       }
       ctx.globalAlpha = 1;
     }
-    // strip joint line + milled micro-bevel (soft to avoid shimmer)
-    ctx.fillStyle = '#4E3115';
-    ctx.globalAlpha = 0.42;
+    // strip seam + milled micro-bevel (soft to avoid shimmer)
+    ctx.fillStyle = '#4A2C12';
+    ctx.globalAlpha = 0.45;
     ctx.fillRect(0, y + h - 1.1, S, 1.4);
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = '#F0CE96';
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = '#F4D49E';
     ctx.fillRect(0, y + 0.6, S, 1.2);
     ctx.globalAlpha = 1;
     rough.fillStyle = '#909090';
     rough.fillRect(0, y + h - 1, S, 1.2);
-    bump.fillStyle = '#565656';
-    bump.fillRect(0, y + h - 1.2, S, 1.6);
-    bump.fillStyle = '#a2a2a2';
+    bump.fillStyle = '#4e4e4e';
+    bump.fillRect(0, y + h - 1.3, S, 1.8);
+    bump.fillStyle = '#6a6a6a';
+    bump.fillRect(0, y + h - 2.6, S, 1.3);
     bump.fillRect(0, y + 0.4, S, 1);
   }
 
@@ -149,151 +163,128 @@ export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: T
 }
 
 // ---------------------------------------------------------------------------
+// Reed / stick-mat ceiling infill — 1024px == one 48" × 48" tile (21⅓ px/in).
+// Sticks run along v (laid along the ridge, spanning rafter to rafter, per
+// reference photos 02/05); u runs up the slope.
+// ---------------------------------------------------------------------------
 
-export function reedTexture(): THREE.CanvasTexture {
-  const S = 512;
-  const rnd = mulberry32(0x2eed);
-  const ctx = makeCanvas(S, S);
-  const reeds = 32;
-  const w = S / reeds;
-  const palette = ['#8B5A33', '#93613A', '#7F5230', '#96683F', '#7A4E2C'];
+/** inches covered by one reed tile in u and v */
+export const REED_TILE_IN = 48;
 
-  ctx.fillStyle = '#422A15';
-  ctx.fillRect(0, 0, S, S);
-  for (let r = 0; r < reeds; r++) {
-    const x = r * w;
-    ctx.fillStyle = palette[(rnd() * palette.length) | 0];
-    ctx.fillRect(x + 0.8, 0, w - 1.6, S);
-    // rounded highlight + shaded edge
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = '#B57F4E';
-    ctx.fillRect(x + w * 0.3, 0, w * 0.22, S);
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = '#31200F';
-    ctx.fillRect(x + w - 3.4, 0, 2.6, S);
-    ctx.globalAlpha = 1;
-    // node rings
-    const nodes = 2 + ((rnd() * 3) | 0);
-    for (let i = 0; i < nodes; i++) {
-      const y = 10 + rnd() * (S - 22);
-      ctx.globalAlpha = 0.28;
-      ctx.fillStyle = '#5A3A1E';
-      ctx.fillRect(x + 0.8, y, w - 1.6, 2.5);
-      ctx.globalAlpha = 1;
-    }
-  }
-  return toTexture(ctx, true);
+/** One cane of the reed tile: u extent in inches within the tile (0..REED_TILE_IN). */
+export interface ReedCane {
+  u0: number;
+  u1: number;
 }
 
-// ---------------------------------------------------------------------------
-// Deck boards — 512px == 96" tile, weathered redwood, near-black gaps.
-// ---------------------------------------------------------------------------
-
-export function deckWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture } {
-  // 2048px == one 96" tile (21 px/in): oiled redwood per the deck photos —
-  // warm tan where the sun bakes it, richer red-brown in shade, black gaps.
-  const S = 2048;
-  const rnd = mulberry32(0xdec);
+export function reedTexture(): { map: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture; canes: ReedCane[] } {
+  const S = 1024;
+  const PX = S / REED_TILE_IN;
+  const rnd = mulberry32(0x2eed);
   const ctx = makeCanvas(S, S);
-  const rough = makeCanvas(S, S);
   const bump = makeCanvas(S, S);
-  const rows = 18; // ≈5.3" boards
-  const h = S / rows;
-  const palette = ['#A26845', '#B0764E', '#8E5A3B', '#9C6A47', '#B98159', '#875234'];
+  // light warm tan canes with the odd darker, greyer stick — chroma set from
+  // the photos' white-wall-normalized ceiling (B/R ≈ 0.45 in linear)
+  const palette = ['#B8977A', '#AC8C70', '#C2A286', '#A2846A', '#B49478', '#C8AA8C', '#9C7E66', '#BA9A7C', '#AA8C74', '#8E7462'];
 
-  ctx.fillStyle = '#160e09';
+  // widths 0.55–0.9" that sum exactly to the tile so u wraps seamlessly
+  const widths: number[] = [];
+  let tot = 0;
+  while (tot < S - 0.5 * PX) {
+    const w = (0.55 + rnd() * 0.35) * PX;
+    widths.push(w);
+    tot += w;
+  }
+  const k = S / tot;
+
+  ctx.fillStyle = '#4C3C30'; // shadowed gaps between canes
   ctx.fillRect(0, 0, S, S);
-  rough.fillStyle = '#b4b4b4';
-  rough.fillRect(0, 0, S, S);
-  bump.fillStyle = '#808080';
+  bump.fillStyle = '#000000';
   bump.fillRect(0, 0, S, S);
 
-  for (let r = 0; r < rows; r++) {
-    const y = r * h;
-    const segs: { x0: number; x1: number; c: string; ro: number }[] = [];
-    let x = -(120 + rnd() * 900);
-    while (x < S) {
-      const len = 700 + rnd() * 1000;
-      segs.push({ x0: x, x1: x + len, c: palette[(rnd() * palette.length) | 0], ro: 0.55 + rnd() * 0.25 });
-      x += len;
+  const canes: ReedCane[] = [];
+  let x = 0;
+  for (const w0 of widths) {
+    const w = w0 * k;
+    const gap = 0.9 + rnd() * 1.3;
+    const x0 = x + gap / 2;
+    const x1 = x + w - gap / 2;
+    const cw = x1 - x0;
+    canes.push({ u0: x0 / PX, u1: x1 / PX });
+    const base = palette[(rnd() * palette.length) | 0];
+    // round cane: shaded edges, soft highlight a little off-centre
+    const hl = 0.35 + rnd() * 0.2;
+    const grad = ctx.createLinearGradient(x0, 0, x1, 0);
+    grad.addColorStop(0, 'rgba(48,36,26,0.42)');
+    grad.addColorStop(0.18, 'rgba(48,36,26,0.08)');
+    grad.addColorStop(hl, 'rgba(255,240,215,0.14)');
+    grad.addColorStop(0.82, 'rgba(48,36,26,0.07)');
+    grad.addColorStop(1, 'rgba(48,36,26,0.46)');
+    ctx.fillStyle = base;
+    ctx.fillRect(x0, 0, cw, S);
+    ctx.fillStyle = grad;
+    ctx.fillRect(x0, 0, cw, S);
+    const bg = bump.createLinearGradient(x0, 0, x1, 0);
+    bg.addColorStop(0, '#303030');
+    bg.addColorStop(0.25, '#b8b8b8');
+    bg.addColorStop(0.5, '#e6e6e6');
+    bg.addColorStop(0.75, '#b8b8b8');
+    bg.addColorStop(1, '#303030');
+    bump.fillStyle = bg;
+    bump.fillRect(x0, 0, cw, S);
+
+    // length-wise fibre streaks (wrapped in v)
+    const nStreak = 2 + ((rnd() * 3) | 0);
+    for (let i = 0; i < nStreak; i++) {
+      ctx.fillStyle = rnd() < 0.6 ? '#5E4634' : '#D2B89A';
+      ctx.globalAlpha = 0.06 + rnd() * 0.1;
+      const sy = rnd() * S;
+      const sl = S * (0.2 + rnd() * 0.6);
+      const sx = x0 + cw * (0.2 + rnd() * 0.6);
+      const sw = 0.8 + rnd();
+      ctx.fillRect(sx, sy, sw, sl);
+      if (sy + sl > S) ctx.fillRect(sx, sy - S, sw, sl);
     }
-    segs[segs.length - 1].c = segs[0].c;
-    segs[segs.length - 1].ro = segs[0].ro;
-    for (const sg of segs) {
-      const w = sg.x1 - sg.x0;
-      ctx.fillStyle = sg.c;
-      ctx.fillRect(sg.x0, y + 2.6, w - 5, h - 5.2);
-      const g = Math.round(sg.ro * 255);
-      rough.fillStyle = `rgb(${g},${g},${g})`;
-      rough.fillRect(sg.x0, y + 2.6, w - 5, h - 5.2);
-      bump.fillStyle = '#8a8a8a';
-      bump.fillRect(sg.x0, y + 2.6, w - 5, h - 5.2);
-
-      // grain streaks
-      const n = 9 + ((rnd() * 6) | 0);
-      for (let i = 0; i < n; i++) {
-        const dark = rnd() < 0.7;
-        ctx.strokeStyle = dark ? '#5A3520' : '#CE9A6A';
-        ctx.globalAlpha = 0.06 + rnd() * 0.11;
-        ctx.lineWidth = 1 + rnd() * 2.2;
-        const gy = y + 6 + rnd() * (h - 12);
-        ctx.beginPath();
-        ctx.moveTo(sg.x0 + 6, gy);
-        let gx = sg.x0 + 6;
-        let cy = gy;
-        while (gx < sg.x1 - 10) {
-          gx += 120 + rnd() * 180;
-          cy = Math.min(y + h - 5, Math.max(y + 5, cy + (rnd() - 0.5) * 7));
-          ctx.lineTo(Math.min(gx, sg.x1 - 10), cy);
-        }
-        ctx.stroke();
-      }
+    ctx.globalAlpha = 1;
+    // node rings every 7–13"
+    let ny = rnd() * 10 * PX;
+    while (ny < S - 4) {
+      const nh = 2 + rnd() * 2;
+      ctx.fillStyle = '#4E3A2A';
+      ctx.globalAlpha = 0.45;
+      ctx.fillRect(x0, ny, cw, nh);
+      ctx.fillStyle = '#CCB08E';
+      ctx.globalAlpha = 0.25;
+      ctx.fillRect(x0, ny + nh, cw, 1.2);
       ctx.globalAlpha = 1;
-
-      // end joint
-      if (sg.x0 > 0 && sg.x0 < S) {
-        ctx.fillStyle = '#241209';
-        ctx.globalAlpha = 0.7;
-        ctx.fillRect(sg.x0 - 2.4, y + 2.6, 4.8, h - 5.2);
-        ctx.globalAlpha = 1;
-        bump.fillStyle = '#4a4a4a';
-        bump.fillRect(sg.x0 - 2.4, y + 2.6, 4.8, h - 5.2);
-      }
-
-      // knots
-      if (rnd() < 0.35) {
-        const kx = sg.x0 + 80 + rnd() * Math.max(60, w - 160);
-        const ky = y + h * (0.3 + rnd() * 0.4);
-        for (let ring = 0; ring < 4; ring++) {
-          ctx.strokeStyle = '#40230F';
-          ctx.globalAlpha = 0.3 - ring * 0.06;
-          ctx.lineWidth = 1.6;
-          ctx.beginPath();
-          ctx.ellipse(kx, ky, 4 + ring * 5, 3 + ring * 3.4, rnd() * 0.6, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-      }
-      // sun-baked wash patches
-      for (let i = 0; i < 5; i++) {
-        ctx.fillStyle = 'rgba(226,176,124,1)';
-        ctx.globalAlpha = 0.04 + rnd() * 0.06;
-        ctx.fillRect(sg.x0 + rnd() * w, y + 3, 140 + rnd() * 420, h - 6);
-      }
-      ctx.globalAlpha = 1;
+      bump.fillStyle = '#ffffff';
+      bump.globalAlpha = 0.5;
+      bump.fillRect(x0 + cw * 0.15, ny - 1, cw * 0.7, nh + 2);
+      bump.globalAlpha = 1;
+      ny += (7 + rnd() * 6) * PX;
     }
-    // groove between boards reads deep in the bump map
-    bump.fillStyle = '#2e2e2e';
-    bump.fillRect(0, y + h - 3, S, 5.4);
+    x += w;
   }
 
   const map = toTexture(ctx, true);
   map.anisotropy = 16;
-  const roughTex = toTexture(rough, false);
-  roughTex.anisotropy = 16;
   const bumpTex = toTexture(bump, false);
   bumpTex.anisotropy = 8;
-  return { map, roughnessMap: roughTex, bumpMap: bumpTex };
+  return { map, bumpMap: bumpTex, canes };
+}
+
+// ---------------------------------------------------------------------------
+// Deck boards — oiled Ipe, 192"×96" tile (implementation in texturesExterior).
+// ---------------------------------------------------------------------------
+
+export function deckWoodTextures(): {
+  map: THREE.CanvasTexture;
+  roughnessMap: THREE.CanvasTexture;
+  bumpMap: THREE.CanvasTexture;
+  normalMap: THREE.CanvasTexture;
+} {
+  // Ipe boards, 3.5" on 3/16" gaps (see texturesExterior.ts)
+  return deckIpeTextures();
 }
 
 // ---------------------------------------------------------------------------
@@ -534,217 +525,15 @@ export function valleyTexture(): THREE.CanvasTexture {
 
 // ---------------------------------------------------------------------------
 // Bay Area panorama — full 360°, painted by true compass bearing and rotated
-// for the facade azimuth (model −z faces true 50°). The venue sits on a hill:
-// foreground trees/roofs fall away below the horizon in every direction.
-//   NE–E: bay water, Dumbarton Bridge, Fremont hills beyond
-//   SE–S: rolling gold-green hills, Stanford (Hoover Tower) in the distance
-//   SW–W: closer wooded ridgeline (higher horizon)
-//   NW–N: trees and rooftops rolling downhill
+// for the facade azimuth (model −z faces true 50°): hazy East Bay hills and
+// the bay NE–E, Hoover Tower at 74°, Stanford foothills S, Santa Cruz
+// Mountains W/SW (the one skyline above ~1°), urban forest below.
 // ---------------------------------------------------------------------------
 
 export function bayPanoramaTexture(): THREE.CanvasTexture {
-  // 360° backdrop, redrawn for aerial perspective: a hazy blue far ridge,
-  // the bay glimpse NE, then three canopy layers that sharpen and saturate
-  // as they approach — the venue sits on a knoll above a sea of live oaks.
-  const W = 4096;
-  const H = 768;
-  const ctx = makeCanvas(W, H);
-  const rnd = mulberry32(0xba1);
-  const HORIZON = H * 0.42;
-
-  ctx.clearRect(0, 0, W, H);
-
-  const trueAzAt = (col: number): number => {
-    const th = (col / W) * Math.PI * 2;
-    const modelAz = (Math.atan2(Math.sin(th), -Math.cos(th)) * 180) / Math.PI;
-    return (((modelAz + 50) % 360) + 360) % 360;
-  };
-  const sector = (az: number, a0: number, a1: number, feather = 18): number => {
-    const inRange = (x: number) => {
-      const d0 = ((x - a0 + 540) % 360) - 180;
-      const d1 = ((a1 - x + 540) % 360) - 180;
-      if (d0 < -feather || d1 < -feather) return 0;
-      return Math.min(1, Math.min(d0, d1) / feather + 1);
-    };
-    return Math.max(0, Math.min(1, inRange(az)));
-  };
-
-  // one soft-shaded canopy clump: offset radial gradient fakes top light
-  const clump = (x: number, y: number, r: number, lit: string, shade: string, alpha = 1) => {
-    const g = ctx.createRadialGradient(x - r * 0.25, y - r * 0.45, r * 0.12, x, y, r);
-    g.addColorStop(0, lit);
-    g.addColorStop(0.62, shade);
-    g.addColorStop(1, shade);
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-  };
-
-  // 1. far ridge — Santa Cruz mountains W/SW, hazy blue-gray, taller west
-  ctx.fillStyle = '#ABB9C8';
-  ctx.beginPath();
-  ctx.moveTo(0, H);
-  const ridgeTops: number[] = [];
-  for (let x = 0; x <= W; x++) {
-    const az = trueAzAt(x);
-    const west = sector(az, 205, 320, 30);
-    const bay = sector(az, 15, 95, 25);
-    const y = HORIZON - 20 - west * 100 - Math.sin(x * 0.006) * 12 - Math.sin(x * 0.0016) * 22 * (1 + west) + bay * 40;
-    ridgeTops.push(y);
-    ctx.lineTo(x, y);
-  }
-  ctx.lineTo(W, H);
-  ctx.closePath();
-  ctx.fill();
-  // ridge haze: fade its base into the sky tone
-  const rh = ctx.createLinearGradient(0, HORIZON - 40, 0, HORIZON + 70);
-  rh.addColorStop(0, 'rgba(226,231,240,0)');
-  rh.addColorStop(1, 'rgba(226,231,240,0.85)');
-  ctx.fillStyle = rh;
-  ctx.fillRect(0, HORIZON - 40, W, 110);
-
-  // 2. bay water + Dumbarton bridge (NE), pale and hazy
-  for (let x = 0; x < W; x++) {
-    const az = trueAzAt(x);
-    const bay = sector(az, 18, 92, 22);
-    if (bay <= 0.02) continue;
-    const top = HORIZON + 2;
-    const bot = HORIZON + 46;
-    const g = ctx.createLinearGradient(0, top, 0, bot);
-    g.addColorStop(0, `rgba(178,199,209,${0.92 * bay})`);
-    g.addColorStop(1, `rgba(159,180,190,${0.85 * bay})`);
-    ctx.fillStyle = g;
-    ctx.fillRect(x, top, 1.2, bot - top);
-    const brid = sector(az, 38, 72, 8);
-    if (brid > 0.05) {
-      ctx.fillStyle = `rgba(88,96,108,${0.75 * brid})`;
-      const by = HORIZON + 18 - Math.max(0, Math.sin((az - 40) / 10) * 3.5);
-      ctx.fillRect(x, by, 1.2, 2);
-      if (Math.abs(az - 52) < 1 || Math.abs(az - 60) < 1) ctx.fillRect(x, by - 5, 1.2, 5);
-    }
-  }
-
-  // 3. far canopy shelf — soft, desaturated sage, heavy haze
-  const farTops: number[] = [];
-  ctx.beginPath();
-  ctx.moveTo(0, H);
-  for (let x = 0; x <= W; x++) {
-    const az = trueAzAt(x);
-    const bay = sector(az, 18, 92, 22);
-    const west = sector(az, 200, 325, 35);
-    const y = HORIZON + 26 + bay * 30 - west * 26 + Math.sin(x * 0.01 + 2) * 8 + Math.sin(x * 0.003) * 12;
-    farTops.push(y);
-    ctx.lineTo(x, y);
-  }
-  ctx.lineTo(W, H);
-  ctx.closePath();
-  ctx.fillStyle = '#9AA885';
-  ctx.fill();
-  for (let i = 0; i < 700; i++) {
-    const x = rnd() * W;
-    const y = farTops[x | 0] + rnd() * 26;
-    clump(x, y, 6 + rnd() * 10, '#AEBB92', '#8B9A78', 0.6);
-  }
-  ctx.fillStyle = 'rgba(222,230,236,0.42)';
-  ctx.fillRect(0, HORIZON, W, H - HORIZON);
-
-  // Stanford cluster + Hoover Tower (true az ~145) on the far shelf
-  for (let x = 0; x < W; x++) {
-    const az = trueAzAt(x);
-    if (Math.abs(az - 145) < 2.6) {
-      const y = farTops[x] - 2;
-      ctx.fillStyle = '#C4B29A';
-      ctx.fillRect(x, y - 5, 1.4, 5);
-      if (Math.abs(az - 145) < 0.4) {
-        ctx.fillRect(x - 1.5, y - 24, 4, 24);
-        ctx.fillStyle = '#9a4f3c';
-        ctx.fillRect(x - 2, y - 28, 5, 4.5);
-      }
-    }
-  }
-
-  // 4. mid canopy — olive, clumpier, light haze
-  const midTops: number[] = [];
-  ctx.beginPath();
-  ctx.moveTo(0, H);
-  for (let x = 0; x <= W; x++) {
-    const az = trueAzAt(x);
-    const west = sector(az, 205, 320, 30);
-    const y = HORIZON + 64 - west * 16 + Math.sin(x * 0.016) * 9 + Math.sin(x * 0.0044) * 14;
-    midTops.push(y);
-    ctx.lineTo(x, y);
-  }
-  ctx.lineTo(W, H);
-  ctx.closePath();
-  ctx.fillStyle = '#78885E';
-  ctx.fill();
-  for (let i = 0; i < 1500; i++) {
-    const x = rnd() * W;
-    const y = midTops[x | 0] + rnd() * 50;
-    clump(x, y, 8 + rnd() * 15, '#8C9C68', '#66754C', 0.75);
-  }
-  // roofs among the mid trees (residential Menlo Park)
-  for (let i = 0; i < 260; i++) {
-    const x = rnd() * W;
-    const az = trueAzAt(x | 0);
-    if (sector(az, 320, 200, 30) < 0.3) continue;
-    const y = midTops[x | 0] + 14 + rnd() * 40;
-    ctx.fillStyle = ['#C9BCA4', '#B4917A', '#D8D2C4', '#98928A'][(rnd() * 4) | 0];
-    ctx.globalAlpha = 0.85;
-    ctx.fillRect(x, y, 7 + rnd() * 12, 3.5 + rnd() * 3);
-    ctx.globalAlpha = 1;
-  }
-  ctx.fillStyle = 'rgba(220,228,236,0.2)';
-  ctx.fillRect(0, HORIZON + 30, W, H - HORIZON - 30);
-
-  // 5. near canopy — saturated deep olive clumps rolling downhill
-  const nearTops: number[] = [];
-  ctx.beginPath();
-  ctx.moveTo(0, H);
-  for (let x = 0; x <= W; x++) {
-    const az = trueAzAt(x);
-    const west = sector(az, 205, 320, 30);
-    const y = HORIZON + 128 - west * 10 + Math.sin(x * 0.03) * 10 + Math.sin(x * 0.008) * 16;
-    nearTops.push(y);
-    ctx.lineTo(x, y);
-  }
-  ctx.lineTo(W, H);
-  ctx.closePath();
-  ctx.fillStyle = '#4E5C3B';
-  ctx.fill();
-  for (let i = 0; i < 2200; i++) {
-    const x = rnd() * W;
-    const y = nearTops[x | 0] + rnd() * (H - nearTops[x | 0]);
-    clump(x, y, 12 + rnd() * 24, '#69784A', '#415032', 0.85);
-  }
-  // the white-and-blue neighbor building NE of the deck (photo IMG_5802)
-  for (let x = 0; x < W; x++) {
-    const az = trueAzAt(x);
-    if (Math.abs(az - 30) < 2.4) {
-      const y = nearTops[x] + 26;
-      ctx.fillStyle = '#E5E7E6';
-      ctx.fillRect(x, y, 1.4, 16);
-      ctx.fillStyle = '#7E96AC';
-      ctx.fillRect(x, y + 3.5, 1.4, 2.4);
-    }
-  }
-
-  // 6. gentle final haze at the horizon line
-  const haze = ctx.createLinearGradient(0, HORIZON - 26, 0, HORIZON + 80);
-  haze.addColorStop(0, 'rgba(224,231,239,0.5)');
-  haze.addColorStop(1, 'rgba(224,231,239,0)');
-  ctx.fillStyle = haze;
-  ctx.fillRect(0, HORIZON - 26, W, 106);
-
-  const t = new THREE.CanvasTexture(ctx.canvas);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = THREE.RepeatWrapping;
-  t.wrapT = THREE.ClampToEdgeWrapping;
-  t.anisotropy = 8;
-  return t;
+  // land/haze-only backplate (sky transparent), horizon at 0–1° from deck
+  // eye height; see texturesExterior.ts for the row/azimuth mapping
+  return bayPanoramaTextureImpl();
 }
 
 // ---------------------------------------------------------------------------
@@ -752,11 +541,14 @@ export function bayPanoramaTexture(): THREE.CanvasTexture {
 // mixed cream/greige/gray/tan strips running along the walk).
 // ---------------------------------------------------------------------------
 
-export function plankPaverTextures(): { map: THREE.CanvasTexture; roughnessMap: THREE.CanvasTexture } {
+export function plankPaverTextures(): { map: THREE.CanvasTexture; roughnessMap: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture } {
   const S = 1024; // one 96" tile
   const rnd = mulberry32(0x9aef);
   const ctx = makeCanvas(S, S);
   const rough = makeCanvas(S, S);
+  const bump = makeCanvas(S, S); // sand joints sit just below the plank faces
+  bump.fillStyle = '#9a9a9a';
+  bump.fillRect(0, 0, S, S);
   const cols = 16; // 6" wide planks, joints along the walk (v)
   const w = S / cols;
   const tones = ['#D8CFBC', '#C6BEAE', '#AFA89B', '#8D8377', '#6E685F', '#C3A886', '#B8A692', '#9B9287'];
@@ -789,18 +581,27 @@ export function plankPaverTextures(): { map: THREE.CanvasTexture; roughnessMap: 
       if (sg.y0 > 0 && sg.y0 < S) {
         ctx.fillStyle = 'rgba(74,70,62,0.5)';
         ctx.fillRect(x + 1, sg.y0 - 0.8, w - 2, 1.6);
+        bump.fillStyle = '#303030';
+        bump.fillRect(x + 1, sg.y0 - 1, w - 2, 2);
       }
+      // slight per-plank lippage
+      bump.fillStyle = rnd() < 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+      bump.fillRect(x + 1, sg.y0 + 1, w - 2, sg.y1 - sg.y0 - 2);
     }
     // column joint
     ctx.fillStyle = 'rgba(74,70,62,0.55)';
     ctx.fillRect(x + w - 1, 0, 1.4, S);
     rough.fillStyle = '#e0e0e0';
     rough.fillRect(x + w - 1, 0, 1.4, S);
+    bump.fillStyle = '#303030';
+    bump.fillRect(x + w - 1.2, 0, 1.8, S);
   }
 
   const map = toTexture(ctx, true);
   map.anisotropy = 16;
-  return { map, roughnessMap: toTexture(rough, false) };
+  const bumpMap = toTexture(bump, false);
+  bumpMap.anisotropy = 8;
+  return { map, roughnessMap: toTexture(rough, false), bumpMap };
 }
 
 // ---------------------------------------------------------------------------
@@ -918,55 +719,12 @@ export function dioriteTextures(): {
 }
 
 // ---------------------------------------------------------------------------
-// Live-oak bark — dark, deeply fissured; v runs along the limb.
+// Live-oak bark — grey, furrowed, lichen-mottled; v runs along the limb.
 // ---------------------------------------------------------------------------
 
 export function barkTexture(): THREE.CanvasTexture {
-  const W = 256;
-  const H = 512;
-  const rnd = mulberry32(0xbaa2);
-  const ctx = makeCanvas(W, H);
-  ctx.fillStyle = '#3A332C';
-  ctx.fillRect(0, 0, W, H);
-  // vertical fissure ridges
-  for (let i = 0; i < 46; i++) {
-    let x = rnd() * W;
-    const light = rnd() < 0.55;
-    ctx.strokeStyle = light ? '#4C443A' : '#211C17';
-    ctx.lineWidth = 2 + rnd() * 5;
-    ctx.globalAlpha = 0.5 + rnd() * 0.4;
-    ctx.beginPath();
-    ctx.moveTo(x, -8);
-    for (let y = 0; y <= H + 8; y += 26) {
-      x += (rnd() - 0.5) * 10;
-      ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
-  // horizontal checking cracks
-  for (let i = 0; i < 60; i++) {
-    ctx.strokeStyle = '#241F1A';
-    ctx.globalAlpha = 0.25 + rnd() * 0.3;
-    ctx.lineWidth = 1 + rnd();
-    const y = rnd() * H;
-    const x = rnd() * W;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + 6 + rnd() * 18, y + (rnd() - 0.5) * 6);
-    ctx.stroke();
-  }
-  // lichen dust
-  for (let i = 0; i < 160; i++) {
-    ctx.fillStyle = rnd() < 0.5 ? '#5C594A' : '#4A4B40';
-    ctx.globalAlpha = 0.1 + rnd() * 0.16;
-    ctx.beginPath();
-    ctx.arc(rnd() * W, rnd() * H, 1 + rnd() * 3.4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-  const t = toTexture(ctx, true);
-  t.anisotropy = 4;
-  return t;
+  // grey, lichen-mottled coast live oak bark (texturesExterior.ts)
+  return barkTextures('oak').map;
 }
 
 // ---------------------------------------------------------------------------
@@ -975,62 +733,7 @@ export function barkTexture(): THREE.CanvasTexture {
 // ---------------------------------------------------------------------------
 
 export function treetopRingTexture(): THREE.CanvasTexture {
-  const W = 4096;
-  const H = 512;
-  const rnd = mulberry32(0x7ee7);
-  const ctx = makeCanvas(W, H);
-  ctx.clearRect(0, 0, W, H);
-
-  const clump = (x: number, y: number, r: number, lit: string, shade: string) => {
-    const g = ctx.createRadialGradient(x - r * 0.22, y - r * 0.4, r * 0.1, x, y, r);
-    g.addColorStop(0, lit);
-    g.addColorStop(0.6, shade);
-    g.addColorStop(1, shade);
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-  };
-
-  // the deck OVERLOOKS the canopy: most crowns sit low in the band, with a
-  // few tall groups breaking the line — fine clumps, lots of texture
-  let x = 0;
-  while (x < W) {
-    const groupW = 120 + rnd() * 300;
-    const tall = rnd() < 0.22;
-    const crownTop = H * (tall ? 0.3 + rnd() * 0.14 : 0.56 + rnd() * 0.2);
-    const n = 8 + ((rnd() * 8) | 0);
-    for (let i = 0; i < n; i++) {
-      const cx = x + rnd() * groupW;
-      const cy = crownTop + rnd() * (H * 0.28);
-      const r = 15 + rnd() * 22;
-      const dark = rnd() < 0.45;
-      clump(
-        cx,
-        Math.max(cy, r * 0.7),
-        r,
-        dark ? '#5E6E44' : '#71814E',
-        dark ? '#3C4A2F' : '#4A5839',
-      );
-    }
-    x += groupW + 20 + rnd() * 130;
-  }
-  // solid base below the crown line
-  const baseGrad = ctx.createLinearGradient(0, H * 0.7, 0, H);
-  baseGrad.addColorStop(0, 'rgba(56,67,43,0)');
-  baseGrad.addColorStop(0.4, 'rgba(56,67,43,0.92)');
-  baseGrad.addColorStop(1, 'rgba(47,57,37,1)');
-  ctx.fillStyle = baseGrad;
-  ctx.fillRect(0, H * 0.7, W, H * 0.3);
-  // gentle aerial haze over the whole band so it recedes behind the railing
-  ctx.fillStyle = 'rgba(214,224,230,0.16)';
-  ctx.fillRect(0, 0, W, H);
-
-  const t = new THREE.CanvasTexture(ctx.canvas);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = THREE.RepeatWrapping;
-  t.wrapT = THREE.ClampToEdgeWrapping;
-  t.anisotropy = 8;
-  return t;
+  // mid-distance oak woodland crowns, all below the horizon
+  return treetopRingTextureImpl();
 }
 

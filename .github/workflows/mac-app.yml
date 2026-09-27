@@ -1,0 +1,160 @@
+name: Mac app
+
+# Builds the x64 .dmg (ad-hoc signed) on an Intel macOS runner, launches the
+# packaged app with --smoke-test, and uploads the dmg + smoke screenshot.
+# Tags v* also publish a GitHub Release with the dmg.
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+    paths:
+      - electron/**
+      - src/**
+      - blender/**
+      - public/**
+      - build/**
+      - index.html
+      - vite.config.ts
+      - package.json
+      - package-lock.json
+      - electron-builder.yml
+      - scripts/build-electron.mjs
+      - .github/workflows/mac-app.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dmg:
+    name: Build + smoke-test the dmg (macOS 15, Intel)
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    permissions:
+      contents: write # release upload on tags
+    env:
+      # ad-hoc signing ("-") needs no certificate; never go looking for one
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Cache Electron downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: electron-${{ runner.os }}-${{ runner.arch }}-
+
+      - run: npm ci
+
+      - name: Check the bundled Blender script
+        run: |
+          if [ ! -f blender/render_venue.py ]; then
+            echo "::error file=electron-builder.yml::blender/render_venue.py is missing — it is packaged via extraResources"
+            exit 1
+          fi
+
+      - name: Build the dmg
+        run: npm run dist:mac
+
+      - name: Inspect the bundle
+        run: |
+          APP="$(find release -maxdepth 2 -name '*.app' -type d | head -1)"
+          DMG="$(ls release/*.dmg | head -1)"
+          test -n "$APP" && test -n "$DMG"
+          echo "APP=$APP" >> "$GITHUB_ENV"
+          echo "DMG=$DMG" >> "$GITHUB_ENV"
+          ls -la release
+          du -sh "$APP" "$DMG"
+          lipo -archs "$APP/Contents/MacOS/Wedding Venue Studio"
+          test -f "$APP/Contents/Resources/blender/render_venue.py"
+          codesign -dv --verbose=2 "$APP" 2>&1 | tee release/codesign.txt
+          grep -q "Signature=adhoc" release/codesign.txt
+          codesign --verify --deep --strict --verbose=2 "$APP" || echo "::warning::codesign --verify reported problems (see log)"
+          hdiutil verify "$DMG"
+
+      # GitHub's hosted Intel macOS VM has no usable GPU: Apple's paravirtual
+      # display adapter (0x106b:0xeeee) can't back ANGLE/Metal and even
+      # SwiftShader's Vulkan ICD fails to initialise there, so WebGL never
+      # comes up. Real Macs use Metal. Here we still launch the packaged app
+      # and prove packaging end to end (boot, app:// assets, the native
+      # bridge, denoiser weights, capture) with --smoke-allow-no-gpu, trying
+      # a few GL backends first in case one of them does give us WebGL.
+      - name: Smoke test (launch the packaged app)
+        timeout-minutes: 8
+        run: |
+          set -o pipefail
+          BIN="$APP/Contents/MacOS/Wedding Venue Studio"
+          ok=0; webgl=0
+          for flags in "" \
+                       "--use-angle=swiftshader --disable-gpu-sandbox" \
+                       "--use-angle=gl --disable-gpu-sandbox"; do
+            echo "::group::smoke with: ${flags:-<default: metal>}"
+            rm -f "$RUNNER_TEMP/smoke.png" "$RUNNER_TEMP/smoke.json"
+            # shellcheck disable=SC2086
+            "$BIN" --smoke-test="$RUNNER_TEMP/smoke.png" --smoke-allow-no-gpu $flags 2>&1 | tee "$RUNNER_TEMP/smoke.log" || true
+            echo "::endgroup::"
+            line="$(grep '^WP_SMOKE ' "$RUNNER_TEMP/smoke.log" | tail -1 | sed 's/^WP_SMOKE //')"
+            [ -n "$line" ] || continue
+            if node -e "const r=JSON.parse(process.argv[1]); process.exit(r.ok?0:1)" "$line"; then ok=1; fi
+            if node -e "const r=JSON.parse(process.argv[1]); process.exit(r.webgl?0:1)" "$line"; then webgl=1; fi
+            echo "flags='${flags}' ok=$ok webgl=$webgl"
+            [ "$webgl" = 1 ] && break
+          done
+          test -s "$RUNNER_TEMP/smoke.png" || echo "::warning::no smoke screenshot was captured"
+          if [ "$ok" != 1 ]; then echo "::error::the packaged app did not boot"; exit 1; fi
+          if [ "$webgl" != 1 ]; then
+            echo "::warning title=No GPU on the hosted macOS runner::The packaged app booted and served its assets, but WebGL is unavailable on this VM (paravirtual display adapter), so 3D rendering was not exercised here. It is verified in the Linux CI screenshots and on real Macs."
+          fi
+
+      - name: Collect smoke results and logs
+        if: always()
+        run: |
+          mkdir -p out
+          cp "$RUNNER_TEMP"/smoke.* out/ 2>/dev/null || true
+          cp release/codesign.txt out/ 2>/dev/null || true
+          cp -R "$HOME/Library/Logs/Wedding Venue Studio" out/logs 2>/dev/null || true
+          ls -la out
+
+      - name: Upload dmg
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: Wedding-Venue-Studio-mac-x64
+          path: release/*.dmg
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload smoke screenshot + logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: mac-smoke
+          path: out/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Publish release (tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v3
+        with:
+          files: release/*.dmg
+          generate_release_notes: true
+          body: |
+            **Wedding Venue Studio** for Intel Macs (macOS 12+; built for the MacBook Pro 16" 2019).
+
+            1. Download the `.dmg`, open it and drag **Wedding Venue Studio** to **Applications**.
+            2. First launch (macOS 15+): open the app once, then **System Settings → Privacy & Security → Open Anyway**.
+               Fallback: `xattr -dr com.apple.quarantine "/Applications/Wedding Venue Studio.app"`
+            3. *Render in Blender* needs [Blender 4.5 LTS](https://www.blender.org/download/lts/4-5/) in Applications.
