@@ -29,24 +29,28 @@ function toTexture(ctx: CanvasRenderingContext2D, srgb: boolean): THREE.CanvasTe
 }
 
 // ---------------------------------------------------------------------------
-// Hardwood floor — 1024px == one 128" tile (8 px/inch), ~5" planks along v.
+// Hardwood floor — 2048px == one 128" tile (16 px/in).
 // ---------------------------------------------------------------------------
 
 export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture } {
-  // 2048px == one 128" tile (16 px/in). Classic 2.5" red-oak strip flooring
-  // per the venue photos: boards run E-W (u axis), satin sheen, honey→amber.
+  // Honey-toned select red oak, 2¼" strips (reference photos 02/05): the
+  // board seams run parallel to the image horizon in both hall photos — one
+  // looks south, one north — so the strips run E-W (u axis), not N-S. Satin
+  // finish (clearcoat in the render tag), random-length boards, open grain.
   const S = 2048;
+  const PX = 16; // px per inch
   const rnd = mulberry32(0xf100d);
-  const rows = 51; // 128/51 ≈ 2.5" strips
+  const rows = 57; // 128/57 ≈ 2.25" strips
   const h = S / rows;
-  const palette = ['#9C6C41', '#AA7A4B', '#855832', '#B4885A', '#8F6139', '#A17044', '#764C2A'];
+  // honey → amber with the odd pale sapwood and deeper heart board
+  const palette = ['#C8904F', '#C08849', '#CF9A5A', '#B98046', '#D6A566', '#C38C4D', '#AE7640', '#CB9556', '#DCAD6E', '#BA8347'];
 
   const ctx = makeCanvas(S, S);
   const rough = makeCanvas(S, S);
   const bump = makeCanvas(S, S);
-  ctx.fillStyle = '#7E5230';
+  ctx.fillStyle = '#8A5A30';
   ctx.fillRect(0, 0, S, S);
-  rough.fillStyle = '#4a4a4a'; // satin base ~0.29
+  rough.fillStyle = '#5a5a5a';
   rough.fillRect(0, 0, S, S);
   bump.fillStyle = '#808080';
   bump.fillRect(0, 0, S, S);
@@ -54,10 +58,10 @@ export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: T
   for (let r = 0; r < rows; r++) {
     const y = r * h;
     const segs: { x0: number; x1: number; c: string; ro: number }[] = [];
-    let x = -(60 + rnd() * 700);
+    let x = -(40 + rnd() * 900);
     while (x < S) {
-      const len = (24 + rnd() * 60) * 16; // 24–84" boards
-      segs.push({ x0: x, x1: x + len, c: palette[(rnd() * palette.length) | 0], ro: 0.2 + rnd() * 0.18 });
+      const len = (14 + rnd() * 62) * PX; // 14–76" boards
+      segs.push({ x0: x, x1: x + len, c: palette[(rnd() * palette.length) | 0], ro: 0.26 + rnd() * 0.12 });
       x += len;
     }
     segs[segs.length - 1].c = segs[0].c;
@@ -70,72 +74,81 @@ export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: T
       rough.fillStyle = `rgb(${g},${g},${g})`;
       rough.fillRect(sg.x0, y + 0.6, w - 1.2, h - 1.2);
 
-      // fine straight grain: many low-alpha length-wise streaks
-      const nGrain = 8 + ((rnd() * 6) | 0);
+      // open red-oak grain: long dark streaks, pale latewood lines
+      const nGrain = 10 + ((rnd() * 8) | 0);
       for (let i = 0; i < nGrain; i++) {
-        const dark = rnd() < 0.68;
-        ctx.strokeStyle = dark ? '#5E3B1E' : '#D8AC72';
-        ctx.globalAlpha = 0.05 + rnd() * 0.1;
-        ctx.lineWidth = 0.6 + rnd() * 1.1;
+        const dark = rnd() < 0.72;
+        ctx.strokeStyle = dark ? '#6A3F1C' : '#E8C48A';
+        ctx.globalAlpha = dark ? 0.07 + rnd() * 0.13 : 0.05 + rnd() * 0.08;
+        ctx.lineWidth = 0.5 + rnd() * 1.3;
         const gy = y + 2 + rnd() * (h - 4);
         ctx.beginPath();
         ctx.moveTo(sg.x0 + 2, gy);
         let gx = sg.x0 + 2;
         let cy = gy;
         while (gx < sg.x1 - 4) {
-          gx += 90 + rnd() * 140;
-          cy = Math.min(y + h - 1.5, Math.max(y + 1.5, cy + (rnd() - 0.5) * 3));
+          gx += 60 + rnd() * 120;
+          cy = Math.min(y + h - 1.5, Math.max(y + 1.5, cy + (rnd() - 0.5) * 2.4));
           ctx.lineTo(Math.min(gx, sg.x1 - 4), cy);
         }
         ctx.stroke();
       }
-      // occasional cathedral arcs
-      if (rnd() < 0.4 && w > 300) {
-        const cxr = sg.x0 + w * (0.25 + rnd() * 0.5);
-        ctx.strokeStyle = '#6B441F';
-        for (let a = 0; a < 4; a++) {
-          ctx.globalAlpha = 0.1 - a * 0.018;
-          ctx.lineWidth = 1;
+      // pore flecks
+      ctx.fillStyle = '#4F2E12';
+      const nPore = (w / 12) | 0;
+      for (let i = 0; i < nPore; i++) {
+        ctx.globalAlpha = 0.12 + rnd() * 0.18;
+        ctx.fillRect(sg.x0 + rnd() * w, y + 1.5 + rnd() * (h - 3), 3 + rnd() * 9, 0.9);
+      }
+      // flat-sawn cathedral arches
+      if (rnd() < 0.55 && w > 260) {
+        const cxr = sg.x0 + w * (0.2 + rnd() * 0.6);
+        ctx.strokeStyle = '#6E421E';
+        const n = 3 + ((rnd() * 3) | 0);
+        for (let a = 0; a < n; a++) {
+          ctx.globalAlpha = 0.13 - a * 0.02;
+          ctx.lineWidth = 1 + rnd() * 0.6;
           ctx.beginPath();
-          ctx.ellipse(cxr, y + h * 0.5, 60 + a * 34, h * (0.16 + a * 0.09), 0, Math.PI, Math.PI * 2);
+          ctx.ellipse(cxr + a * 10, y + h * 0.5, 50 + a * 38 + rnd() * 20, h * (0.14 + a * 0.08), 0, Math.PI, Math.PI * 2);
           ctx.stroke();
         }
       }
       ctx.globalAlpha = 1;
 
-      // end joint
+      // end joint (butt seam)
       if (sg.x0 > 0 && sg.x0 < S) {
-        ctx.fillStyle = '#4E3115';
-        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = '#4A2C12';
+        ctx.globalAlpha = 0.6;
         ctx.fillRect(sg.x0 - 0.8, y + 0.6, 1.6, h - 1.2);
         ctx.globalAlpha = 1;
         rough.fillStyle = '#8c8c8c';
         rough.fillRect(sg.x0 - 0.8, y + 0.6, 1.6, h - 1.2);
-        bump.fillStyle = '#5a5a5a';
-        bump.fillRect(sg.x0 - 0.8, y + 0.6, 1.6, h - 1.2);
+        bump.fillStyle = '#4a4a4a';
+        bump.fillRect(sg.x0 - 1, y + 0.6, 2, h - 1.2);
       }
-      // per-board tone drift along the length (sun bleach / wear)
+      // per-board tone drift along the length (wear, finish build-up)
       const nW = 3 + ((rnd() * 3) | 0);
       for (let i = 0; i < nW; i++) {
-        ctx.fillStyle = rnd() < 0.5 ? 'rgba(236,200,148,1)' : 'rgba(72,44,20,1)';
+        ctx.fillStyle = rnd() < 0.5 ? 'rgba(244,210,150,1)' : 'rgba(96,56,24,1)';
         ctx.globalAlpha = 0.03 + rnd() * 0.05;
-        ctx.fillRect(sg.x0 + rnd() * w, y + 0.6, 60 + rnd() * 220, h - 1.2);
+        ctx.fillRect(sg.x0 + rnd() * w, y + 0.6, 50 + rnd() * 200, h - 1.2);
       }
       ctx.globalAlpha = 1;
     }
-    // strip joint line + milled micro-bevel (soft to avoid shimmer)
-    ctx.fillStyle = '#4E3115';
-    ctx.globalAlpha = 0.42;
+    // strip seam + milled micro-bevel (soft to avoid shimmer)
+    ctx.fillStyle = '#4A2C12';
+    ctx.globalAlpha = 0.45;
     ctx.fillRect(0, y + h - 1.1, S, 1.4);
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = '#F0CE96';
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = '#F4D49E';
     ctx.fillRect(0, y + 0.6, S, 1.2);
     ctx.globalAlpha = 1;
     rough.fillStyle = '#909090';
     rough.fillRect(0, y + h - 1, S, 1.2);
-    bump.fillStyle = '#565656';
-    bump.fillRect(0, y + h - 1.2, S, 1.6);
-    bump.fillStyle = '#a2a2a2';
+    bump.fillStyle = '#4e4e4e';
+    bump.fillRect(0, y + h - 1.3, S, 1.8);
+    bump.fillStyle = '#6a6a6a';
+    bump.fillRect(0, y + h - 2.6, S, 1.3);
     bump.fillRect(0, y + 0.4, S, 1);
   }
 
@@ -149,40 +162,105 @@ export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: T
 }
 
 // ---------------------------------------------------------------------------
+// Reed / stick-mat ceiling infill — 1024px == one 48" × 48" tile (21⅓ px/in).
+// Sticks run along v (laid along the ridge, spanning rafter to rafter, per
+// reference photos 02/05); u runs up the slope.
+// ---------------------------------------------------------------------------
 
-export function reedTexture(): THREE.CanvasTexture {
-  const S = 512;
+/** inches covered by one reed tile in u and v */
+export const REED_TILE_IN = 48;
+
+export function reedTexture(): { map: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture } {
+  const S = 1024;
+  const PX = S / REED_TILE_IN;
   const rnd = mulberry32(0x2eed);
   const ctx = makeCanvas(S, S);
-  const reeds = 32;
-  const w = S / reeds;
-  const palette = ['#8B5A33', '#93613A', '#7F5230', '#96683F', '#7A4E2C'];
+  const bump = makeCanvas(S, S);
+  // light warm tan / honey canes with the odd darker, greyer stick
+  const palette = ['#B8946A', '#AE8A5E', '#C09C70', '#A6825A', '#B48E62', '#C6A474', '#9E7C56', '#BA966A', '#AA8862', '#8E7052'];
 
-  ctx.fillStyle = '#422A15';
-  ctx.fillRect(0, 0, S, S);
-  for (let r = 0; r < reeds; r++) {
-    const x = r * w;
-    ctx.fillStyle = palette[(rnd() * palette.length) | 0];
-    ctx.fillRect(x + 0.8, 0, w - 1.6, S);
-    // rounded highlight + shaded edge
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = '#B57F4E';
-    ctx.fillRect(x + w * 0.3, 0, w * 0.22, S);
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = '#31200F';
-    ctx.fillRect(x + w - 3.4, 0, 2.6, S);
-    ctx.globalAlpha = 1;
-    // node rings
-    const nodes = 2 + ((rnd() * 3) | 0);
-    for (let i = 0; i < nodes; i++) {
-      const y = 10 + rnd() * (S - 22);
-      ctx.globalAlpha = 0.28;
-      ctx.fillStyle = '#5A3A1E';
-      ctx.fillRect(x + 0.8, y, w - 1.6, 2.5);
-      ctx.globalAlpha = 1;
-    }
+  // widths 0.55–0.9" that sum exactly to the tile so u wraps seamlessly
+  const widths: number[] = [];
+  let tot = 0;
+  while (tot < S - 0.5 * PX) {
+    const w = (0.55 + rnd() * 0.35) * PX;
+    widths.push(w);
+    tot += w;
   }
-  return toTexture(ctx, true);
+  const k = S / tot;
+
+  ctx.fillStyle = '#4A3624'; // shadowed gaps between canes
+  ctx.fillRect(0, 0, S, S);
+  bump.fillStyle = '#000000';
+  bump.fillRect(0, 0, S, S);
+
+  let x = 0;
+  for (const w0 of widths) {
+    const w = w0 * k;
+    const gap = 0.9 + rnd() * 1.3;
+    const x0 = x + gap / 2;
+    const x1 = x + w - gap / 2;
+    const cw = x1 - x0;
+    const base = palette[(rnd() * palette.length) | 0];
+    // round cane: shaded edges, soft highlight a little off-centre
+    const hl = 0.35 + rnd() * 0.2;
+    const grad = ctx.createLinearGradient(x0, 0, x1, 0);
+    grad.addColorStop(0, 'rgba(40,26,14,0.42)');
+    grad.addColorStop(0.18, 'rgba(40,26,14,0.08)');
+    grad.addColorStop(hl, 'rgba(255,236,200,0.14)');
+    grad.addColorStop(0.82, 'rgba(40,26,14,0.07)');
+    grad.addColorStop(1, 'rgba(40,26,14,0.46)');
+    ctx.fillStyle = base;
+    ctx.fillRect(x0, 0, cw, S);
+    ctx.fillStyle = grad;
+    ctx.fillRect(x0, 0, cw, S);
+    const bg = bump.createLinearGradient(x0, 0, x1, 0);
+    bg.addColorStop(0, '#303030');
+    bg.addColorStop(0.25, '#b8b8b8');
+    bg.addColorStop(0.5, '#e6e6e6');
+    bg.addColorStop(0.75, '#b8b8b8');
+    bg.addColorStop(1, '#303030');
+    bump.fillStyle = bg;
+    bump.fillRect(x0, 0, cw, S);
+
+    // length-wise fibre streaks (wrapped in v)
+    const nStreak = 2 + ((rnd() * 3) | 0);
+    for (let i = 0; i < nStreak; i++) {
+      ctx.fillStyle = rnd() < 0.6 ? '#5C4028' : '#CDAE80';
+      ctx.globalAlpha = 0.06 + rnd() * 0.1;
+      const sy = rnd() * S;
+      const sl = S * (0.2 + rnd() * 0.6);
+      const sx = x0 + cw * (0.2 + rnd() * 0.6);
+      const sw = 0.8 + rnd();
+      ctx.fillRect(sx, sy, sw, sl);
+      if (sy + sl > S) ctx.fillRect(sx, sy - S, sw, sl);
+    }
+    ctx.globalAlpha = 1;
+    // node rings every 7–13"
+    let ny = rnd() * 10 * PX;
+    while (ny < S - 4) {
+      const nh = 2 + rnd() * 2;
+      ctx.fillStyle = '#4A321E';
+      ctx.globalAlpha = 0.45;
+      ctx.fillRect(x0, ny, cw, nh);
+      ctx.fillStyle = '#C8A676';
+      ctx.globalAlpha = 0.25;
+      ctx.fillRect(x0, ny + nh, cw, 1.2);
+      ctx.globalAlpha = 1;
+      bump.fillStyle = '#ffffff';
+      bump.globalAlpha = 0.5;
+      bump.fillRect(x0 + cw * 0.15, ny - 1, cw * 0.7, nh + 2);
+      bump.globalAlpha = 1;
+      ny += (7 + rnd() * 6) * PX;
+    }
+    x += w;
+  }
+
+  const map = toTexture(ctx, true);
+  map.anisotropy = 16;
+  const bumpTex = toTexture(bump, false);
+  bumpTex.anisotropy = 8;
+  return { map, bumpMap: bumpTex };
 }
 
 // ---------------------------------------------------------------------------
@@ -752,11 +830,14 @@ export function bayPanoramaTexture(): THREE.CanvasTexture {
 // mixed cream/greige/gray/tan strips running along the walk).
 // ---------------------------------------------------------------------------
 
-export function plankPaverTextures(): { map: THREE.CanvasTexture; roughnessMap: THREE.CanvasTexture } {
+export function plankPaverTextures(): { map: THREE.CanvasTexture; roughnessMap: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture } {
   const S = 1024; // one 96" tile
   const rnd = mulberry32(0x9aef);
   const ctx = makeCanvas(S, S);
   const rough = makeCanvas(S, S);
+  const bump = makeCanvas(S, S); // sand joints sit just below the plank faces
+  bump.fillStyle = '#9a9a9a';
+  bump.fillRect(0, 0, S, S);
   const cols = 16; // 6" wide planks, joints along the walk (v)
   const w = S / cols;
   const tones = ['#D8CFBC', '#C6BEAE', '#AFA89B', '#8D8377', '#6E685F', '#C3A886', '#B8A692', '#9B9287'];
@@ -789,18 +870,27 @@ export function plankPaverTextures(): { map: THREE.CanvasTexture; roughnessMap: 
       if (sg.y0 > 0 && sg.y0 < S) {
         ctx.fillStyle = 'rgba(74,70,62,0.5)';
         ctx.fillRect(x + 1, sg.y0 - 0.8, w - 2, 1.6);
+        bump.fillStyle = '#303030';
+        bump.fillRect(x + 1, sg.y0 - 1, w - 2, 2);
       }
+      // slight per-plank lippage
+      bump.fillStyle = rnd() < 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+      bump.fillRect(x + 1, sg.y0 + 1, w - 2, sg.y1 - sg.y0 - 2);
     }
     // column joint
     ctx.fillStyle = 'rgba(74,70,62,0.55)';
     ctx.fillRect(x + w - 1, 0, 1.4, S);
     rough.fillStyle = '#e0e0e0';
     rough.fillRect(x + w - 1, 0, 1.4, S);
+    bump.fillStyle = '#303030';
+    bump.fillRect(x + w - 1.2, 0, 1.8, S);
   }
 
   const map = toTexture(ctx, true);
   map.anisotropy = 16;
-  return { map, roughnessMap: toTexture(rough, false) };
+  const bumpMap = toTexture(bump, false);
+  bumpMap.anisotropy = 8;
+  return { map, roughnessMap: toTexture(rough, false), bumpMap };
 }
 
 // ---------------------------------------------------------------------------
