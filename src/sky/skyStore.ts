@@ -1,4 +1,5 @@
 import { horizonAltDeg, moonState, phaseName, sunDirModel, sunPosition } from '../scene/sun';
+import { physicalSkyModel } from './atmosphere';
 import { cctToLinear } from './exposure';
 import type { EquirectImage, SkyInput, SkyPhase, SkyState, Vec3 } from './types';
 
@@ -17,9 +18,14 @@ type SkyModel = (input: SkyInput, base: Omit<SkyState, 'env' | 'bg' | 'skyHorizo
   bg: EquirectImage;
   skyHorizontalLux: number;
   ev100: number;
+  /** physical models refine the direct sun/moon (transmittance, clouds) */
+  sun?: Partial<SkyState['sun']>;
+  moon?: Partial<SkyState['moon']>;
 };
 
-let model: SkyModel = gradientSky;
+// the physical atmosphere (src/sky/atmosphere.ts); gradientSky stays as a
+// cheap fallback that setSkyModel() can swap in
+let model: SkyModel = physicalSkyModel;
 let input: SkyInput = { ...SHOWCASE_INPUT, enabled: true };
 let state: SkyState | null = null;
 let version = 0;
@@ -105,12 +111,21 @@ function compute(raw: SkyInput): SkyState {
     },
   };
   const m = model(inp, base);
-  return { ...base, ...m, version: ++version };
+  return {
+    ...base,
+    sun: { ...base.sun, ...m.sun },
+    moon: { ...base.moon, ...m.moon },
+    env: m.env,
+    bg: m.bg,
+    skyHorizontalLux: m.skyHorizontalLux,
+    ev100: m.ev100,
+    version: ++version,
+  };
 }
 
 /** Placeholder analytic sky (vertical gradient scaled by sun altitude) so the
  * pipelines can run before the physical atmosphere lands. */
-function gradientSky(inp: SkyInput, base: Parameters<SkyModel>[1]): ReturnType<SkyModel> {
+export function gradientSky(inp: SkyInput, base: Parameters<SkyModel>[1]): ReturnType<SkyModel> {
   const alt = base.sun.altDeg;
   const day = Math.min(Math.max((alt + 6) / 30, 0), 1);
   const zenith = 50 + 6000 * day * day; // cd/m²
@@ -133,6 +148,6 @@ function gradientSky(inp: SkyInput, base: Parameters<SkyModel>[1]): ReturnType<S
   }
   const env = { w, h, data };
   const skyHorizontalLux = Math.PI * zenith * 1.2;
-  const ev100 = Math.log2(((skyHorizontalLux + base.sun.illuminanceLux * Math.max(Math.sin((alt * Math.PI) / 180), 0)) * 0.18 * 100) / (Math.PI * 12.5)) + inp.evComp;
+  const ev100 = Math.log2(((skyHorizontalLux + base.sun.illuminanceLux * Math.max(Math.sin((alt * Math.PI) / 180), 0)) * 0.18 * 100) / (Math.PI * 12.5)) - inp.evComp;
   return { env, bg: env, skyHorizontalLux, ev100 };
 }

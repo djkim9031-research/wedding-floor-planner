@@ -76,7 +76,7 @@ const toast = (msg: string): void => {
 const toolbar = buildToolbar(container, rig, host, toast);
 buildPalette(container, fsm, pointerCtl);
 const sunPanel = buildSunPanel(container, (s) => {
-  setSkyInput({ enabled: s.enabled, date: s.date, minutes: s.minutes, cloudPct: s.clouds ? s.cloudPct : 0 });
+  setSkyInput({ enabled: s.enabled, date: s.date, minutes: s.minutes, cloudPct: s.clouds ? s.cloudPct : 0, evComp: s.evComp, autoEV: s.autoEV });
   if (!s.enabled) {
     host.applySun(null);
     return;

@@ -816,3 +816,19 @@ button.ui-btn.danger:hover {
   color: #fffdf8;
   font-weight: 700;
 }
+
+/* ---- sun panel: exposure (physical sky) ---- */
+.sun-exposure {
+  gap: 5px;
+}
+
+.sun-ev-label {
+  font-size: 11px;
+  color: #8d8478;
+  white-space: nowrap;
+}
+
+.ev-slider {
+  flex: 1;
+  min-width: 0;
+}
