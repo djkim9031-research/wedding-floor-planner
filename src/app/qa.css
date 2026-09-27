@@ -1,0 +1,11 @@
+/* #ui=0 — clean captures for comparisons against the reference photos */
+body.qa-no-ui .topbar,
+body.qa-no-ui .sun-panel,
+body.qa-no-ui .palette,
+body.qa-no-ui .items-panel,
+body.qa-no-ui .status-panel,
+body.qa-no-ui .photo-panel,
+body.qa-no-ui .css2d-layer,
+body.qa-no-ui .toast {
+  display: none !important;
+}
