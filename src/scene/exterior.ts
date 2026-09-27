@@ -1473,6 +1473,16 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
       { x: p.x - nx, z: p.z - nz },
     ], y);
   };
+  const stripeTo = (out: Geo[], p: Vec2, dir: Vec2, len: number, w: number, y: number) => {
+    const nx = -dir.z * (w / 2);
+    const nz = dir.x * (w / 2);
+    quad(out, [
+      { x: p.x + nx, z: p.z + nz },
+      { x: p.x + dir.x * len + nx, z: p.z + dir.z * len + nz },
+      { x: p.x + dir.x * len - nx, z: p.z + dir.z * len - nz },
+      { x: p.x - nx, z: p.z - nz },
+    ], y);
+  };
   const row = (a: Vec2, b: Vec2, inward: 1 | -1, from: number, to: number, ada: boolean) => {
     const len = Math.hypot(b.x - a.x, b.z - a.z);
     const ex = (b.x - a.x) / len;
@@ -1489,12 +1499,23 @@ function buildSurroundings(group: THREE.Group, oakBarkMat: THREE.Material): void
       const p = { x: a.x + ex * s + inx * 6, z: a.z + ez * s + inz * 6 };
       stripe(p, dir, depth, 4);
       if (ada && k === 1) {
-        // blue access aisle beside the first stall, white hatch inside
-        const q = { x: p.x + ex * step, z: p.z + ez * step };
-        quad(adaG, [p, q, { x: q.x + dir.x * depth, z: q.z + dir.z * depth }, { x: p.x + dir.x * depth, z: p.z + dir.z * depth }], LOT_Y + 0.3);
-        for (let h = 20; h < depth; h += 26) {
-          stripe({ x: p.x + dir.x * h, z: p.z + dir.z * h }, { x: ex, z: ez }, step, 3, LOT_Y + 0.4);
+        // accessible stall: blue hatched access aisle beside it and a blue
+        // symbol square (with white border) at the head of the stall
+        const aisle = step * 0.55;
+        for (let h = 14; h < depth - 10; h += 24) {
+          stripeTo(adaG, { x: p.x + dir.x * h, z: p.z + dir.z * h }, { x: ex, z: ez }, aisle, 3.5, LOT_Y + 0.4);
         }
+        stripe({ x: p.x + ex * aisle, z: p.z + ez * aisle }, dir, depth, 4);
+        const c = { x: p.x + ex * (aisle + step * 0.5) + dir.x * depth * 0.62, z: p.z + ez * (aisle + step * 0.5) + dir.z * depth * 0.62 };
+        const sq = (half: number, out: Geo[], y: number) =>
+          quad(out, [
+            { x: c.x - ex * half - dir.x * half, z: c.z - ez * half - dir.z * half },
+            { x: c.x + ex * half - dir.x * half, z: c.z + ez * half - dir.z * half },
+            { x: c.x + ex * half + dir.x * half, z: c.z + ez * half + dir.z * half },
+            { x: c.x - ex * half + dir.x * half, z: c.z - ez * half + dir.z * half },
+          ], y);
+        sq(24, stripeG, LOT_Y + 0.35);
+        sq(21, adaG, LOT_Y + 0.45);
       }
     }
   };
