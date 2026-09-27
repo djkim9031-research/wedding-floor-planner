@@ -87,7 +87,7 @@ export function gablePane(x0: number, x1: number, z: number, yBot: number, drop 
 }
 
 /** Merge geometries into one mesh (normalizes indexed/non-indexed mixes). */
-export function mergeAll(geos: Geo[]): Geo {
+function mergeAll(geos: Geo[]): Geo {
   const anyNonIndexed = geos.some((g) => !g.index);
   const list = anyNonIndexed ? geos.map((g) => (g.index ? g.toNonIndexed() : g)) : geos;
   for (const g of list) {
@@ -120,14 +120,6 @@ export function rod(a: P3, b: P3, r: number, seg = 8): Geo {
   g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
   const mid = va.add(vb).multiplyScalar(0.5);
   g.translate(i2m(mid.x), i2m(mid.y), i2m(mid.z));
-  return g;
-}
-
-/** Box of size (w, h, d) centered at an inch-space point, rotated about y. */
-export function boxAt(cx: number, cy: number, cz: number, w: number, h: number, d: number, rotY = 0): Geo {
-  const g = new THREE.BoxGeometry(i2m(w), i2m(h), i2m(d));
-  if (rotY) g.rotateY(rotY);
-  g.translate(i2m(cx), i2m(cy), i2m(cz));
   return g;
 }
 

@@ -48,6 +48,13 @@ registerQaHook((ctx, params) => {
     ctx.host.setRoofVisible(true);
     ctx.host.invalidate();
   }
+  if (params.get('lod') === 'render') {
+    // preview render-only detail (reed canes) in the raster view
+    ctx.host.venueGroup.traverse((o) => {
+      if ((o.userData.render as { lod?: string } | undefined)?.lod === 'render') o.visible = true;
+    });
+    ctx.host.invalidate();
+  }
   if (params.get('qa') === 'venue') {
     // timing aid for headless checks: one synchronous raster frame, in ms
     (window as unknown as { __venueHost?: unknown }).__venueHost = ctx.host;

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { BAY_X, RIDGE_X, RIDGE_Y } from '../../constants';
-import { REED_TILE_IN, reedTexture } from '../textures';
-import { RAFTER_D, RAFTER_W, box, gablePane, merged, roofY, scaleUV, slopedBox, slopedPlane, SLOPE, type Geo } from './geom';
+import { BAY_X, RIDGE_X, RIDGE_Y, i2m } from '../../constants';
+import { REED_TILE_IN, reedTexture, type ReedCane } from '../textures';
+import { RAFTER_D, RAFTER_W, box, gablePane, merged, roofY, scaleUV, slopedBox, slopedPlane, SLOPE, THETA, type Geo } from './geom';
 import { GLULAM_TOP, NORTH_HEADER_TOP, SOUTH_HEADER_TOP } from './hallShell';
 import type { HallMaterials } from './materials';
 import { tag } from '../../render/tags';
@@ -27,6 +27,77 @@ const BAY_Z1 = -6; // soffit ends at the window wall's outer face
  * 535, 599 — plus one carrying the south overhang. */
 export const RAFTER_SPACING = 60.5;
 export const RAFTER_Z: number[] = [...Array.from({ length: 11 }, (_, k) => -6 + k * RAFTER_SPACING), S_OVER - 2];
+
+/**
+ * Render-only relief for the reed mat: every cane of the tile as a real
+ * half-round (4 facets), laid exactly over its texture stripe, so the path
+ * tracer / Cycles get true shadowing between canes. Hidden in the live view
+ * (sub-pixel geometry would shimmer; the bump-mapped plane covers it there).
+ */
+function reedCanes(map: THREE.Texture, canes: ReedCane[]): THREE.Mesh {
+  const pos: number[] = [];
+  const nor: number[] = [];
+  const uv: number[] = [];
+  const idx: number[] = [];
+  const SEG = 4;
+  const z0 = BAY_Z1;
+  const z1 = S_OVER;
+  for (const [xa, xb] of [
+    [W_EAVE, SKY0],
+    [SKY1, E_EAVE],
+  ]) {
+    const th = (xa + xb) / 2 > RIDGE_X ? -THETA : THETA;
+    const tx = Math.cos(th);
+    const ty = Math.sin(th);
+    const nx = -Math.sin(th); // up, into the roof
+    const ny = Math.cos(th);
+    const bx = xa;
+    const by = roofY(xa);
+    const len = Math.hypot(xb - xa, roofY(xb) - by);
+    const tiles = Math.ceil(len / REED_TILE_IN);
+    for (let t = 0; t < tiles; t++) {
+      for (const c of canes) {
+        const s0 = t * REED_TILE_IN + c.u0;
+        const s1 = t * REED_TILE_IN + c.u1;
+        if (s1 > len) continue;
+        const sc = (s0 + s1) / 2;
+        const r = (s1 - s0) / 2;
+        const base = pos.length / 3;
+        for (let j = 0; j <= SEG; j++) {
+          const a = (Math.PI * j) / SEG;
+          const s = sc - r * Math.cos(a);
+          const n = -r * Math.sin(a) * 0.9 - 0.05;
+          const px = bx + s * tx + n * nx;
+          const py = by + s * ty + n * ny;
+          const cnx = -Math.cos(a) * tx - Math.sin(a) * nx;
+          const cny = -Math.cos(a) * ty - Math.sin(a) * ny;
+          for (const z of [z0, z1]) {
+            pos.push(i2m(px), i2m(py), i2m(z));
+            nor.push(cnx, cny, 0);
+            uv.push(s / REED_TILE_IN, (z - z0) / REED_TILE_IN);
+          }
+        }
+        for (let j = 0; j < SEG; j++) {
+          const a = base + j * 2;
+          idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+        }
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  const mesh = new THREE.Mesh(
+    g,
+    tag(new THREE.MeshStandardMaterial({ map, roughness: 0.85, metalness: 0, side: THREE.DoubleSide }), 'reed', {}, 'reedCanes'),
+  );
+  mesh.name = 'reedCanes';
+  mesh.userData.render = { lod: 'render' };
+  mesh.visible = false;
+  return mesh;
+}
 
 export function buildHallRoof(m: HallMaterials): THREE.Group {
   const roof = new THREE.Group();
@@ -58,6 +129,7 @@ export function buildHallRoof(m: HallMaterials): THREE.Group {
     ),
   );
   roof.add(reedMesh);
+  roof.add(reedCanes(reed.map, reed.canes));
 
   // --- roof deck (exterior skin) 3" above the reed; ridge caps past the strip
   topG.push(slopedPlane(W_EAVE, SKY0, N_OVER, S_OVER, 3, true));

@@ -62,14 +62,9 @@ export function hallMaterials(): HallMaterials {
       'windows',
     ),
     frosted: tag(
-      new THREE.MeshStandardMaterial({
-        color: 0xf4f5f3,
-        transparent: true,
-        opacity: 0.96,
-        roughness: 0.9,
-        metalness: 0,
-        side: THREE.DoubleSide,
-      }),
+      // shades read as a soft opaque fabric in the raster view; the render
+      // tag carries the diffuse transmission
+      new THREE.MeshStandardMaterial({ color: 0xf2f3f1, roughness: 0.9, metalness: 0 }),
       'glass-frosted',
       { thin: true, transmission: 0.35, ior: 1.5 },
       'rollerShades',

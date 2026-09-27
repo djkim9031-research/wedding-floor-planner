@@ -170,14 +170,21 @@ export function floorWoodTextures(): { map: THREE.CanvasTexture; roughnessMap: T
 /** inches covered by one reed tile in u and v */
 export const REED_TILE_IN = 48;
 
-export function reedTexture(): { map: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture } {
+/** One cane of the reed tile: u extent in inches within the tile (0..REED_TILE_IN). */
+export interface ReedCane {
+  u0: number;
+  u1: number;
+}
+
+export function reedTexture(): { map: THREE.CanvasTexture; bumpMap: THREE.CanvasTexture; canes: ReedCane[] } {
   const S = 1024;
   const PX = S / REED_TILE_IN;
   const rnd = mulberry32(0x2eed);
   const ctx = makeCanvas(S, S);
   const bump = makeCanvas(S, S);
-  // light warm tan / honey canes with the odd darker, greyer stick
-  const palette = ['#B8946A', '#AE8A5E', '#C09C70', '#A6825A', '#B48E62', '#C6A474', '#9E7C56', '#BA966A', '#AA8862', '#8E7052'];
+  // light warm tan canes with the odd darker, greyer stick — chroma set from
+  // the photos' white-wall-normalized ceiling (B/R ≈ 0.45 in linear)
+  const palette = ['#B8977A', '#AC8C70', '#C2A286', '#A2846A', '#B49478', '#C8AA8C', '#9C7E66', '#BA9A7C', '#AA8C74', '#8E7462'];
 
   // widths 0.55–0.9" that sum exactly to the tile so u wraps seamlessly
   const widths: number[] = [];
@@ -189,11 +196,12 @@ export function reedTexture(): { map: THREE.CanvasTexture; bumpMap: THREE.Canvas
   }
   const k = S / tot;
 
-  ctx.fillStyle = '#4A3624'; // shadowed gaps between canes
+  ctx.fillStyle = '#4C3C30'; // shadowed gaps between canes
   ctx.fillRect(0, 0, S, S);
   bump.fillStyle = '#000000';
   bump.fillRect(0, 0, S, S);
 
+  const canes: ReedCane[] = [];
   let x = 0;
   for (const w0 of widths) {
     const w = w0 * k;
@@ -201,15 +209,16 @@ export function reedTexture(): { map: THREE.CanvasTexture; bumpMap: THREE.Canvas
     const x0 = x + gap / 2;
     const x1 = x + w - gap / 2;
     const cw = x1 - x0;
+    canes.push({ u0: x0 / PX, u1: x1 / PX });
     const base = palette[(rnd() * palette.length) | 0];
     // round cane: shaded edges, soft highlight a little off-centre
     const hl = 0.35 + rnd() * 0.2;
     const grad = ctx.createLinearGradient(x0, 0, x1, 0);
-    grad.addColorStop(0, 'rgba(40,26,14,0.42)');
-    grad.addColorStop(0.18, 'rgba(40,26,14,0.08)');
-    grad.addColorStop(hl, 'rgba(255,236,200,0.14)');
-    grad.addColorStop(0.82, 'rgba(40,26,14,0.07)');
-    grad.addColorStop(1, 'rgba(40,26,14,0.46)');
+    grad.addColorStop(0, 'rgba(48,36,26,0.42)');
+    grad.addColorStop(0.18, 'rgba(48,36,26,0.08)');
+    grad.addColorStop(hl, 'rgba(255,240,215,0.14)');
+    grad.addColorStop(0.82, 'rgba(48,36,26,0.07)');
+    grad.addColorStop(1, 'rgba(48,36,26,0.46)');
     ctx.fillStyle = base;
     ctx.fillRect(x0, 0, cw, S);
     ctx.fillStyle = grad;
@@ -226,7 +235,7 @@ export function reedTexture(): { map: THREE.CanvasTexture; bumpMap: THREE.Canvas
     // length-wise fibre streaks (wrapped in v)
     const nStreak = 2 + ((rnd() * 3) | 0);
     for (let i = 0; i < nStreak; i++) {
-      ctx.fillStyle = rnd() < 0.6 ? '#5C4028' : '#CDAE80';
+      ctx.fillStyle = rnd() < 0.6 ? '#5E4634' : '#D2B89A';
       ctx.globalAlpha = 0.06 + rnd() * 0.1;
       const sy = rnd() * S;
       const sl = S * (0.2 + rnd() * 0.6);
@@ -240,10 +249,10 @@ export function reedTexture(): { map: THREE.CanvasTexture; bumpMap: THREE.Canvas
     let ny = rnd() * 10 * PX;
     while (ny < S - 4) {
       const nh = 2 + rnd() * 2;
-      ctx.fillStyle = '#4A321E';
+      ctx.fillStyle = '#4E3A2A';
       ctx.globalAlpha = 0.45;
       ctx.fillRect(x0, ny, cw, nh);
-      ctx.fillStyle = '#C8A676';
+      ctx.fillStyle = '#CCB08E';
       ctx.globalAlpha = 0.25;
       ctx.fillRect(x0, ny + nh, cw, 1.2);
       ctx.globalAlpha = 1;
@@ -260,7 +269,7 @@ export function reedTexture(): { map: THREE.CanvasTexture; bumpMap: THREE.Canvas
   map.anisotropy = 16;
   const bumpTex = toTexture(bump, false);
   bumpTex.anisotropy = 8;
-  return { map, bumpMap: bumpTex };
+  return { map, bumpMap: bumpTex, canes };
 }
 
 // ---------------------------------------------------------------------------
