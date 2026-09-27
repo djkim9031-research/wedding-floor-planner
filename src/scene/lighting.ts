@@ -70,6 +70,10 @@ export function setVenueFixtures(defs: LightDef[]): void {
 export const INTERIOR_ENV_FACTOR = 0.18;
 /** Share of the direct sun metered inside (patches through the glazing). */
 const INTERIOR_SUN_SHARE = 0.1;
+/** Hall surfaces for the fixture-bounce estimate: floor + reed ceiling +
+ * walls ≈ 640 m², mean reflectance ≈ 0.45 (white walls, honey oak, reeds). */
+const HALL_SURFACE_M2 = 640;
+const HALL_REFLECTANCE = 0.45;
 
 const TRACK_CCT = 3000;
 const PORCH_CCT = 2700;
@@ -287,6 +291,31 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
       f.light.userData.lightDef = { ...f.def, intensityCd: (f.def.intensityCd ?? 0) * on } satisfies LightDef;
     }
   };
+  /** Indirect light the fixtures put into the hall, lux — the GI a raster
+   * pass lacks. Integrating-sphere estimate E = Φ·ρ / (A·(1 − ρ)) from the
+   * interior fixtures' own flux (so it scales with the real fixture layout),
+   * not a free ambient. */
+  const bounceLux = (): number => {
+    let flux = 0;
+    for (const f of fixtures) {
+      if (f.def.group !== 'interior') continue;
+      const cd = f.def.intensityCd ?? 0;
+      if (f.def.kind === 'spot') {
+        // effective cone: full to the inner edge, ~half through the penumbra
+        const outer = (f.def.halfAngleDeg ?? 25) * DEG;
+        const eff = outer * (1 - 0.5 * (f.def.penumbra ?? 0.5));
+        flux += cd * 2 * Math.PI * (1 - Math.cos(eff));
+      } else {
+        flux += cd * 4 * Math.PI;
+      }
+    }
+    return (flux * HALL_REFLECTANCE) / (HALL_SURFACE_M2 * (1 - HALL_REFLECTANCE));
+  };
+  const bounce = new THREE.AmbientLight(new THREE.Color().setRGB(...cctToLinear(TRACK_CCT), THREE.LinearSRGBColorSpace), 0);
+  bounce.userData.lightDef = { id: 'hall-bounce', kind: 'point', group: 'interior', position: [cx, 1.5, cz], colorLinear: cctToLinear(TRACK_CCT), ptMode: 'omit' } satisfies LightDef;
+  scene.add(excludeFromRender(bounce)); // the path tracer computes real GI
+  const bouncePerLux = 1 / Math.max(luminance(cctToLinear(TRACK_CCT)), 1e-3);
+
   /** representative interior illuminance from the fixtures, lux: ~30 % of
    * the brightest pool (metering target, not a light) */
   const fixtureLux = (): number => {
@@ -394,6 +423,8 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
   let ev = 12;
   let evTarget = 12;
   let envTarget = 1;
+  let bounceW = 0;
+  let bounceTarget = 0;
   let lastW = 0;
   const ray = new THREE.Vector3();
   const camPos = new THREE.Vector3();
@@ -430,6 +461,8 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
       }
     }
     envTarget = roofOn ? THREE.MathUtils.lerp(1, INTERIOR_ENV_FACTOR, inside) : 1;
+    // fixture bounce where the view is the hall (no ceiling → ~60 % of it)
+    bounceTarget = roofOn ? inside : 0.6 * w;
     lastW = w;
     const inp = sky.input;
     if (!inp.autoEV) {
@@ -451,16 +484,20 @@ export function setupLighting(scene: THREE.Scene, renderer: THREE.WebGLRenderer,
     const k = dt > 0 && dt < 0.09 ? 1 - Math.exp(-dt / 0.25) : 1;
     const evPrev = ev;
     const envPrev = envFactor;
+    const bouncePrev = bounceW;
     ev += (evTarget - ev) * k;
     envFactor += (envTarget - envFactor) * k;
+    bounceW += (bounceTarget - bounceW) * k;
     if (Math.abs(evTarget - ev) < 0.01) ev = evTarget;
     if (Math.abs(envTarget - envFactor) < 0.002) envFactor = envTarget;
+    if (Math.abs(bounceTarget - bounceW) < 0.002) bounceW = bounceTarget;
     renderer.toneMappingExposure = exposureScale(ev);
     scene.environmentIntensity = envFactor;
+    bounce.intensity = bounceLux() * bounceW * bouncePerLux;
     setViewEV100(ev);
     // QA/diagnostics: what the view is exposed at and why
-    (window as unknown as { __wpExposure?: object }).__wpExposure = { ev, evTarget, envFactor, envTarget, meterWeight: lastW };
-    return ev !== evPrev || envFactor !== envPrev;
+    (window as unknown as { __wpExposure?: object }).__wpExposure = { ev, evTarget, envFactor, envTarget, meterWeight: lastW, bounceLux: bounceLux() * bounceW };
+    return ev !== evPrev || envFactor !== envPrev || bounceW !== bouncePrev;
   };
 
   // --- material hygiene under physical exposure -----------------------------

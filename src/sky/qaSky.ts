@@ -1,5 +1,5 @@
 import { qaReport, registerQaHook } from '../app/qaHooks';
-import { lastSkyExtras } from './atmosphere';
+import { lastSkyExtras, lutBuildMs } from './atmosphere';
 import { getSky, getSkyInput, setSkyInput } from './skyStore';
 import { getViewEV100 } from './viewExposure';
 
@@ -31,6 +31,7 @@ registerQaHook((ctx, params) => {
         skyEV100: +s.ev100.toFixed(2),
         viewEV100: +(getViewEV100() ?? NaN).toFixed(2),
         computeMs: lastSkyExtras()?.timings,
+        lutBuildMs: +lutBuildMs().toFixed(1),
         applyMs: (window as unknown as { __wpSkyApplyMs?: number }).__wpSkyApplyMs,
         exposure: (window as unknown as { __wpExposure?: object }).__wpExposure,
       });

@@ -348,7 +348,10 @@ function msLookup(r: number, mus: number, out: Float64Array): void {
 }
 
 let lutMs = 0;
-/** Build the time-independent LUTs (≈100–200 ms, once). */
+/** Time the one-off LUT build took (ms; 0 until it ran). */
+export const lutBuildMs = (): number => lutMs;
+
+/** Build the time-independent LUTs (≈150–400 ms, once). */
 export function ensureLuts(): void {
   if (tLut && msLut) return;
   const t0 = now();
