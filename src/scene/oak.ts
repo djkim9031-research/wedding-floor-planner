@@ -546,7 +546,9 @@ function emitTube(b: Branch, sp: Species, out: GeoBuf, rnd: () => number): void 
     let below = 0;
     if (b.flare) {
       const f = b.flare;
-      wFlare = 1 - THREE.MathUtils.smoothstep(p.y, f.deckY + 1, f.deckY + f.height);
+      // concave root flare: the ring swings from the horizontal footprint to
+      // the tube over `height`, fastest near the deck (no collar)
+      wFlare = Math.pow(1 - THREE.MathUtils.smoothstep(p.y, f.deckY + 1, f.deckY + f.height), 1.8);
       below = Math.max(0, f.deckY - p.y);
     }
     for (let j = 0; j <= radial; j++) {
@@ -565,7 +567,10 @@ function emitTube(b: Branch, sp: Species, out: GeoBuf, rnd: () => number): void 
         if (hdir.lengthSq() < 1e-6) hdir.set(N.x, 0, N.z);
         hdir.normalize();
         const re = ellipseRadius(f.footprint, hdir.x, hdir.z) - f.clearance;
-        const lobes = 1 + 0.12 * Math.min(1, below / 10) * Math.max(0, Math.sin(4 * th + lobePhase));
+        // buttress lobes: bulge below the deck; above it only the valleys
+        // sink, so the flare never crosses the scribed opening
+        const lobeWave = Math.max(0, Math.sin(4 * th + lobePhase));
+        const lobes = below > 0 ? 1 + 0.12 * Math.min(1, below / 10) * lobeWave : 1 - 0.07 * (1 - lobeWave);
         const grow = 1 + 0.35 * THREE.MathUtils.smoothstep(below, 0, 40);
         const rr = re * grow * lobes * (1 + ridgeAmp * 0.5 * Math.sin(ridgeN * th + ridgePhase));
         const hx = p.x + hdir.x * rr;

@@ -217,7 +217,7 @@ function insideTrunk(p: Vec2, grow: number): boolean {
 
 export function deckOakSpec(): TreeSpec {
   const [A, B, C] = DECK_TRUNKS;
-  const flare = (fp: TrunkFootprint) => ({ footprint: fp, deckY: DECK_TOP_Y, height: 30, clearance: 1.25 });
+  const flare = (fp: TrunkFootprint) => ({ footprint: fp, deckY: DECK_TOP_Y, height: 44, clearance: 1.25 });
   const limbs: LimbSpec[] = [
     {
       // A — the leaning main trunk: ~35° off plumb toward the west, bending
