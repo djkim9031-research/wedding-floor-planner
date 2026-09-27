@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { i2m, ROOM_W, ROOM_D } from '../constants';
-import type { Atmosphere } from './exterior';
+import type { Atmosphere } from './atmosphere';
+import { excludeFromRender } from '../render/tags';
 
 /** Live sun input: real solar altitude/azimuth (model frame) + cloud cover. */
 export interface SunInput {
@@ -35,7 +36,7 @@ export function setupLighting(
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false; // on-demand via invalidateShadows()
   renderer.shadowMap.needsUpdate = true;
 
@@ -102,7 +103,7 @@ export function setupLighting(
     new THREE.MeshBasicMaterial({ color: 0xfff3d0, fog: false, transparent: true, opacity: 0.95, depthWrite: false }),
   );
   disc.visible = false;
-  scene.add(disc);
+  scene.add(excludeFromRender(disc));
   const arrow = new THREE.ArrowHelper(
     new THREE.Vector3(0, -1, 0),
     new THREE.Vector3(),
@@ -112,7 +113,7 @@ export function setupLighting(
     0.7,
   );
   arrow.visible = false;
-  scene.add(arrow);
+  scene.add(excludeFromRender(arrow));
 
   // Starfield: seeded canvas dome, faded in past nautical twilight
   const starC = document.createElement('canvas');
@@ -163,7 +164,7 @@ export function setupLighting(
   stars.position.set(cx, 0, cz);
   stars.renderOrder = -2;
   stars.visible = false;
-  scene.add(stars);
+  scene.add(excludeFromRender(stars));
 
   // Moon: phase-correct disc painted per instant (bright limb toward the sun)
   const moonC = document.createElement('canvas');
@@ -176,7 +177,7 @@ export function setupLighting(
   moonSprite.scale.setScalar(4.6); // ≈0.55° at the dome distance
   moonSprite.renderOrder = -2;
   moonSprite.visible = false;
-  scene.add(moonSprite);
+  scene.add(excludeFromRender(moonSprite));
   let moonKey = '';
   const drawMoon = (fraction: number, limbDeg: number): void => {
     const key = `${fraction.toFixed(3)}|${limbDeg.toFixed(1)}`;
@@ -258,7 +259,7 @@ export function setupLighting(
   glow.position.set(cx, 34, cz);
   glow.renderOrder = -2;
   glow.visible = false;
-  scene.add(glow);
+  scene.add(excludeFromRender(glow));
 
   const setNightSky = (input: SunInput | null, nightF: number): void => {
     const c = input ? THREE.MathUtils.clamp(input.clouds, 0, 1) : 0;

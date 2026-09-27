@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { tag } from '../render/tags';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { i2m, DECK_POLY, DECK_TREES, ROOM_W, ROOM_D, EAVE_Y } from '../constants';
-import { barkTexture, bayPanoramaTexture, deckWoodTextures, skyTexture, treetopRingTexture } from './textures';
+import { barkTexture, deckWoodTextures } from './textures';
 
 type Geo = THREE.BufferGeometry;
 
@@ -51,7 +52,7 @@ export function buildExterior(): THREE.Group {
 
   const deck = new THREE.Mesh(
     deckGeo,
-    new THREE.MeshStandardMaterial({
+    tag(new THREE.MeshStandardMaterial({
       map: deckTex,
       roughnessMap: deckRough,
       bumpMap: deckBump,
@@ -59,7 +60,7 @@ export function buildExterior(): THREE.Group {
       roughness: 1,
       metalness: 0,
       envMapIntensity: 0.5,
-    }),
+    }), 'wood-deck', { clearcoat: 0.5, clearcoatRoughness: 0.25 }, 'deck'),
   );
   deck.receiveShadow = true;
   group.add(deck);
@@ -67,7 +68,7 @@ export function buildExterior(): THREE.Group {
   // -------------------------------------------------------------------------
   // Cable railing along the outer edges (none along the building faces).
   // -------------------------------------------------------------------------
-  const woodMat = new THREE.MeshStandardMaterial({ color: 0x7a4f38, roughness: 0.8, metalness: 0 });
+  const woodMat = tag(new THREE.MeshStandardMaterial({ color: 0x7a4f38, roughness: 0.8, metalness: 0 }), 'wood-rail', { clearcoat: 0.3 }, 'railWood');
   const edgeRuns: [number, number, number, number][] = [
     [-4, -2, -176, -2], // west overhang in front of the building
     [-176, -2, -176, -288], // west flank
@@ -121,7 +122,7 @@ export function buildExterior(): THREE.Group {
     }
   }
   group.add(merged(capG, woodMat));
-  group.add(merged(cableG, new THREE.MeshStandardMaterial({ color: 0x8b8f94, roughness: 0.35, metalness: 0.9 })));
+  group.add(merged(cableG, tag(new THREE.MeshStandardMaterial({ color: 0x8b8f94, roughness: 0.35, metalness: 0.9 }), 'metal-stainless', {}, 'cables')));
 
   // wood curbs around the two plan-marked tree openings
   const curbG: Geo[] = [];
@@ -182,7 +183,7 @@ export function buildExterior(): THREE.Group {
     planterG.push(g);
     blob(planterRnd, px, 40, pz, 15, foliageColors[1]);
   }
-  const planters = merged(planterG, new THREE.MeshStandardMaterial({ color: 0x6b4f38, roughness: 0.5, metalness: 0.45 }));
+  const planters = merged(planterG, tag(new THREE.MeshStandardMaterial({ color: 0x6b4f38, roughness: 0.5, metalness: 0.45 }), 'metal-dark', {}, 'deckPlanters'));
   planters.castShadow = true;
   planters.receiveShadow = true;
   group.add(planters);
@@ -288,7 +289,7 @@ export function buildExterior(): THREE.Group {
   // -------------------------------------------------------------------------
   const grass = merged(
     [box(-2100, 3400, -3, -1, 300, 1700), box(-2100, 3400, -13, -11, 1700, 2700)],
-    new THREE.MeshStandardMaterial({ color: 0xc9bfa3, roughness: 1, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0xc9bfa3, roughness: 1, metalness: 0 }), 'ground', {}, 'dryGrass'),
   );
   grass.receiveShadow = true;
   group.add(grass);
@@ -296,7 +297,7 @@ export function buildExterior(): THREE.Group {
   // terrace edge where the grade steps down to the court
   const ledge = merged(
     [box(-2100, 70, -13, -0.9, 1694, 1702), box(475, 3400, -13, -0.9, 1694, 1702)],
-    new THREE.MeshStandardMaterial({ color: 0x8d8579, roughness: 0.95, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0x8d8579, roughness: 0.95, metalness: 0 }), 'stone', {}, 'ledge'),
   );
   ledge.castShadow = true;
   ledge.receiveShadow = true;
@@ -369,7 +370,7 @@ export function buildExterior(): THREE.Group {
     winG.push(box(404.4, 405.6, 40, 88, wz, wz + 52));
   }
 
-  const wingWalls = merged(wingWallG, new THREE.MeshStandardMaterial({ color: 0xede8dd, roughness: 0.95, metalness: 0 }));
+  const wingWalls = merged(wingWallG, tag(new THREE.MeshStandardMaterial({ color: 0xede8dd, roughness: 0.95, metalness: 0 }), 'stucco', {}, 'wingWalls'));
   wingWalls.castShadow = true;
   wingWalls.receiveShadow = true;
   const hipGeo = new THREE.BufferGeometry();
@@ -377,22 +378,22 @@ export function buildExterior(): THREE.Group {
   hipGeo.computeVertexNormals();
   const wingRoofs = new THREE.Mesh(
     hipGeo,
-    new THREE.MeshStandardMaterial({ color: 0x8b7365, roughness: 0.98, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0x8b7365, roughness: 0.98, metalness: 0 }), 'generic', {}, 'wingRoofs'),
   );
   wingRoofs.castShadow = true;
   wingRoofs.receiveShadow = true;
-  const wins = merged(winG, new THREE.MeshStandardMaterial({ color: 0x3a3a38, roughness: 0.4, metalness: 0.1 }));
+  const wins = merged(winG, tag(new THREE.MeshStandardMaterial({ color: 0x3a3a38, roughness: 0.4, metalness: 0.1 }), 'generic', {}, 'wingWindows'));
   group.add(wingWalls, wingRoofs, wins);
 
   // drop-off circle with a planted center island
   const asphalt = new THREE.Mesh(
     new THREE.CylinderGeometry(i2m(260), i2m(260), i2m(1.2), 48).translate(i2m(272.5), i2m(-11.1), i2m(2020)),
-    new THREE.MeshStandardMaterial({ color: 0x6f6c68, roughness: 0.97, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0x6f6c68, roughness: 0.97, metalness: 0 }), 'asphalt', {}, 'dropoff'),
   );
   asphalt.receiveShadow = true;
   group.add(asphalt);
 
-  const curbMat = new THREE.MeshStandardMaterial({ color: 0xb3ac9f, roughness: 0.9, metalness: 0 });
+  const curbMat = tag(new THREE.MeshStandardMaterial({ color: 0xb3ac9f, roughness: 0.9, metalness: 0 }), 'stone', {}, 'curb');
   const gap = 1.7; // curb ring opens where the walk feeds in from the north
   const curbGeo = new THREE.TorusGeometry(i2m(262), i2m(2.4), 6, 48, Math.PI * 2 - gap);
   curbGeo.rotateZ(-Math.PI / 2 + gap / 2);
@@ -409,7 +410,7 @@ export function buildExterior(): THREE.Group {
   islandCurb.receiveShadow = true;
   const soil = new THREE.Mesh(
     new THREE.CylinderGeometry(i2m(90), i2m(90), i2m(2), 40).translate(i2m(272.5), i2m(-10), i2m(2020)),
-    new THREE.MeshStandardMaterial({ color: 0x6b5b49, roughness: 1, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0x6b5b49, roughness: 1, metalness: 0 }), 'soil', {}, 'islandSoil'),
   );
   soil.receiveShadow = true;
   group.add(curb, islandCurb, soil);
@@ -458,7 +459,7 @@ export function buildExterior(): THREE.Group {
   // -------------------------------------------------------------------------
   const pavers = merged(
     [box(-470, 100, -2, -0.5, 815, 1250), box(375, 830, -2, -0.5, 815, 1250)],
-    new THREE.MeshStandardMaterial({ color: 0xcfc5b2, roughness: 0.95, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0xcfc5b2, roughness: 0.95, metalness: 0 }), 'stone', {}, 'walkPavers'),
   );
   pavers.receiveShadow = true;
   group.add(pavers);
@@ -485,7 +486,7 @@ export function buildExterior(): THREE.Group {
       else patioG.push(box(cx - 8, cx + 8, 17, 34, cz + (dz < 0 ? -8 : 5), cz + (dz < 0 ? -5 : 8)));
     }
   }
-  const patio = merged(patioG, new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.6, metalness: 0 }));
+  const patio = merged(patioG, tag(new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.6, metalness: 0 }), 'stone', {}, 'patio'));
   patio.castShadow = true;
   patio.receiveShadow = true;
   group.add(patio);
@@ -498,7 +499,7 @@ export function buildExterior(): THREE.Group {
   // east court: three planting beds, each with a few foliage blobs
   const beds = merged(
     [box(440, 660, 0, 8, 890, 980), box(680, 800, 0, 8, 890, 980), box(440, 660, 0, 8, 1130, 1220)],
-    new THREE.MeshStandardMaterial({ color: 0x5c4a37, roughness: 1, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0x5c4a37, roughness: 1, metalness: 0 }), 'soil', {}, 'beds'),
   );
   beds.castShadow = true;
   beds.receiveShadow = true;
@@ -532,7 +533,7 @@ export function buildExterior(): THREE.Group {
       new THREE.CylinderGeometry(i2m(34), i2m(34), i2m(1.5), 16).translate(i2m(600), i2m(12), i2m(1030)),
       new THREE.CylinderGeometry(i2m(16), i2m(16), i2m(1.5), 12).translate(i2m(600), i2m(42.5), i2m(1030)),
     ],
-    new THREE.MeshStandardMaterial({ color: 0x5f8fa8, roughness: 0.15, metalness: 0.1 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0x5f8fa8, roughness: 0.15, metalness: 0.1 }), 'generic', {}, 'fountainWater'),
   );
   water.receiveShadow = true;
   group.add(fountain, water);
@@ -544,7 +545,7 @@ export function buildExterior(): THREE.Group {
 
   const bwPlanters = merged(
     bwPlanterG,
-    new THREE.MeshStandardMaterial({ color: 0x6b4f38, roughness: 0.5, metalness: 0.45 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0x6b4f38, roughness: 0.5, metalness: 0.45 }), 'metal-dark', {}, 'bwPlanters'),
   );
   bwPlanters.castShadow = true;
   bwPlanters.receiveShadow = true;
@@ -559,11 +560,11 @@ export function buildExterior(): THREE.Group {
 
   const barkTex = barkTexture();
   barkTex.repeat.set(2, 7);
-  const bark = merged(barkG, new THREE.MeshStandardMaterial({ map: barkTex, roughness: 0.95, metalness: 0 }));
+  const bark = merged(barkG, tag(new THREE.MeshStandardMaterial({ map: barkTex, roughness: 0.95, metalness: 0 }), 'bark', {}, 'oakBark'));
   bark.castShadow = true;
   const foliage = merged(
     foliageG,
-    new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0 }), 'foliage', { translucency: 0.3 }, 'oakFoliage'),
   );
   foliage.castShadow = true;
   group.add(bark, foliage);
@@ -573,10 +574,10 @@ export function buildExterior(): THREE.Group {
   // Easter egg: a bunny and a squirrel playing by the deck oak.
   // -------------------------------------------------------------------------
   const critters = new THREE.Group();
-  const bunnyFur = new THREE.MeshStandardMaterial({ color: 0xa29384, roughness: 0.95 });
-  const bunnyWhite = new THREE.MeshStandardMaterial({ color: 0xf2ede4, roughness: 0.95 });
-  const squirrelFur = new THREE.MeshStandardMaterial({ color: 0x8a5636, roughness: 0.95 });
-  const squirrelTail = new THREE.MeshStandardMaterial({ color: 0x9c6a44, roughness: 0.98 });
+  const bunnyFur = tag(new THREE.MeshStandardMaterial({ color: 0xa29384, roughness: 0.95 }), 'generic', {}, 'bunnyFur');
+  const bunnyWhite = tag(new THREE.MeshStandardMaterial({ color: 0xf2ede4, roughness: 0.95 }), 'generic', {}, 'bunnyWhite');
+  const squirrelFur = tag(new THREE.MeshStandardMaterial({ color: 0x8a5636, roughness: 0.95 }), 'generic', {}, 'squirrelFur');
+  const squirrelTail = tag(new THREE.MeshStandardMaterial({ color: 0x9c6a44, roughness: 0.98 }), 'generic', {}, 'squirrelTail');
 
   const part = (
     parent: THREE.Group,
@@ -631,79 +632,4 @@ export function buildExterior(): THREE.Group {
   group.add(critters);
 
   return group;
-}
-
-// ---------------------------------------------------------------------------
-// Sky dome, valley backdrop and fog.
-// ---------------------------------------------------------------------------
-
-export interface Atmosphere {
-  skyMat: THREE.MeshBasicMaterial;
-  valleyMat: THREE.MeshBasicMaterial;
-  ringMat: THREE.MeshBasicMaterial;
-  fog: THREE.Fog;
-}
-
-export function applyAtmosphere(scene: THREE.Scene): Atmosphere {
-  scene.fog = new THREE.Fog(0xe8eef2, 45, 160);
-
-  const cx = i2m(ROOM_W / 2);
-  const cz = i2m(ROOM_D / 2);
-
-  const sky = new THREE.Mesh(
-    new THREE.SphereGeometry(250, 32, 16),
-    new THREE.MeshBasicMaterial({ map: skyTexture(), side: THREE.BackSide, fog: false, depthWrite: false }),
-  );
-  sky.position.set(cx, 0, cz);
-  sky.renderOrder = -2;
-  scene.add(sky);
-
-  // full-circle Bay Area panorama; haze baked in, so fog:false
-  const valley = new THREE.Mesh(
-    new THREE.CylinderGeometry(85, 85, 40, 96, 1, true),
-    new THREE.MeshBasicMaterial({
-      map: bayPanoramaTexture(),
-      side: THREE.BackSide,
-      transparent: true,
-      fog: false,
-      depthWrite: false,
-    }),
-  );
-  valley.position.set(cx, 7, cz);
-  valley.renderOrder = -1;
-  scene.add(valley);
-
-  // ground plane to the horizon: a broad lawn disc under everything, so
-  // downward views land on grass (it takes the scene lights, darkening at
-  // night) instead of the void behind the backdrop
-  const lawn = new THREE.Mesh(
-    new THREE.CircleGeometry(260, 48),
-    new THREE.MeshStandardMaterial({ color: 0x76825a, roughness: 1, metalness: 0 }),
-  );
-  lawn.rotation.x = -Math.PI / 2;
-  lawn.position.set(cx, -0.55, cz);
-  scene.add(lawn);
-
-  // near treetop ring just past the knoll: crowns rise above deck level and
-  // parallax against the painted valley as the camera moves
-  const ring = new THREE.Mesh(
-    new THREE.CylinderGeometry(58, 58, 13, 96, 1, true),
-    new THREE.MeshBasicMaterial({
-      map: treetopRingTexture(),
-      side: THREE.BackSide,
-      transparent: true,
-      alphaTest: 0.35,
-      depthWrite: false,
-    }),
-  );
-  ring.position.set(cx, -0.8, cz);
-  ring.renderOrder = -1;
-  scene.add(ring);
-
-  return {
-    skyMat: sky.material as THREE.MeshBasicMaterial,
-    valleyMat: valley.material as THREE.MeshBasicMaterial,
-    ringMat: ring.material as THREE.MeshBasicMaterial,
-    fog: scene.fog as THREE.Fog,
-  };
 }

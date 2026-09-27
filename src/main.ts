@@ -18,6 +18,10 @@ import { buildStatusPanel } from './ui/statusPanel';
 import { buildSunPanel } from './ui/sunPanel';
 import { buildToolbar } from './ui/toolbar';
 import { openCreator } from './creator/creatorWindow';
+import { setAppContext } from './app/context';
+import { runQaHooks } from './app/qaHooks';
+import { setSkyInput } from './sky/skyStore';
+import './features';
 
 const app = document.getElementById('app')!;
 const container = document.createElement('div');
@@ -72,6 +76,7 @@ const toast = (msg: string): void => {
 const toolbar = buildToolbar(container, rig, host, toast);
 buildPalette(container, fsm, pointerCtl);
 const sunPanel = buildSunPanel(container, (s) => {
+  setSkyInput({ enabled: s.enabled, date: s.date, minutes: s.minutes, cloudPct: s.clouds ? s.cloudPct : 0 });
   if (!s.enabled) {
     host.applySun(null);
     return;
@@ -448,6 +453,13 @@ if (params.get('cam') === 'close') {
   rig.controls.target.set(3.3, 1.1, 16.3);
 }
 if (params.get('roof') === '1') host.setRoofVisible(true);
+// QA: settle every drape synchronously instead of frame by frame (software
+// GL in CI renders each settling frame far too slowly)
+if (params.get('settle') === 'fast') {
+  host.onFrame(() => {
+    if (clothMgr.isActive()) clothMgr.skipAll();
+  });
+}
 if (params.get('burn') === '1') host.onFrame(() => true);
 // deterministic captures: #sun=YYYY-MM-DD,HH:MM,cloudPct  or  #sun=off
 const sunParam = params.get('sun');
@@ -466,4 +478,16 @@ if (sunParam === 'off') {
 }
 
 host.start(rig.camera, (dt) => rig.update(dt));
+setAppContext({ host, rig, clothMgr, itemMeshes, fsm, sunPanel, toast, root: container });
+runQaHooks({ host, rig, clothMgr, itemMeshes, fsm, sunPanel, toast, root: container }, params);
 (window as unknown as { __wpBooted?: boolean }).__wpBooted = true;
+
+// QA: __wpIdle flips true once every linen has been still for 30 frames, so
+// headless captures wait for the drape instead of a fixed timeout
+{
+  let still = 0;
+  host.onFrame(() => {
+    still = clothMgr.isActive() ? 0 : still + 1;
+    (window as unknown as { __wpIdle?: boolean }).__wpIdle = still >= 30;
+  });
+}

@@ -3,3 +3,5 @@ dist/
 dist-single/
 .shots/
 *.log
+dist-base/
+.claude/worktrees/

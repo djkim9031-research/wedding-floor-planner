@@ -1,14 +1,28 @@
 import * as THREE from 'three';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
-import { applyAtmosphere, buildExterior } from './exterior';
+import { applyAtmosphere } from './atmosphere';
+import { buildExterior } from './exterior';
 import { setupLighting } from './lighting';
 import { buildVenue } from './venue';
+
+/** What a render override gets each frame (photo mode replaces the raster
+ * draw with path-traced samples while the view is idle). */
+export interface RenderFrame {
+  camera: THREE.PerspectiveCamera;
+  dt: number;
+  camMoved: boolean;
+  /** scene changed since the last frame (edits, sun, roof, cloth) */
+  dirty: boolean;
+  simActive: boolean;
+}
 
 export interface SceneHost {
   renderer: THREE.WebGLRenderer;
   css2d: CSS2DRenderer;
   scene: THREE.Scene;
   canvas: HTMLCanvasElement;
+  venueGroup: THREE.Group;
+  exteriorGroup: THREE.Group;
   /** parent for placed-item meshes and the cloth manager's group */
   itemsGroup: THREE.Group;
   /** parent for ghost, snap highlights, dimension lines, rotate ring */
@@ -21,13 +35,20 @@ export interface SceneHost {
   /** drive the lighting from a real sun state; null = showcase preset */
   applySun(input: import('./lighting').SunInput | null): void;
   /** cb runs every frame; return true to request a render (e.g. cloth settling) */
-  onFrame(cb: (dt: number) => boolean | void): void;
+  onFrame(cb: (dt: number) => boolean | void): () => void;
+  /** take over drawing (null restores the raster loop) */
+  setRenderOverride(fn: ((f: RenderFrame) => void) | null): void;
+  /** one raster draw of the scene (optionally without overlays/labels) */
+  rasterize(camera: THREE.Camera, opts?: { overlays?: boolean }): void;
+  /** ghost, rings, dimension lines and CSS labels */
+  setOverlaysVisible(v: boolean): void;
+  getCamera(): THREE.PerspectiveCamera | null;
   /** begin the loop; `update` is the camera rig tick returning "camera moved" */
   start(camera: THREE.PerspectiveCamera, update: (dt: number) => boolean): void;
 }
 
 export function createSceneHost(container: HTMLElement): SceneHost {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.appendChild(renderer.domElement);
   renderer.domElement.className = 'gl-canvas';
@@ -40,7 +61,8 @@ export function createSceneHost(container: HTMLElement): SceneHost {
 
   const venue = buildVenue();
   scene.add(venue.group);
-  scene.add(buildExterior());
+  const exteriorGroup = buildExterior();
+  scene.add(exteriorGroup);
   const atmo = applyAtmosphere(scene);
   const lighting = setupLighting(scene, renderer, atmo);
 
@@ -52,7 +74,9 @@ export function createSceneHost(container: HTMLElement): SceneHost {
   venue.roof.visible = false;
 
   let dirty = true;
-  const frameCbs: Array<(dt: number) => boolean | void> = [];
+  let frameCbs: Array<(dt: number) => boolean | void> = [];
+  let override: ((f: RenderFrame) => void) | null = null;
+  let activeCamera: THREE.PerspectiveCamera | null = null;
 
   const resize = () => {
     const w = container.clientWidth;
@@ -68,6 +92,8 @@ export function createSceneHost(container: HTMLElement): SceneHost {
     css2d,
     scene,
     canvas: renderer.domElement,
+    venueGroup: venue.group,
+    exteriorGroup,
     itemsGroup,
     overlayGroup,
     roof: venue.roof,
@@ -90,8 +116,28 @@ export function createSceneHost(container: HTMLElement): SceneHost {
     },
     onFrame(cb) {
       frameCbs.push(cb);
+      return () => {
+        frameCbs = frameCbs.filter((c) => c !== cb);
+      };
     },
+    setRenderOverride(fn) {
+      override = fn;
+      dirty = true;
+    },
+    rasterize(camera, opts) {
+      const prev = overlayGroup.visible;
+      if (opts?.overlays === false) overlayGroup.visible = false;
+      renderer.render(scene, camera);
+      overlayGroup.visible = prev;
+    },
+    setOverlaysVisible(v) {
+      overlayGroup.visible = v;
+      css2d.domElement.style.visibility = v ? '' : 'hidden';
+      dirty = true;
+    },
+    getCamera: () => activeCamera,
     start(camera, update) {
+      activeCamera = camera;
       resize();
       let last = performance.now();
       const tick = (now: number) => {
@@ -102,6 +148,12 @@ export function createSceneHost(container: HTMLElement): SceneHost {
         let simActive = false;
         for (const cb of frameCbs) {
           if (cb(dt)) simActive = true;
+        }
+        if (override) {
+          if (simActive) renderer.shadowMap.needsUpdate = true;
+          override({ camera, dt, camMoved, dirty, simActive });
+          dirty = false;
+          return;
         }
         if (dirty || camMoved || simActive) {
           if (simActive) renderer.shadowMap.needsUpdate = true;

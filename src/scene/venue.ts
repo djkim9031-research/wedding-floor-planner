@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { tag } from '../render/tags';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   i2m,
@@ -378,7 +379,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   wood.roughnessMap.repeat.set(tile, tile);
   const floor = new THREE.Mesh(
     floorGeo,
-    new THREE.MeshStandardMaterial({
+    tag(new THREE.MeshStandardMaterial({
       map: wood.map,
       roughnessMap: wood.roughnessMap,
       bumpMap: wood.bumpMap,
@@ -386,7 +387,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
       roughness: 1,
       metalness: 0,
       envMapIntensity: 1.9, // satin oak picks up the glass wall's sky sheen
-    }),
+    }), 'wood-floor', { clearcoat: 0.35, clearcoatRoughness: 0.2 }, 'hallFloor'),
   );
   floor.receiveShadow = true;
   group.add(floor);
@@ -394,10 +395,10 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   // -------------------------------------------------------------------------
   // Materials + merged wall meshes.
   // -------------------------------------------------------------------------
-  const stuccoMat = new THREE.MeshStandardMaterial({ color: 0xe6e0d1, roughness: 0.93, metalness: 0 });
-  const baseMat = new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.5, metalness: 0 });
-  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf4efe6, roughness: 0.6, metalness: 0 });
-  const glassMat = new THREE.MeshStandardMaterial({
+  const stuccoMat = tag(new THREE.MeshStandardMaterial({ color: 0xe6e0d1, roughness: 0.93, metalness: 0 }), 'paint-wall', {}, 'walls');
+  const baseMat = tag(new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.5, metalness: 0 }), 'paint-trim', {}, 'baseboard');
+  const whiteMat = tag(new THREE.MeshStandardMaterial({ color: 0xf4efe6, roughness: 0.6, metalness: 0 }), 'paint-trim', {}, 'whiteTrim');
+  const glassMat = tag(new THREE.MeshStandardMaterial({
     color: 0xeaf4f8,
     transparent: true,
     opacity: 0.1,
@@ -405,7 +406,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
     metalness: 0,
     side: THREE.DoubleSide,
     depthWrite: false,
-  });
+  }), 'glass-clear', { thin: true, ior: 1.5 }, 'windows');
 
   const stucco = merged(stuccoG, stuccoMat);
   stucco.castShadow = true;
@@ -443,7 +444,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   reed.repeat.set(slopeLen / 64, zLen / 64);
   const reedMesh = merged(
     [slopedPlane(W_EAVE, SKY0, N_OVER, S_OVER, 0, false), slopedPlane(SKY1, E_EAVE, N_OVER, S_OVER, 0, false)],
-    new THREE.MeshStandardMaterial({ map: reed, roughness: 0.92, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ map: reed, roughness: 0.92, metalness: 0 }), 'reed', {}, 'reedCeiling'),
   );
   roofTopG.push(slopedPlane(W_EAVE, SKY0, N_OVER, S_OVER, 3, true));
   roofTopG.push(slopedPlane(SKY1, E_EAVE, N_OVER, S_OVER, 3, true));
@@ -455,7 +456,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
     roofTopG.push(slopedBox(SKY0, RIDGE_X, 3, zz0, zz1, 0));
     roofTopG.push(slopedBox(RIDGE_X, SKY1, 3, zz0, zz1, 0));
   }
-  const roofTop = merged(roofTopG, new THREE.MeshStandardMaterial({ color: 0x9a8f80, roughness: 0.95, metalness: 0 }));
+  const roofTop = merged(roofTopG, tag(new THREE.MeshStandardMaterial({ color: 0x9a8f80, roughness: 0.95, metalness: 0 }), 'generic', {}, 'roofTop'));
   roof.add(reedMesh, roofTop);
 
   // exposed rafters, 4x10 @ 42.8" o.c., instanced per slope
@@ -488,7 +489,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   whiteRoofG.push(slopedBox(RIDGE_X, SKY1, 1, GLASS_Z1, 640, 1));
   const skyGlass = merged(
     skyGlassG,
-    new THREE.MeshStandardMaterial({
+    tag(new THREE.MeshStandardMaterial({
       color: 0xeaf4f8,
       transparent: true,
       opacity: 0.15,
@@ -496,7 +497,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
       metalness: 0,
       side: THREE.DoubleSide,
       depthWrite: false,
-    }),
+    }), 'glass-clear', { thin: true, ior: 1.5 }, 'ridgeGlass'),
   );
   roof.add(skyGlass);
   for (const bx of [256.5, 264.5, 280.5, 288.5]) {
@@ -543,7 +544,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   whiteRoofG.push(box(RIDGE_X - 2, RIDGE_X + 2, 172, 196, 298, 302)); // mount pole
   const projector = new THREE.Mesh(
     box(RIDGE_X - 9, RIDGE_X + 9, 160, 172, 293, 307),
-    new THREE.MeshStandardMaterial({ color: 0x2e2e30, roughness: 0.6, metalness: 0.2 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0x2e2e30, roughness: 0.6, metalness: 0.2 }), 'metal-dark', {}, 'projector'),
   );
   roof.add(projector);
 
@@ -557,13 +558,13 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   }
   const discs = merged(
     discG,
-    new THREE.MeshStandardMaterial({
+    tag(new THREE.MeshStandardMaterial({
       color: 0x30281e,
       emissive: 0xffd9a8,
       emissiveIntensity: 1.6,
       roughness: 0.4,
       metalness: 0,
-    }),
+    }), 'emitter-fixture', { luminance: 20000 }, 'ceilingDisc'),
   );
   roof.add(discs);
 
@@ -617,7 +618,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   bathFloorGeo.rotateX(-Math.PI / 2);
   const bathFloor = new THREE.Mesh(
     bathFloorGeo,
-    new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.5, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.5, metalness: 0 }), 'ceramic', {}, 'bathTile'),
   );
   bathFloor.receiveShadow = true;
   group.add(hallFloor, bathFloor);
@@ -663,7 +664,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   for (const cx of [596, 628]) urinal(cx);
   for (const cx of [656, 680]) vanitySink(cx);
 
-  const porcelainMat = new THREE.MeshStandardMaterial({ color: 0xfbfaf6, roughness: 0.3, metalness: 0 });
+  const porcelainMat = tag(new THREE.MeshStandardMaterial({ color: 0xfbfaf6, roughness: 0.3, metalness: 0 }), 'ceramic', {}, 'porcelain');
   const fixtures = merged(fixtureG, porcelainMat);
   fixtures.castShadow = true;
   fixtures.receiveShadow = true;
@@ -725,7 +726,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
       paverSurf(76, 469, 1688, 1706, -5.25),
       paverSurf(76, 469, 1706, 1835, -9.75),
     ],
-    new THREE.MeshStandardMaterial({ map: paverTex, roughnessMap: plank.roughnessMap, roughness: 1, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ map: paverTex, roughnessMap: plank.roughnessMap, roughness: 1, metalness: 0 }), 'stone', {}, 'pavers'),
   );
   pavers.receiveShadow = true;
   group.add(pavers);
@@ -737,7 +738,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
       box(76, 469, -12, -5.3, 1688, 1706),
       box(76, 469, -20, -9.8, 1706, 1835),
     ],
-    new THREE.MeshStandardMaterial({ color: 0xaaa294, roughness: 0.95, metalness: 0 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0xaaa294, roughness: 0.95, metalness: 0 }), 'stone', {}, 'plinth'),
   );
   plinth.castShadow = true;
   plinth.receiveShadow = true;
@@ -763,7 +764,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
     rail.translate(i2m(rx), i2m(27.5), i2m(1696.5));
     railG.push(rail);
   }
-  const rails = merged(railG, new THREE.MeshStandardMaterial({ color: 0x9aa0a5, roughness: 0.35, metalness: 0.85 }));
+  const rails = merged(railG, tag(new THREE.MeshStandardMaterial({ color: 0x9aa0a5, roughness: 0.35, metalness: 0.85 }), 'metal-stainless', {}, 'handrail'));
   rails.castShadow = true;
   group.add(rails);
 
@@ -848,11 +849,11 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   const bwSlopeLen = Math.hypot(BW_HALF - 40, (BW_HALF - 40) * SLOPE);
   bwReedTex.repeat.set(bwSlopeLen / 64, 145 / 64);
   bwReedTex.needsUpdate = true;
-  const bwReedMesh = merged(bwReedG, new THREE.MeshStandardMaterial({ map: bwReedTex, roughness: 0.92, metalness: 0 }));
-  const bwTopMesh = merged(bwTopG, new THREE.MeshStandardMaterial({ color: 0x9a8f80, roughness: 0.95, metalness: 0 }));
+  const bwReedMesh = merged(bwReedG, tag(new THREE.MeshStandardMaterial({ map: bwReedTex, roughness: 0.92, metalness: 0 }), 'reed', {}, 'bwReed'));
+  const bwTopMesh = merged(bwTopG, tag(new THREE.MeshStandardMaterial({ color: 0x9a8f80, roughness: 0.95, metalness: 0 }), 'generic', {}, 'bwRoofTop'));
   const bwGlassMesh = merged(
     bwGlassG,
-    new THREE.MeshStandardMaterial({
+    tag(new THREE.MeshStandardMaterial({
       color: 0xeaf4f8,
       transparent: true,
       opacity: 0.15,
@@ -860,7 +861,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
       metalness: 0,
       side: THREE.DoubleSide,
       depthWrite: false,
-    }),
+    }), 'glass-clear', { thin: true, ior: 1.5 }, 'bwGlass'),
   );
   const bwBars = merged(bwBarG, whiteMat);
   bwBars.castShadow = true;
@@ -902,11 +903,11 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   monTex.colorSpace = THREE.SRGBColorSpace;
   const signBoard = new THREE.Mesh(
     new THREE.BoxGeometry(i2m(72), i2m(24), i2m(2)),
-    new THREE.MeshStandardMaterial({ color: 0xe7e0d0, roughness: 0.85, metalness: 0.05 }),
+    tag(new THREE.MeshStandardMaterial({ color: 0xe7e0d0, roughness: 0.85, metalness: 0.05 }), 'stucco', {}, 'signPanel'),
   );
   const signFace = new THREE.Mesh(
     new THREE.PlaneGeometry(i2m(68), i2m(22)),
-    new THREE.MeshStandardMaterial({ map: monTex, roughness: 0.85, metalness: 0.1 }),
+    tag(new THREE.MeshStandardMaterial({ map: monTex, roughness: 0.85, metalness: 0.1 }), 'generic', {}, 'signFace'),
   );
   // hung centered on the spine, just under the canopy at the entrance
   const SIGN_Y = 150; // canopy ridge ≈172; sign top rods reach the fascia
@@ -918,12 +919,12 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   for (const rx of [272.5 - 26, 272.5 + 26]) {
     rodG.push(box(rx - 0.5, rx + 0.5, SIGN_Y + 12, SIGN_Y + 22, 1795.5, 1796.5));
   }
-  const rods = merged(rodG, new THREE.MeshStandardMaterial({ color: 0x4a3826, roughness: 0.5, metalness: 0.4 }));
+  const rods = merged(rodG, tag(new THREE.MeshStandardMaterial({ color: 0x4a3826, roughness: 0.5, metalness: 0.4 }), 'metal-dark', {}, 'signRods'));
   group.add(rods);
 
   // shingle roofs over the annex wings (per the satellite) — in the roof
   // group so the ceiling toggle still opens the dollhouse view
-  const shingle = new THREE.MeshStandardMaterial({ color: 0x8b7365, roughness: 0.95, metalness: 0 });
+  const shingle = tag(new THREE.MeshStandardMaterial({ color: 0x8b7365, roughness: 0.95, metalness: 0 }), 'generic', {}, 'shingle');
   const annexRoofG: Geo[] = [];
   annexRoofG.push(box(-615, 186, 106, 112, 407, 671)); // west hallway + bathroom suite
   annexRoofG.push(box(371, 706, 106, 112, 491, 671)); // east hallway + bathroom

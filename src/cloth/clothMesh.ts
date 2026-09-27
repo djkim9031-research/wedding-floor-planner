@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { tag } from '../render/tags';
 import { mulberry32 } from './prng';
 
 // ---------------------------------------------------------------------------
@@ -54,7 +55,7 @@ export function getClothMaterial(color: number): THREE.MeshPhysicalMaterial {
   let mat = materials.get(color);
   if (!mat) {
     ensureTextures();
-    mat = new THREE.MeshPhysicalMaterial({
+    mat = tag(new THREE.MeshPhysicalMaterial({
       color,
       map: weaveMap,
       bumpMap: weaveBump,
@@ -67,7 +68,7 @@ export function getClothMaterial(color: number): THREE.MeshPhysicalMaterial {
       side: THREE.DoubleSide,
       shadowSide: THREE.FrontSide,
       vertexColors: true, // seam shading writes per-vertex tone (default white)
-    });
+    }), 'linen', { sheen: 0.6, sheenRoughness: 0.65, translucency: 0.15 }, `cloth${color.toString(16)}`);
     materials.set(color, mat);
   }
   return mat;
