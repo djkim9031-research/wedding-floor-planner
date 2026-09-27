@@ -4,36 +4,15 @@ import { BLENDER_PRESETS, type RenderSettings } from '../render/export/sceneJson
 import { photoMode } from '../render/photo/photoMode';
 import { saveBlob } from '../render/photo/save';
 import { getSky } from '../sky/skyStore';
-
-/** Native bridge surface used here (see electron/preload.ts). */
-interface BlenderBridge {
-  detect(): Promise<{ path: string; version: string; supported: boolean } | null>;
-  choose(): Promise<{ path: string; version: string; supported: boolean } | null>;
-  render(files: Record<string, ArrayBuffer | string>, opts: { preset: string; w: number; h: number; samples: number }): Promise<string>;
-  cancel(jobId: string): void;
-  onEvent(cb: (jobId: string, ev: BlenderEvent) => void): () => void;
-  openBlend?(path: string): void;
-  readImage?(path: string): Promise<ArrayBuffer | null>;
-}
-type BlenderEvent =
-  | { ev: 'stage'; stage: string; t?: number }
-  | { ev: 'progress'; sample: number; of: number; pct?: number; etaSec?: number }
-  | { ev: 'result'; png: string; blend?: string; ms?: number; device?: string }
-  | { ev: 'error'; message: string; trace?: string };
-
-function bridge(): { blender?: BlenderBridge; showItem?(p: string): void; openExternal?(u: string): void } | null {
-  return (window as unknown as { wpNative?: { blender?: BlenderBridge; showItem?(p: string): void; openExternal?(u: string): void } }).wpNative ?? null;
-}
-
-const DOWNLOAD_URL = 'https://www.blender.org/download/lts/4-5/';
+import { platform, type BlenderDetectResult, type BlenderEvent } from '../platform/bridge';
 
 let open = false;
 
 export function openBlenderDialog(toast: (m: string) => void): void {
   if (open) return;
   open = true;
-  const native = bridge();
-  const bl = native?.blender;
+  const p = platform();
+  const bl = p.native ? p.blender : null;
   const back = document.createElement('div');
   back.className = 'bl-backdrop';
   const dlg = document.createElement('div');
@@ -96,7 +75,7 @@ export function openBlenderDialog(toast: (m: string) => void): void {
   };
 
   q('cancel').addEventListener('click', () => {
-    if (jobId && bl) bl.cancel(jobId);
+    if (jobId && bl) void bl.cancel(jobId);
     close();
   });
   back.addEventListener('click', (e) => {
@@ -126,20 +105,21 @@ export function openBlenderDialog(toast: (m: string) => void): void {
   if (!bl) return;
   const found = q('found');
   const go = q<HTMLButtonElement>('go');
-  const showFound = (b: { path: string; version: string; supported: boolean } | null) => {
-    if (b && b.supported) {
+  const showFound = (r: BlenderDetectResult | null) => {
+    if (!r) return;
+    if (r.found && r.install) {
       found.className = 'bl-found';
-      found.textContent = `Blender ${b.version} — ${b.path}`;
+      found.textContent = `${r.install.label} — ${r.install.path}`;
       go.disabled = false;
     } else {
       found.className = 'bl-found missing';
-      found.innerHTML = b
-        ? `Blender ${b.version} found, but this Mac needs <b>Blender 4.5 LTS</b> (the last release for Intel Macs). `
+      found.innerHTML = r.install
+        ? `${r.install.label} found, but this Mac needs <b>Blender 4.5 LTS</b> (the last release for Intel Macs). `
         : 'Blender 4.5 LTS was not found. ';
       const dl = document.createElement('button');
       dl.className = 'ui-btn';
       dl.textContent = 'Download 4.5 LTS';
-      dl.addEventListener('click', () => native?.openExternal?.(DOWNLOAD_URL));
+      dl.addEventListener('click', () => void p.openExternal(r.downloadUrl));
       const loc = document.createElement('button');
       loc.className = 'ui-btn';
       loc.textContent = 'Locate…';
@@ -148,7 +128,10 @@ export function openBlenderDialog(toast: (m: string) => void): void {
       go.disabled = true;
     }
   };
-  void bl.detect().then(showFound, () => showFound(null));
+  void bl.detect().then(showFound, (e) => {
+    found.className = 'bl-found missing';
+    found.textContent = `Could not look for Blender: ${(e as Error).message}`;
+  });
 
   go.addEventListener('click', async () => {
     go.disabled = true;
@@ -159,23 +142,27 @@ export function openBlenderDialog(toast: (m: string) => void): void {
       const files: Record<string, ArrayBuffer | string> = {};
       for (const [k, v] of Object.entries(pkg.files)) files[k] = typeof v === 'string' ? v : (v.slice().buffer as ArrayBuffer);
       const t0 = performance.now();
-      unsub = bl.onEvent((id, ev) => {
+      unsub = bl.onEvent((id, ev: BlenderEvent) => {
         if (id !== jobId) return;
         if (ev.ev === 'stage') setProgress(stageLabel(ev.stage));
         else if (ev.ev === 'progress') {
           const eta = ev.etaSec ? ` · ~${fmtDur(ev.etaSec)} left` : '';
-          setProgress(`Rendering sample ${ev.sample}/${ev.of}${eta}`, ev.sample / ev.of);
+          const frac = ev.sample && ev.of ? ev.sample / ev.of : ev.pct !== undefined ? ev.pct / 100 : undefined;
+          setProgress(ev.sample && ev.of ? `Rendering sample ${ev.sample}/${ev.of}${eta}` : `Rendering…${eta}`, frac);
         } else if (ev.ev === 'result') {
           jobId = null;
-          setProgress(`Done in ${fmtDur((performance.now() - t0) / 1000)}${ev.device ? ` (${ev.device})` : ''}.`, 1);
-          void showResult(ev.png, ev.blend);
+          const dev = (ev.script as { device?: string } | undefined)?.device;
+          setProgress(`Done in ${fmtDur(ev.elapsedSec)}${dev ? ` (${dev})` : ''}.`, 1);
+          const imgName = ev.image?.split('/').pop();
+          void showResult(ev.image, ev.blend, imgName ? ev.urls[imgName] : undefined);
         } else if (ev.ev === 'error') {
           jobId = null;
-          setProgress(`Blender reported an error: ${ev.message}`);
+          setProgress(ev.cancelled ? 'Render cancelled.' : `Blender reported an error: ${ev.message}`);
           go.disabled = false;
         }
       });
-      jobId = await bl.render(files, { preset: s.preset, w: s.w, h: s.h, samples: s.samples });
+      const job = await bl.render(files, { preset: s.preset, width: s.w, height: s.h, samples: s.samples });
+      jobId = job.jobId;
       setProgress('Starting Blender…', 0.03);
       q('cancel').textContent = 'Cancel';
     } catch (e) {
@@ -185,25 +172,26 @@ export function openBlenderDialog(toast: (m: string) => void): void {
     }
   });
 
-  const showResult = async (png: string, blend?: string) => {
+  const showResult = async (png?: string, blend?: string, url?: string) => {
     q('cancel').textContent = 'Close';
     const actions = q('actions');
-    const reveal = document.createElement('button');
-    reveal.className = 'ui-btn';
-    reveal.textContent = 'Show in Finder';
-    reveal.addEventListener('click', () => native?.showItem?.(png));
-    actions.prepend(reveal);
-    if (blend && bl.openBlend) {
+    if (png) {
+      const reveal = document.createElement('button');
+      reveal.className = 'ui-btn';
+      reveal.textContent = 'Show in Finder';
+      reveal.addEventListener('click', () => void p.showItem(png));
+      actions.prepend(reveal);
+    }
+    if (blend) {
       const ob = document.createElement('button');
       ob.className = 'ui-btn';
       ob.textContent = 'Open .blend';
-      ob.addEventListener('click', () => bl.openBlend!(blend));
+      ob.addEventListener('click', () => void bl.openBlend(blend));
       actions.prepend(ob);
     }
-    const bytes = await bl.readImage?.(png);
-    if (bytes) {
+    if (url) {
       const img = q<HTMLImageElement>('preview');
-      img.src = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+      img.src = url;
       img.hidden = false;
     }
     toast('Blender render finished');

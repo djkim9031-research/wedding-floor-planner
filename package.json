@@ -2,6 +2,9 @@
   "name": "wedding-planner",
   "private": true,
   "version": "1.0.0",
+  "description": "Wedding venue floor planner — 3D layout, cloth drape, sun & sky, Blender renders",
+  "author": "DJ Kim",
+  "main": "dist-electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +14,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "qa:shots": "node scripts/qa/shots.mjs",
-    "qa:diff": "node scripts/qa/diff.mjs"
+    "qa:diff": "node scripts/qa/diff.mjs",
+    "typecheck:electron": "tsc -p electron",
+    "electron:build": "npm run build && node scripts/build-electron.mjs",
+    "electron:start": "npm run electron:build && electron .",
+    "dist:mac": "npm run electron:build && electron-builder --mac dmg --x64",
+    "icons": "node build/make-icons.mjs"
   },
   "dependencies": {
     "oidn-web": "0.4.0",
@@ -21,8 +29,12 @@
     "xatlas-web": "0.1.0"
   },
   "devDependencies": {
+    "@types/node": "24.19.0",
     "@types/three": "0.186.0",
     "fflate": "0.8.3",
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.28.2",
     "pixelmatch": "^6.0.0",
     "playwright-core": "^1.56.1",
     "pngjs": "^7.0.0",

@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web app + Electron main (typecheck, tests, builds, smoke shots)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # the Electron binary is only needed by the mac packaging job
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck (renderer)
+        run: npm run typecheck
+
+      - name: Typecheck (Electron main + preload)
+        run: npx tsc -p electron
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build (multi-file, used by the Mac app)
+        run: npm run build
+
+      - name: Build (single file, GitHub Pages)
+        run: npm run build:single
+
+      - name: Bundle Electron main + preload
+        run: |
+          node scripts/build-electron.mjs
+          test -s dist-electron/main.cjs && test -s dist-electron/preload.cjs
+
+      - name: Size check
+        run: |
+          if node -e "process.exit(require('./package.json').scripts['check:size'] ? 0 : 1)"; then
+            npm run check:size
+          else
+            echo "no check:size script yet"
+          fi
+
+      - name: Install Chromium for the screenshot smoke test
+        run: npx playwright-core install --with-deps chromium
+
+      - name: Screenshot smoke test (headless Chromium, SwiftShader)
+        run: node scripts/qa/shots.mjs --only default-day,creator --out .shots/ci
+
+      - name: Upload smoke screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: web-smoke-shots
+          path: .shots/ci/
+          include-hidden-files: true
+          retention-days: 14
+          if-no-files-found: ignore
+
+  blender:
+    name: Blender pipeline (pip bpy 4.5)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Look for Blender tests
+        id: has
+        run: |
+          if [ -d blender/tests ]; then echo "tests=true" >> "$GITHUB_OUTPUT"; else echo "tests=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/setup-python@v6
+        if: hashFiles('blender/tests/**') != ''
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: blender/**
+
+      - name: System libraries for bpy
+        if: hashFiles('blender/tests/**') != ''
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            libxxf86vm1 libxfixes3 libxi6 libxkbcommon0 libxrender1 libsm6 libgl1 libegl1
+
+      - name: Install bpy + test deps
+        if: hashFiles('blender/tests/**') != ''
+        run: pip install bpy==4.5.14 numpy pillow pytest
+
+      - name: pytest blender/tests
+        if: hashFiles('blender/tests/**') != ''
+        run: pytest blender/tests -q
+
+      - name: No Blender tests yet
+        if: steps.has.outputs.tests != 'true'
+        run: echo "blender/tests not present — skipped"

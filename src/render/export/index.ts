@@ -1,5 +1,6 @@
 import { onAppReady } from '../../app/context';
 import { registerQaHook, qaReport } from '../../app/qaHooks';
+import { onNativeMenu } from '../../platform/nativeMenu';
 import { openBlenderDialog } from '../../ui/blenderDialog';
 import { buildExportPackage, defaultSettings, packageToZip } from './exportPackage';
 
@@ -17,10 +18,7 @@ onAppReady((ctx) => {
     g.appendChild(b);
   }
   window.addEventListener('wp:render-blender', () => openBlenderDialog(ctx.toast));
-  const native = (window as unknown as { wpNative?: { onMenu?(cb: (cmd: string) => void): () => void } }).wpNative;
-  native?.onMenu?.((cmd) => {
-    if (cmd === 'render-blender') openBlenderDialog(ctx.toast);
-  });
+  onNativeMenu('render-blender', () => openBlenderDialog(ctx.toast));
 });
 
 // QA: #export=zip → build the Blender package and expose it for the harness

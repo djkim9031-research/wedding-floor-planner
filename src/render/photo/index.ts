@@ -3,6 +3,7 @@ import { qaReport, registerQaHook } from '../../app/qaHooks';
 import { settleCloth } from '../../app/context';
 import { creatorIsOpen } from '../../creator/creatorWindow';
 import { buildPhotoPanel } from '../../ui/photoPanel';
+import { onNativeMenu } from '../../platform/nativeMenu';
 import { photoMode } from './photoMode';
 
 /** Photo mode feature: toolbar button, P key, panel, click-to-focus, QA hook. */
@@ -21,6 +22,13 @@ onAppReady((ctx) => {
     photoMode.subscribe((s) => b.classList.toggle('active', s.phase !== 'off'));
   }
   buildPhotoPanel(ctx.root, () => window.dispatchEvent(new CustomEvent('wp:render-blender')));
+  onNativeMenu('export-photo', () => {
+    if (photoMode.active) void photoMode.savePhoto();
+    else {
+      void photoMode.enter();
+      ctx.toast('Photo mode — choose Save photo when the image is clean');
+    }
+  });
 
   window.addEventListener('keydown', (e) => {
     const t = e.target as HTMLElement | null;

@@ -1394,7 +1394,7 @@ def run(opts):
         save_blend(blend)
     else:
         blend = None
-    result = {"png": png, "blend": blend, "ms": int(round((time.time() - _T0) * 1000)), "renderMs": render_ms,
+    result = {"png": png, "image": png, "blend": blend, "ms": int(round((time.time() - _T0) * 1000)), "renderMs": render_ms,
               "device": ctx["device"], "w": settings["w"],
               "h": settings["h"], "samples": settings["samples"], "ev100": round(ctx["ev100"], 3),
               "sky": ctx["sky"], "pano": settings["pano"]}
