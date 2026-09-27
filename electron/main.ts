@@ -42,7 +42,7 @@ import {
   SettingsStore,
   settingsFile,
 } from './settings';
-import { runSmoke, smokeTarget } from './smoke';
+import { runSmoke, smokeAllowsNoGpu, smokeTarget } from './smoke';
 
 const APP_NAME = 'Wedding Venue Studio';
 const isMac = process.platform === 'darwin';
@@ -466,6 +466,7 @@ if (!gotLock) {
         log,
         fatal: () => fatal,
         consoleErrors,
+        allowNoGpu: smokeAllowsNoGpu(process.argv),
       }).catch((e) => {
         console.log('WP_SMOKE ' + JSON.stringify({ ok: false, failure: String(e?.stack ?? e) }));
         return 2;
