@@ -11,6 +11,7 @@ const woodTable = (x: number, y: number, w: number, h: number, stroke: string, f
 const table = woodTable(6, 12, 36, 24, '#B57A40', '#C68A4F', '#8F5A2E');
 const tableSq = woodTable(9, 9, 30, 30, '#B57A40', '#C68A4F', '#8F5A2E');
 const tableQ = woodTable(4, 14, 40, 20, '#4E3A26', '#5E4630', '#3B2B1B');
+const tableCoffee = woodTable(6, 16, 36, 16, '#B57A40', '#C68A4F', '#8F5A2E');
 
 const cloth = (fill: string) => `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect x="7" y="7" width="34" height="34" rx="3" fill="${fill}" stroke="#B08D57" stroke-width="1.6"/>
@@ -145,6 +146,7 @@ export const THUMBNAILS: Record<ItemType, string> = {
   tableSq,
   tableQ,
   tableC: table,
+  tableCoffee,
   chair,
   clothA: cloth('#F2EBDD'),
   clothB: cloth('#E4D5BB'),

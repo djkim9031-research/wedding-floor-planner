@@ -76,6 +76,13 @@ function buildTableTemplate(type: TableType, dimsOverride?: { w: number; d: numb
     leg.castShadow = true;
     g.add(leg);
   }
+  if (type === 'tableCoffee') {
+    // lower shelf between the legs, 5" off the floor
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(i2m(w - LEG_SIZE * 2), i2m(1), i2m(d - LEG_SIZE * 2)), wood);
+    shelf.position.y = i2m(5.5);
+    shelf.castShadow = shelf.receiveShadow = true;
+    g.add(shelf);
+  }
   return g;
 }
 

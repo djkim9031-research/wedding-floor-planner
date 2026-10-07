@@ -9,6 +9,7 @@ const TYPES = new Set([
   'tableSq',
   'tableQ',
   'tableC',
+  'tableCoffee',
   'chair',
   'clothA',
   'clothB',

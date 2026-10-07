@@ -3,6 +3,7 @@ export type ItemType =
   | 'tableSq'
   | 'tableQ'
   | 'tableC'
+  | 'tableCoffee'
   | 'chair'
   | 'clothA'
   | 'clothB'

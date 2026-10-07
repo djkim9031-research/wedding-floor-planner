@@ -52,4 +52,16 @@ describe('built-in layouts', () => {
       expect(diff).toBeLessThan((40 * Math.PI) / 180);
     }
   });
+
+  it('the lounge has 4 coffee tables in a 2 × 2 grid with walkways between them', () => {
+    const items = PRESETS.find((p) => p.name === 'Wedding layout')!.items.filter((it) => it.type === 'tableCoffee');
+    expect(items).toHaveLength(4);
+    expect(new Set(items.map((it) => it.x)).size).toBe(2);
+    expect(new Set(items.map((it) => it.z)).size).toBe(2);
+    const { w, d } = ITEM_DIMS.tableCoffee;
+    const xs = [...new Set(items.map((it) => it.x))].sort((a, b) => a - b);
+    const zs = [...new Set(items.map((it) => it.z))].sort((a, b) => a - b);
+    expect(xs[1] - xs[0] - w).toBeGreaterThanOrEqual(24);
+    expect(zs[1] - zs[0] - d).toBeGreaterThanOrEqual(24);
+  });
 });
