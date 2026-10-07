@@ -52,6 +52,9 @@ export interface TreeSpec {
   crown: CrownLobe[];
   /** lowest height branches/leaves may reach at (x, z), inches */
   floorY?: (x: number, z: number) => number;
+  /** solid volumes (a roof) leaf cards may not poke into, inches; a card with
+   * a corner inside is dropped (after its random draws, so others don't move) */
+  solid?: (x: number, y: number, z: number) => boolean;
   /** multiplies side-branch counts (fewer branches for far trees) */
   density?: number;
   /** multiplies level-1 branch lengths (a wider crown off the same scaffold) */
@@ -671,6 +674,10 @@ function emitCards(
       [0.5, 1],
       [-0.5, 1],
     ];
+    const solid = spec.solid;
+    if (solid && corners.some(([a, bb]) => solid(cx + t.x * a * w + bt.x * bb * h, cy + t.y * a * w + bt.y * bb * h, cz + t.z * a * w + bt.z * bb * h))) {
+      continue;
+    }
     for (const [a, bb] of corners) {
       out.pos.push((cx + t.x * a * w + bt.x * bb * h) * IN, (cy + t.y * a * w + bt.y * bb * h) * IN, (cz + t.z * a * w + bt.z * bb * h) * IN);
       out.nor.push(sn.x, sn.y, sn.z);

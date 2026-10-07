@@ -108,11 +108,11 @@ export interface TrunkFootprint {
 }
 
 /** Where the deck oak stands relative to where its skeleton and crown were
- * first authored (trunk A at 406, −324). The couple marked the tree's true
- * spot on a plan render: west, and closer to the hall, where the ceremony
- * couple had stood. Everything tied to the tree (crown, litter, critters)
- * follows this offset. */
-export const DECK_OAK_MOVE = { x: -209, z: 119 };
+ * first authored (trunk A at 406, −324). The couple placed the tree on the
+ * plan: right behind where they stand for the ceremony, trunk B about 7"
+ * from them. Everything tied to the tree (crown, litter, critters) follows
+ * this offset. */
+export const DECK_OAK_MOVE = { x: -218, z: 89 };
 
 /** The deck oak's trunks where they pass through the deck: the scribed board
  * opening around each flared base (the trunk itself sits ~1.25" inside it).

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { tag } from '../render/tags';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { i2m, DECK_OAK_MOVE, DECK_PLANTER_SPOTS, DECK_POLY, DECK_TRUNKS, EAVE_Y, type TrunkFootprint } from '../constants';
+import { i2m, DECK_OAK_MOVE, DECK_PLANTER_SPOTS, DECK_POLY, DECK_TRUNKS, EAVE_Y, HALL_EAVE_Y, RIDGE_X, RIDGE_Y, type TrunkFootprint } from '../constants';
+import { E_EAVE, N_OVER, S_OVER, W_EAVE } from './venue/hallRoof';
 import type { Vec2 } from '../types';
 import { pointInPolygon } from '../core/geometry';
 import { barkTexture } from './textures';
@@ -447,6 +448,10 @@ export function deckOakSpec(): TreeSpec {
       { c: [640 + ox, 222, -330 + oz], r: [240, 150, 310] },
     ],
     reach: 1.3,
+    // the hall roof (gable 144" eaves → 210" ridge, 3" deep, with its
+    // overhangs): leaf cards hanging off branches above it stop short of it
+    solid: (x, y, z) =>
+      x > W_EAVE && x < E_EAVE && z > N_OVER && z < S_OVER && y < HALL_EAVE_Y + (RIDGE_Y - HALL_EAVE_Y) * (1 - Math.abs(x - RIDGE_X) / RIDGE_X) + 5,
     // clear headroom over the deck, and stay above the hall roof including
     // its covered-bay overhang (eaves −36…581, rake to z −72, plus a foot);
     // the deck near the building stays open below ~14'; the west half of the
