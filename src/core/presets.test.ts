@@ -53,21 +53,27 @@ describe('built-in layouts', () => {
     }
   });
 
-  it('the lounge is 4 coffee tables pushed together into one 2 × 2 block on the entry walk', () => {
-    const items = PRESETS.find((p) => p.name === 'Wedding layout')!.items.filter((it) => it.type === 'tableCoffee');
-    expect(items).toHaveLength(4);
+  it('the cocktail lounge outside the entry: 4 tables pushed together with tiny gaps, 11 lounge seats', () => {
+    const items = PRESETS.find((p) => p.name === 'Wedding layout')!.items;
+    const tables = items.filter((it) => it.type === 'tableCoffee');
+    expect(tables).toHaveLength(4);
     const { w, d } = ITEM_DIMS.tableCoffee;
-    const xs = [...new Set(items.map((it) => it.x))].sort((a, b) => a - b);
-    const zs = [...new Set(items.map((it) => it.z))].sort((a, b) => a - b);
+    const xs = [...new Set(tables.map((it) => it.x))].sort((a, b) => a - b);
+    const zs = [...new Set(tables.map((it) => it.z))].sort((a, b) => a - b);
     expect(xs).toHaveLength(2);
     expect(zs).toHaveLength(2);
-    // flush: neighbours touch edge to edge
-    expect(xs[1] - xs[0]).toBeCloseTo(w, 6);
-    expect(zs[1] - zs[0]).toBeCloseTo(d, 6);
-    // outside the entry (south of the vestibule doors at z 659), east half of the walk
-    for (const it of items) {
+    // separate tables, pushed together: a small gap, never touching
+    for (const gap of [xs[1] - xs[0] - w, zs[1] - zs[0] - d]) {
+      expect(gap).toBeGreaterThan(0);
+      expect(gap).toBeLessThanOrEqual(1);
+    }
+    const sofas = items.filter((it) => it.type === 'loungeSofa');
+    const chairs = items.filter((it) => it.type === 'loungeChair');
+    expect(sofas.length * 3 + chairs.length).toBe(11);
+    // outside the entry (south of the vestibule doors), east half of the walk
+    for (const it of [...tables, ...sofas, ...chairs]) {
       expect(it.z).toBeGreaterThan(662);
-      expect(it.x).toBeGreaterThan(272.5);
+      expect(it.x).toBeGreaterThan(240);
     }
   });
 });

@@ -11,7 +11,19 @@ const woodTable = (x: number, y: number, w: number, h: number, stroke: string, f
 const table = woodTable(6, 12, 36, 24, '#B57A40', '#C68A4F', '#8F5A2E');
 const tableSq = woodTable(9, 9, 30, 30, '#B57A40', '#C68A4F', '#8F5A2E');
 const tableQ = woodTable(4, 14, 40, 20, '#4E3A26', '#5E4630', '#3B2B1B');
-const tableCoffee = woodTable(10, 13, 28, 22, '#2F3133', '#55585B', '#202122');
+const tableCoffee = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="9" y="9" width="14" height="14" rx="1" fill="#55585B" stroke="#2F3133" stroke-width="1.6"/>
+  <rect x="25" y="9" width="14" height="14" rx="1" fill="#55585B" stroke="#2F3133" stroke-width="1.6"/>
+  <rect x="9" y="25" width="14" height="14" rx="1" fill="#55585B" stroke="#2F3133" stroke-width="1.6"/>
+  <rect x="25" y="25" width="14" height="14" rx="1" fill="#55585B" stroke="#2F3133" stroke-width="1.6"/>
+  <path d="M12 14h8M12 18h8M28 12v8M32 12v8M12 28v8M16 28v8M28 30h8M28 34h8" stroke="#2F3133" stroke-width="1"/>
+</svg>`;
+const lounge = (w: number) => `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="${24 - w / 2}" y="14" width="${w}" height="22" rx="3" fill="#D8D0C2" stroke="#7E776D" stroke-width="2"/>
+  <rect x="${24 - w / 2}" y="14" width="${w}" height="6" rx="2" fill="#8B847A"/>
+  <rect x="${24 - w / 2}" y="14" width="4" height="22" rx="1.5" fill="#8B847A"/>
+  <rect x="${20 + w / 2}" y="14" width="4" height="22" rx="1.5" fill="#8B847A"/>
+</svg>`;
 
 const cloth = (fill: string) => `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect x="7" y="7" width="34" height="34" rx="3" fill="${fill}" stroke="#B08D57" stroke-width="1.6"/>
@@ -147,6 +159,8 @@ export const THUMBNAILS: Record<ItemType, string> = {
   tableQ,
   tableC: table,
   tableCoffee,
+  loungeSofa: lounge(40),
+  loungeChair: lounge(22),
   chair,
   clothA: cloth('#F2EBDD'),
   clothB: cloth('#E4D5BB'),

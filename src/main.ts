@@ -476,6 +476,10 @@ if (sunParam === 'off') {
     cloudPct: c ? +c : 0,
   });
 }
+// #ev=+1: exposure compensation in stops (same as the sun panel's ±EV slider;
+// Blender exports carry it)
+const evParam = params.get('ev');
+if (evParam !== null && Number.isFinite(Number(evParam))) sunPanel.set({ evComp: Number(evParam) });
 
 host.start(rig.camera, (dt) => rig.update(dt));
 setAppContext({ host, rig, clothMgr, itemMeshes, fsm, sunPanel, toast, root: container });

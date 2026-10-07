@@ -13,7 +13,6 @@ import {
   TABLE_TOPS,
   TABLE_TOP_T,
   PLANTER_SPECS,
-  isFigure,
   isLantern,
   isPlant,
   isPlanter,
@@ -80,12 +79,13 @@ function buildTableTemplate(type: TableType, dimsOverride?: { w: number; d: numb
   return g;
 }
 
-/** Charcoal outdoor lounge table from the couple's photo: slatted top over a
- * deep apron on thick square legs, no shelf. Top at TABLE_TOPS.tableCoffee. */
+/** Small charcoal powder-coat table from the couple's photos: a square top
+ * with a border frame round inset slats, a flush apron, and square legs flush
+ * with the corners (parsons style). Four push together into one low table. */
 function buildCoffeeTable(): THREE.Group {
   const { w, d } = ITEM_DIMS.tableCoffee;
   const top = TABLE_TOPS.tableCoffee;
-  const mat = tag(new THREE.MeshStandardMaterial({ color: 0x45484b, roughness: 0.72, metalness: 0 }), 'generic', {}, 'coffeeCharcoal');
+  const mat = tag(new THREE.MeshStandardMaterial({ color: 0x3e4144, roughness: 0.68, metalness: 0.15 }), 'generic', {}, 'coffeeCharcoal');
   const g = new THREE.Group();
   const add = (bw: number, bh: number, bd: number, x: number, y: number, z: number) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(i2m(bw), i2m(bh), i2m(bd)), mat);
@@ -93,24 +93,76 @@ function buildCoffeeTable(): THREE.Group {
     m.castShadow = m.receiveShadow = true;
     g.add(m);
   };
-  // top: five slats running the length, 3/8" gaps
-  const slatT = 0.9;
-  const gap = 0.375;
-  const n = 5;
-  const slatW = (d - gap * (n - 1)) / n;
-  for (let k = 0; k < n; k++) add(w, slatT, slatW, 0, top - slatT / 2, -d / 2 + slatW / 2 + k * (slatW + gap));
-  // apron, set in 1/2" under the slats
-  const apH = 2.75;
-  const apT = 0.9;
-  const ay = top - slatT - apH / 2;
-  add(w - 1, apH, apT, 0, ay, d / 2 - 0.5 - apT / 2);
-  add(w - 1, apH, apT, 0, ay, -(d / 2 - 0.5 - apT / 2));
-  add(apT, apH, d - 1, w / 2 - 0.5 - apT / 2, ay, 0);
-  add(apT, apH, d - 1, -(w / 2 - 0.5 - apT / 2), ay, 0);
-  // thick square legs at the corners
-  const legS = 2.25;
-  const legH = top - slatT;
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(legS, legH, legS, sx * (w / 2 - 0.5 - legS / 2), legH / 2, sz * (d / 2 - 0.5 - legS / 2));
+  const t = 0.9; // top thickness
+  const rim = Math.min(1.4, w * 0.12); // border frame width
+  // border frame
+  add(w, t, rim, 0, top - t / 2, d / 2 - rim / 2);
+  add(w, t, rim, 0, top - t / 2, -(d / 2 - rim / 2));
+  add(rim, t, d - 2 * rim, w / 2 - rim / 2, top - t / 2, 0);
+  add(rim, t, d - 2 * rim, -(w / 2 - rim / 2), top - t / 2, 0);
+  // inset slats running along x, a hair below the frame, 1/4" gaps
+  const n = w >= 20 ? 4 : 3;
+  const gap = 0.25;
+  const inner = d - 2 * rim;
+  const slatW = (inner - gap * (n + 1)) / n;
+  for (let k = 0; k < n; k++) add(w - 2 * rim, t * 0.8, slatW, 0, top - t / 2 - 0.1, -inner / 2 + gap + slatW / 2 + k * (slatW + gap));
+  // flush apron under the frame
+  const apH = Math.min(2, top * 0.16);
+  const apT = 0.6;
+  const ay = top - t - apH / 2;
+  add(w, apH, apT, 0, ay, d / 2 - apT / 2);
+  add(w, apH, apT, 0, ay, -(d / 2 - apT / 2));
+  add(apT, apH, d - 2 * apT, w / 2 - apT / 2, ay, 0);
+  add(apT, apH, d - 2 * apT, -(w / 2 - apT / 2), ay, 0);
+  // square legs flush with the corners
+  const legS = Math.min(2.25, w * 0.15);
+  const legH = top - t;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(legS, legH, legS, sx * (w / 2 - legS / 2), legH / 2, sz * (d / 2 - legS / 2));
+  return g;
+}
+
+/** Teak deep-seating lounge piece from the couple's photos: weathered-gray
+ * teak base and wide flat arms, a slatted back, linen seat and back cushions
+ * and throw pillows. One seat per ~26". Faces +z at yaw 0, like the chair. */
+function buildLounge(type: 'loungeSofa' | 'loungeChair'): THREE.Group {
+  const { w, d } = ITEM_DIMS[type];
+  const seats = type === 'loungeSofa' ? 3 : 1;
+  const teak = tag(new THREE.MeshStandardMaterial({ color: 0x8b847a, roughness: 0.82, metalness: 0 }), 'generic', {}, 'loungeTeak');
+  const linen = tag(new THREE.MeshStandardMaterial({ color: 0xd3cbbd, roughness: 0.92, metalness: 0 }), 'fabric', {}, 'loungeLinen');
+  const pillowMat = tag(new THREE.MeshStandardMaterial({ color: 0xe4dfd5, roughness: 0.9, metalness: 0 }), 'fabric', {}, 'loungePillow');
+  const g = new THREE.Group();
+  const box = (mat: THREE.Material, bw: number, bh: number, bd: number, x: number, y: number, z: number, tiltX = 0) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(i2m(bw), i2m(bh), i2m(bd)), mat);
+    m.position.set(i2m(x), i2m(y), i2m(z));
+    m.rotation.x = tiltX;
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+  };
+  const armW = 5;
+  const baseTop = 11;
+  // base with notched feet at the corners
+  box(teak, w, baseTop - 2, d, 0, 2 + (baseTop - 2) / 2, 0);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(teak, 5, 2, 5, sx * (w / 2 - 2.5), 1, sz * (d / 2 - 2.5));
+  // wide flat arms
+  for (const sx of [-1, 1]) box(teak, armW, 25 - baseTop, d, sx * (w / 2 - armW / 2), baseTop + (25 - baseTop) / 2, 0);
+  // slatted back, leaning back ~12°
+  const lean = -0.21;
+  const backZ = -d / 2 + 2.5;
+  for (let k = 0; k < 5; k++) box(teak, w - 2 * armW, 3.2, 1.4, 0, baseTop + 3 + k * 4.4, backZ - k * 0.95, lean);
+  // seat cushion(s), back cushions, throw pillows
+  const inner = w - 2 * armW;
+  const seatW = inner / seats;
+  // back posts at both ends and between seats
+  for (let k = 0; k <= seats; k++) {
+    const px = Math.min(Math.max(-inner / 2 + seatW * k, -inner / 2 + 1.1), inner / 2 - 1.1);
+    box(teak, 2.2, 22, 1.6, px, baseTop + 11, backZ - 2.3, lean);
+  }
+  for (let k = 0; k < seats; k++) {
+    const x = -inner / 2 + seatW * (k + 0.5);
+    box(linen, seatW - 0.6, 5, d - 7, x, baseTop + 2.5, 2.5);
+    box(linen, seatW - 0.8, 18, 5.5, x, baseTop + 5 + 9, backZ + 4.2, lean);
+    box(pillowMat, Math.min(18, seatW - 6), 16, 4.5, x + (k % 2 ? 2 : -2), baseTop + 5 + 9, backZ + 9, lean * 0.6);
+  }
   return g;
 }
 
@@ -941,6 +993,7 @@ function getTemplate(type: ItemType): THREE.Group {
   if (!template) {
     if (isTable(type)) template = buildTableTemplate(type);
     else if (type === 'chair') template = buildChair();
+    else if (type === 'loungeSofa' || type === 'loungeChair') template = buildLounge(type);
     else if (isLantern(type)) template = buildLantern(type);
     else if (type === 'hedge') template = buildHedge();
     else if (type === 'screen') template = buildScreen();
@@ -993,18 +1046,9 @@ export class ItemMeshes {
   sync(items: PlacedItem[], extraTop?: (it: PlacedItem) => number): void {
     const wanted = new Map(
       items
-        .filter(
-          (it) =>
-            isTable(it.type) ||
-            it.type === 'chair' ||
-            it.type === 'hedge' ||
-            it.type === 'screen' ||
-            it.type === 'setting' ||
-            isFigure(it.type) ||
-            isLantern(it.type) ||
-            isPlanter(it.type) ||
-            isPlant(it.type),
-        )
+        // derived, so new item types can't be left out (cloths belong to the
+        // ClothManager)
+        .filter((it) => !it.type.startsWith('cloth'))
         .map((it) => [it.id, it]),
     );
     for (const [id, mesh] of this.meshes) {

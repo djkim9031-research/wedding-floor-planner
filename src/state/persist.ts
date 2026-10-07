@@ -10,6 +10,8 @@ const TYPES = new Set([
   'tableQ',
   'tableC',
   'tableCoffee',
+  'loungeSofa',
+  'loungeChair',
   'chair',
   'clothA',
   'clothB',

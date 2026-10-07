@@ -4,6 +4,8 @@ export type ItemType =
   | 'tableQ'
   | 'tableC'
   | 'tableCoffee'
+  | 'loungeSofa'
+  | 'loungeChair'
   | 'chair'
   | 'clothA'
   | 'clothB'

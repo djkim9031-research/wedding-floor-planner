@@ -27,6 +27,8 @@ const CARD_TYPES: ItemType[] = [
   'tableC',
   'tableCoffee',
   'chair',
+  'loungeSofa',
+  'loungeChair',
   'clothA',
   'clothB',
   'clothC',

@@ -8,6 +8,7 @@ import {
   PENETRATION_EPS,
   PLACEMENT_AREAS,
   isBarrier,
+  isLounge,
   isFigure,
   isPlant,
   isPlanter,
@@ -103,17 +104,19 @@ export function isPoseValid(
   // hedges, screens, and planters are solid and must not run through tables
   // or each other
   const collidesWith = (other: ItemType): boolean =>
-    isTable(type)
-      ? isTable(other) || isBarrier(other) || isPlanter(other)
-      : type === 'chair'
-        ? other === 'chair'
-        : isBarrier(type)
-          ? isBarrier(other) || isTable(other) || isPlanter(other)
-          : isPlanter(type)
-            ? isTable(other) || isBarrier(other) || isPlanter(other)
-            : isPlant(type)
-              ? isPlant(other)
-              : false;
+    isLounge(type)
+      ? isLounge(other) || isTable(other) || isBarrier(other) || isPlanter(other) || other === 'chair'
+      : isTable(type)
+        ? isTable(other) || isBarrier(other) || isPlanter(other) || isLounge(other)
+        : type === 'chair'
+          ? other === 'chair' || isLounge(other)
+          : isBarrier(type)
+            ? isBarrier(other) || isTable(other) || isPlanter(other) || isLounge(other)
+            : isPlanter(type)
+              ? isTable(other) || isBarrier(other) || isPlanter(other) || isLounge(other)
+              : isPlant(type)
+                ? isPlant(other)
+                : false;
 
   for (const it of items) {
     if (excluded.includes(it.id) || !collidesWith(it.type)) continue;

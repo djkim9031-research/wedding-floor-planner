@@ -205,7 +205,9 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   tableSq: { w: 35.5, d: 35.5 },
   tableQ: { w: 72, d: 36 },
   tableC: { w: 48, d: 30 }, // custom oak — mutable via setCustomTableDims
-  tableCoffee: { w: 24, d: 18 }, // charcoal slatted lounge table (couple's photo)
+  tableCoffee: { w: 12, d: 12 }, // small charcoal slatted table; four push together (couple's photos)
+  loungeSofa: { w: 84, d: 36 }, // three-seat teak deep-seating sofa
+  loungeChair: { w: 32, d: 34 }, // teak deep-seating club chair
   chair: { w: 20, d: 17 },
   clothA: { w: 108, d: 156 },
   clothB: { w: 104, d: 144 },
@@ -239,6 +241,8 @@ export const ITEM_LABELS: Record<ItemType, string> = {
   tableQ: 'QCC Table',
   tableC: 'Custom Oak Table',
   tableCoffee: 'Slatted Coffee Table',
+  loungeSofa: 'Lounge Sofa',
+  loungeChair: 'Lounge Chair',
   chair: 'Oak Bistro Chair',
   clothA: 'Rental Linen',
   clothB: 'C&B Linen',
@@ -293,6 +297,8 @@ export type LanternType = 'lantern18' | 'lantern24' | 'lantern30' | 'lantern36';
  * Bright rentals: Artificial Hedge 48×10×96 (10" black planter base);
  * Ivory Sausalito Screen 48×21×90 (walnut caster base, fabric panel). */
 export const isBarrier = (t: ItemType): boolean => t === 'hedge' || t === 'screen';
+/** Deep-seating lounge pieces (solid: they bump tables, chairs and each other). */
+export const isLounge = (t: ItemType): boolean => t === 'loungeSofa' || t === 'loungeChair';
 export const HEDGE_H = 96;
 export const SCREEN_H = 90;
 export const isLantern = (t: ItemType): t is LanternType => t.startsWith('lantern');
@@ -372,7 +378,7 @@ export const TABLE_TOPS: Record<TableType, number> = {
   tableSq: 29.5,
   tableQ: 30.5,
   tableC: 30, // mutable via setCustomTableDims
-  tableCoffee: 16, // low lounge height
+  tableCoffee: 12, // low lounge height
 };
 export const TABLE_TOP_MAX = 30.5;
 export const TABLE_TOP_T = 1.5; // rendered top slab thickness
@@ -492,14 +498,22 @@ export const PRESETS: PresetDef[] = [
       { type: 'clothC', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 2' },
       { type: 'tableQ', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, set: 'Table Set 3' },
       { type: 'clothC', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 3' },
-      // lounge just outside the entry, on the east side of the breezeway walk
-      // (the west half stays clear for arriving guests): four charcoal
-      // slatted coffee tables pushed together into one 2 × 2 block (48" × 36"),
-      // as the pair sits in the couple's photo
-      { type: 'tableCoffee', x: 328, z: 716, yawDeg: 0 },
-      { type: 'tableCoffee', x: 352, z: 716, yawDeg: 0 },
-      { type: 'tableCoffee', x: 328, z: 734, yawDeg: 0 },
-      { type: 'tableCoffee', x: 352, z: 734, yawDeg: 0 },
+      // cocktail lounge just outside the entry, to the right (east half of the
+      // breezeway walk; the west half stays clear for arriving guests), set up
+      // like the couple's photo: four small charcoal tables pushed together
+      // 2 × 2 with 1/2" gaps (slats alternating like the photo), a sofa each
+      // side, three lounge chairs south and two north — 11 seats
+      { type: 'tableCoffee', x: 323.75, z: 783.75, yawDeg: 0 },
+      { type: 'tableCoffee', x: 336.25, z: 783.75, yawDeg: 90 },
+      { type: 'tableCoffee', x: 323.75, z: 796.25, yawDeg: 90 },
+      { type: 'tableCoffee', x: 336.25, z: 796.25, yawDeg: 0 },
+      { type: 'loungeSofa', x: 268, z: 790, yawDeg: 90 },
+      { type: 'loungeSofa', x: 392, z: 790, yawDeg: 270 },
+      { type: 'loungeChair', x: 296, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 330, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 364, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 300, z: 730, yawDeg: 0 },
+      { type: 'loungeChair', x: 360, z: 730, yawDeg: 0 },
       { type: 'table', x: 223.28677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 270.78677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 223.28677816578266, z: 127.0814147994799, yawDeg: 0, set: 'Table Set 1' },
