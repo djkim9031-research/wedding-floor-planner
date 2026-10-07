@@ -120,6 +120,8 @@ Colour conventions:
     samples. Compensating with film exposure took the same time as the unscaled scene.
   - The indirect clamp (`10 / 2^stops`) and the light threshold (`0.01 / 2^stops`) are scaled the same way.
 - `exposure.view` sets the view transform (default `AgX`) and `look` sets the look (`None`).
+- The app exports the EV it metered for the view, with `exposure.auto` false, so the render matches
+  the editor and Photo mode.
 - `exposure.auto` (or `--auto-exposure`) runs a metering pass first:
   - 64 px wide, 16 spp, no denoise, film exposure 1.
   - It takes the log-average luminance of the camera view, then sets `ev100 = log2(Lavg·100/12.5)`.

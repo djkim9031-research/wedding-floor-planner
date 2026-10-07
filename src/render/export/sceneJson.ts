@@ -143,8 +143,10 @@ export function buildSceneJson(p: {
       far: 2000,
       dof: settings.dof,
     },
-    // metered EV of the live view (interior metering included); Blender applies evComp itself
-    exposure: { ev100: (getViewEV100() ?? sky.ev100) + inp.evComp, evComp: inp.evComp, view: 'AgX', look: 'None', auto: inp.autoEV },
+    // metered EV of the live view (interior metering included); Blender applies evComp itself.
+    // auto stays off: the app has already metered (Auto EV), and a second meter in Blender
+    // (log-average, K 12.5) diverges from the editor, e.g. 1.5 stops darker on a sunlit top view
+    exposure: { ev100: (getViewEV100() ?? sky.ev100) + inp.evComp, evComp: inp.evComp, view: 'AgX', look: 'None', auto: false },
     render: {
       w: settings.panorama ? Math.max(settings.w, 2 * settings.h) : settings.w,
       h: settings.panorama ? Math.max(settings.w, 2 * settings.h) / 2 : settings.h,
