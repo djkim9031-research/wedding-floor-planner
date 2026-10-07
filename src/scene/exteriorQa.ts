@@ -79,12 +79,28 @@ registerQaHook((ctx, params) => {
     // orbit controls don't kick; above 4.5 m the Blender export drops the roof.
     const [x, z, dist, fov] = topat.split(',').map(Number);
     const d = dist || 7;
+    // a whole-site plan needs more than the orbit limit (34 m); the controls
+    // would clamp the camera back in on their next update
+    if (d > ctx.rig.controls.maxDistance) ctx.rig.controls.maxDistance = d * 1.05;
     ctx.rig.controls.target.set(i2m(x), 0.75, i2m(z));
     ctx.rig.camera.position.set(i2m(x), 0.75 + d, i2m(z) + d * Math.tan(0.06));
     if (fov) ctx.rig.camera.fov = fov;
     ctx.rig.camera.updateProjectionMatrix();
     ctx.rig.camera.lookAt(ctx.rig.controls.target);
     ctx.host.invalidate();
+  }
+  if (params.get('canopy') === '0') {
+    // #canopy=0: plan render with the deck oak's leaves and fine branches
+    // removed (live view and exports), keeping the trunks and great limbs —
+    // what the editor's plan view shows, so the deck under the tree is visible
+    const oak = ctx.host.exteriorGroup.getObjectByName('deckOak');
+    oak?.traverse((o) => {
+      if (/-(leaves-live|leaves-render|twigs|branches)$/.test(o.name)) {
+        o.visible = false;
+        o.userData.render = { ...(o.userData.render as ObjectRenderTag | undefined), exclude: true };
+      }
+    });
+    ctx.host.invalidateShadows();
   }
   if (params.get('clean') === '1') {
     for (const el of Array.from(ctx.root.children)) {
