@@ -512,7 +512,9 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   const bwBars = merged(bwBarG, m.trim);
   bwBars.castShadow = true;
   const bwWhite = merged(bwWhiteG, m.trim);
-  group.add(bwReedMesh, bwTopMesh, bwGlassMesh, bwBars, bwWhite);
+  // with the rafters in the roof group, so hiding the roof clears the walk
+  // (plan views, top-down renders) the same way it clears the hall
+  roof.add(bwReedMesh, bwTopMesh, bwGlassMesh, bwBars, bwWhite);
 
   // -------------------------------------------------------------------------
   // "2400" sign hung under the canopy at the breezeway entrance.
@@ -560,13 +562,13 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   signBoard.position.set(i2m(272.5), i2m(SIGN_Y), i2m(1796));
   signBoard.castShadow = true;
   signFace.position.set(i2m(272.5), i2m(SIGN_Y), i2m(1797.2));
-  group.add(signBoard, signFace);
+  roof.add(signBoard, signFace); // hangs from the canopy, hides with it
   const rodG: Geo[] = [];
   for (const rx of [272.5 - 26, 272.5 + 26]) {
     rodG.push(box(rx - 0.5, rx + 0.5, SIGN_Y + 12, bwRoofY(rx) - 6, 1795.5, 1796.5));
   }
   const rods = merged(rodG, tag(new THREE.MeshStandardMaterial({ color: 0x4a3826, roughness: 0.5, metalness: 0.4 }), 'metal-dark', {}, 'signRods'));
-  group.add(rods);
+  roof.add(rods);
 
   // shingle roofs over the annex wings (per the satellite) — in the roof
   // group so the ceiling toggle still opens the dollhouse view
