@@ -72,6 +72,20 @@ registerQaHook((ctx, params) => {
     ctx.rig.camera.lookAt(ctx.rig.controls.target);
     ctx.host.invalidate();
   }
+  const topat = params.get('topat');
+  if (topat) {
+    // #topat=xIn,zIn,distM[,fovDeg]: plan view straight down onto any spot
+    // (looking at table height). Same near-pole tilt as the T key so the
+    // orbit controls don't kick; above 4.5 m the Blender export drops the roof.
+    const [x, z, dist, fov] = topat.split(',').map(Number);
+    const d = dist || 7;
+    ctx.rig.controls.target.set(i2m(x), 0.75, i2m(z));
+    ctx.rig.camera.position.set(i2m(x), 0.75 + d, i2m(z) + d * Math.tan(0.06));
+    if (fov) ctx.rig.camera.fov = fov;
+    ctx.rig.camera.updateProjectionMatrix();
+    ctx.rig.camera.lookAt(ctx.rig.controls.target);
+    ctx.host.invalidate();
+  }
   if (params.get('clean') === '1') {
     for (const el of Array.from(ctx.root.children)) {
       if (el !== ctx.host.canvas) (el as HTMLElement).style.display = 'none';
