@@ -56,6 +56,25 @@ describe('tree generator', () => {
     expect(checked).toBeGreaterThan(20);
   });
 
+  it('deck oak keeps every branch and leaf above the hall roof', () => {
+    // gable from the eaves (144" at the walls) to the ridge (210" at x 272.5),
+    // 3" deep, over the hall and its covered-bay overhang (eaves −36…581,
+    // rake z −72…647)
+    const roofTop = (x: number) => 144 + 66 * (1 - Math.abs(x - 272.5) / 272.5) + 3;
+    const t = build();
+    for (const buf of [t.bark, t.barkFine, t.barkRender, t.leavesLive, t.leavesRender]) {
+      const p = buf.pos;
+      let inside = 0;
+      for (let k = 0; k < p.length; k += 3) {
+        const x = p[k] / IN;
+        const y = p[k + 1] / IN;
+        const z = p[k + 2] / IN;
+        if (x > -36 && x < 581 && z > -72 && z < 647 && y < roofTop(x) + 2) inside++;
+      }
+      expect(inside).toBe(0);
+    }
+  });
+
   it('far variants are cheap', () => {
     const b = new TreeBatch(farVariant(COAST_LIVE_OAK));
     b.add(autoTree(COAST_LIVE_OAK, { x: 0, z: 0, y: 0, height: 450, spread: 300, seed: 7 }), 7);

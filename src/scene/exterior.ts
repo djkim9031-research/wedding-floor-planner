@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { tag } from '../render/tags';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { i2m, DECK_POLY, DECK_TRUNKS, EAVE_Y, type TrunkFootprint } from '../constants';
+import { i2m, DECK_OAK_MOVE, DECK_PLANTER_SPOTS, DECK_POLY, DECK_TRUNKS, EAVE_Y, type TrunkFootprint } from '../constants';
 import type { Vec2 } from '../types';
 import { pointInPolygon } from '../core/geometry';
 import { barkTexture } from './textures';
@@ -217,6 +217,7 @@ function insideTrunk(p: Vec2, grow: number): boolean {
 
 export function deckOakSpec(): TreeSpec {
   const [A, B, C] = DECK_TRUNKS;
+  const { x: ox, z: oz } = DECK_OAK_MOVE;
   const flare = (fp: TrunkFootprint) => ({ footprint: fp, deckY: DECK_TOP_Y, height: 44, clearance: 1.25 });
   const limbs: LimbSpec[] = [
     {
@@ -439,17 +440,27 @@ export function deckOakSpec(): TreeSpec {
   const onDeck = (x: number, z: number) => pointInPolygon({ x, z }, DECK_POLY);
   return {
     limbs,
+    // crown lobes were authored around the tree's first spot; they move with it
     crown: [
-      { c: [140, 232, -300], r: [330, 162, 370] },
-      { c: [400, 262, -350], r: [310, 184, 380] },
-      { c: [640, 222, -330], r: [240, 150, 310] },
+      { c: [140 + ox, 232, -300 + oz], r: [330, 162, 370] },
+      { c: [400 + ox, 262, -350 + oz], r: [310, 184, 380] },
+      { c: [640 + ox, 222, -330 + oz], r: [240, 150, 310] },
     ],
     reach: 1.3,
-    // clear headroom over the deck, and stay above the hall roof
-    // (the covered bay near the building stays open below ~14')
-    // the west half of the crown sits high (sky under it in photo 03)
+    // clear headroom over the deck, and stay above the hall roof including
+    // its covered-bay overhang (eaves −36…581, rake to z −72, plus a foot);
+    // the deck near the building stays open below ~14'; the west half of the
+    // crown sits high (sky under it in photo 03)
     floorY: (x, z) =>
-      x > -30 && x < 575 && z > -10 && z < 630 ? 250 : x < 260 ? 200 : onDeck(x, z) ? (z > -220 ? 170 : 100) : 60,
+      x > -48 && x < 593 && z > -84 && z < 659
+        ? 250
+        : x < 260 + ox
+          ? 200
+          : onDeck(x, z)
+            ? z > -220
+              ? 170
+              : 100
+            : 60,
   };
 }
 
@@ -608,13 +619,7 @@ export function buildExterior(): THREE.Group {
 
   const planterRnd = mulberry32(0x9042);
   const planterG: Geo[] = [];
-  const planterSpots: [number, number][] = [
-    [-70, -36],
-    [150, -420],
-    [620, -40],
-    [700, 110],
-  ];
-  for (const [px, pz] of planterSpots) {
+  for (const [px, pz] of DECK_PLANTER_SPOTS) {
     const g = new THREE.CylinderGeometry(i2m(13), i2m(10), i2m(30), 4, 1);
     g.rotateY(Math.PI / 4);
     g.translate(i2m(px), i2m(15), i2m(pz));
@@ -971,8 +976,7 @@ export function buildExterior(): THREE.Group {
     ear.rotation.set(-0.15, 0, sx * 0.18);
     part(bunny, bunnyFur, 1, sx * 1.7, 1.2, 2.8, 1, 0.6, 1.4); // front paws
   }
-  // east of the ceremony arc's end chair (331, −259), still facing the squirrel
-  bunny.position.set(i2m(364), i2m(DECK_TOP_Y), i2m(-268));
+  bunny.position.set(i2m(352 + DECK_OAK_MOVE.x), i2m(DECK_TOP_Y), i2m(-262 + DECK_OAK_MOVE.z));
   bunny.rotation.y = Math.PI + 0.5; // looking toward the squirrel
   critters.add(bunny);
 
@@ -988,7 +992,7 @@ export function buildExterior(): THREE.Group {
   part(squirrel, squirrelTail, 1.9, 0, 3, -4.4, 0.8, 1, 0.9);
   part(squirrel, squirrelTail, 2.5, 0, 7, -5.8, 0.85, 1.1, 0.85);
   part(squirrel, squirrelTail, 2, 0, 10.6, -4.6, 0.75, 1, 0.75);
-  squirrel.position.set(i2m(398), i2m(DECK_TOP_Y), i2m(-290));
+  squirrel.position.set(i2m(398 + DECK_OAK_MOVE.x), i2m(DECK_TOP_Y), i2m(-290 + DECK_OAK_MOVE.z));
   squirrel.rotation.y = Math.PI + 3.7; // facing back toward the bunny
   critters.add(squirrel);
 
@@ -1254,7 +1258,9 @@ function buildLitter(group: THREE.Group): void {
   const maxX = 737;
   const minZ = -498;
   const maxZ = 145;
-  const canopy = (x: number, z: number) => Math.exp(-(((x - 380) / 330) ** 2 + ((z + 340) / 260) ** 2));
+  // acorns and leaves fall under the crown (centred on the oak, wherever it stands)
+  const canopy = (x: number, z: number) =>
+    Math.exp(-(((x - 380 - DECK_OAK_MOVE.x) / 330) ** 2 + ((z + 340 - DECK_OAK_MOVE.z) / 260) ** 2));
   const sample = (): Vec2 => {
     for (;;) {
       const p = { x: minX + rnd() * (maxX - minX), z: minZ + rnd() * (maxZ - minZ) };

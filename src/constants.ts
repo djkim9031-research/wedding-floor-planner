@@ -107,6 +107,13 @@ export interface TrunkFootprint {
   rotDeg: number;
 }
 
+/** Where the deck oak stands relative to where its skeleton and crown were
+ * first authored (trunk A at 406, −324). The couple marked the tree's true
+ * spot on a plan render: west, and closer to the hall, where the ceremony
+ * couple had stood. Everything tied to the tree (crown, litter, critters)
+ * follows this offset. */
+export const DECK_OAK_MOVE = { x: -209, z: 119 };
+
 /** The deck oak's trunks where they pass through the deck: the scribed board
  * opening around each flared base (the trunk itself sits ~1.25" inside it).
  * Photos 03/04: a strongly leaning main trunk (A, leaning west) and an
@@ -116,7 +123,17 @@ export const DECK_TRUNKS: TrunkFootprint[] = [
   { x: 406, z: -324, rx: 13.5, rz: 10.5, rotDeg: 4 }, // A — leaning main trunk
   { x: 432, z: -364, rx: 9.5, rz: 9.5, rotDeg: 0 }, // B — upright companion
   { x: 452, z: -334, rx: 11.5, rz: 11, rotDeg: -10 }, // C — upright east stem
+].map((t) => ({ ...t, x: t.x + DECK_OAK_MOVE.x, z: t.z + DECK_OAK_MOVE.z }));
+
+/** Bronze deck planters (fixed scenery, each with a shrub): centre points.
+ * The pot is a 26" tapered square, the shrub spreads ~18" around the centre. */
+export const DECK_PLANTER_SPOTS: [number, number][] = [
+  [-70, -36],
+  [150, -420],
+  [620, -40],
+  [700, 110],
 ];
+export const DECK_PLANTER_REACH = 18;
 
 /** Zones where items may be placed: the room, and the Tree Deck (an item
  * must fit fully inside one zone — nothing halfway through the glass wall). */
@@ -437,20 +454,21 @@ export const PRESETS: PresetDef[] = [
     // ceremony chairs, lantern, and figures, exactly as arranged on the floor
     name: 'Wedding layout',
     items: [
-      { type: 'lantern18', x: 329.34528906642606, z: -204.2944483572774, yawDeg: 0 },
-      // ceremony: the couple faces north toward the railing; the guests'
-      // arc of 8 chairs sits on the railing side, looking back at the couple
-      // and the hall (mirrored across the couple from the hall side)
-      { type: 'figureM', x: 196.52571775852886, z: -187.5658261457075, yawDeg: 180 },
-      { type: 'figureW', x: 227.99038969355976, z: -185.0639703700082, yawDeg: 180 },
-      { type: 'chair', x: 208.17, z: -311.9, yawDeg: 0 },
-      { type: 'chair', x: 172.5, z: -313.41, yawDeg: 0 },
-      { type: 'chair', x: 245.54, z: -315.28, yawDeg: 0 },
-      { type: 'chair', x: 279.26, z: -315.78, yawDeg: 0 },
-      { type: 'chair', x: 308.25, z: -294.51, yawDeg: 315 },
-      { type: 'chair', x: 140.02, z: -288.1, yawDeg: 45 },
-      { type: 'chair', x: 119.3, z: -259.05, yawDeg: 55 },
-      { type: 'chair', x: 331.1, z: -259.05, yawDeg: 305 },
+      // ceremony by the north railing (as marked on the plan): the couple
+      // faces north with the deck oak right behind them; the guests' arc of
+      // 8 chairs faces back toward the couple and the hall, drawn in to 8.5'
+      // so the front row clears the NW deck planter (150, −420)
+      { type: 'lantern18', x: 331.35, z: -318.29, yawDeg: 0 },
+      { type: 'figureM', x: 198.53, z: -301.57, yawDeg: 180 },
+      { type: 'figureW', x: 229.99, z: -299.06, yawDeg: 180 },
+      { type: 'chair', x: 210.99, z: -400.78, yawDeg: 0 },
+      { type: 'chair', x: 182.45, z: -401.99, yawDeg: 0 },
+      { type: 'chair', x: 240.88, z: -403.49, yawDeg: 0 },
+      { type: 'chair', x: 267.86, z: -403.89, yawDeg: 0 },
+      { type: 'chair', x: 291.05, z: -386.87, yawDeg: 315 },
+      { type: 'chair', x: 156.47, z: -381.74, yawDeg: 45 },
+      { type: 'chair', x: 139.89, z: -358.5, yawDeg: 55 },
+      { type: 'chair', x: 309.33, z: -358.5, yawDeg: 305 },
       { type: 'tableQ', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, set: 'Table Set 2' },
       { type: 'clothC', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 2' },
       { type: 'tableQ', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, set: 'Table Set 3' },
