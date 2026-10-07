@@ -681,13 +681,22 @@ def upgrade_material(mat, tag, meshes):
     if (role in VERTEX_COLOR_ROLES or tag.get("vertexColors")) and meshes:
         info["vertex_colors_wired"] = wire_vertex_colors(mat, meshes)
 
-    if role == "glass-clear":
+    if role in ("glass-clear", "glass-tableware"):
+        # Tableware glasses are closed solid cylinders in the scene; as
+        # refractive glass they would be solid slugs that block the sun
+        # (caustics are off) and render black. Thin glass treats each wall
+        # as a slab, which is what a thin-walled tumbler is, and lets light
+        # through to the cloth beneath.
         src, default = color_source(nt)
         rgb = default[:3]
         grp = nt.nodes.new("ShaderNodeGroup")
         grp.node_tree = thin_glass_group()
         grp.name = grp.label = "WP Thin Glass"
-        if src is not None:
+        if role == "glass-tableware":
+            # the raster tint (0xf2f7fa) stands in for transparency there;
+            # soda-lime tableware is close to colourless
+            grp.inputs["Tint"].default_value = (0.98, 0.99, 0.99, 1.0)
+        elif src is not None:
             nt.links.new(src, grp.inputs["Tint"])
         else:
             lum = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]
@@ -703,12 +712,6 @@ def upgrade_material(mat, tag, meshes):
         set_input(bsdf, "Roughness", 0.35)
         set_input(bsdf, "IOR", float(tag.get("ior", 1.5)))
         set_input(bsdf, "Metallic", 0.0)
-    elif role == "glass-tableware" and bsdf is not None:
-        set_input(bsdf, "Transmission Weight", 1.0)
-        set_input(bsdf, "Roughness", 0.02)
-        set_input(bsdf, "IOR", float(tag.get("ior", 1.5)))
-        set_input(bsdf, "Metallic", 0.0)
-        set_input(bsdf, "Alpha", 1.0)
     elif role == "linen" and bsdf is not None:
         set_input(bsdf, "Sheen Weight", float(tag.get("sheen", 0.6)))
         set_input(bsdf, "Sheen Roughness", float(tag.get("sheenRoughness", 0.65)))

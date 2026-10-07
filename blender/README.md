@@ -178,7 +178,7 @@ Principled BSDF:
 |---|---|
 | `glass-clear` | Replaced by the `WP_ThinGlass` group: Mix(Transparent·tint, Glossy GGX r=0) with a thin-slab Fresnel. Schlick uses `abs(N·I)` so both faces act as air→glass, and `R = 2R₀/(1+R₀)`. Transmission at normal incidence is 0.923 (tested). Shadows pass through. |
 | `glass-frosted` | Principled transmission 1, roughness 0.35, IOR `ior` (1.5) |
-| `glass-tableware` | Principled transmission 1, roughness 0.02, IOR `ior` (1.5) |
+| `glass-tableware` | Same `WP_ThinGlass` group with a near-white tint. The glasses are closed solid cylinders, so refractive glass would render them as black slugs with opaque shadows; thin glass treats each wall as a slab, like a real thin-walled glass. |
 | `linen` | sheen `sheen` (0.6), sheen roughness `sheenRoughness` (0.65), roughness 0.85, Mix with Translucent `translucency` (0.15) |
 | `foliage` | Mix with Translucent `translucency` (0.3), emission 0. Alpha cut-outs are moved outside the mix. |
 | `wood-floor` / `wood-deck` | coat `clearcoat` (0.3 / 0.5), coat roughness 0.15 |

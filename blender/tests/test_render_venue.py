@@ -310,6 +310,21 @@ def test_role_upgrades(full_job_src):
     assert abs(wall.inputs["Roughness"].default_value - 0.9) < 1e-6
 
 
+def test_tableware_glass_is_thin_glass():
+    """Closed solid tumblers must not become refractive slugs (black, opaque shadows)."""
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    mat = bpy.data.materials.new("glass-tableware__tableGlass")
+    mat.use_nodes = True
+    bsdf = rv.principled_node(mat.node_tree)
+    bsdf.inputs["Base Color"].default_value = (0.888, 0.930, 0.955, 1.0)
+    bsdf.inputs["Alpha"].default_value = 0.22
+    rv.upgrade_material(mat, {"role": "glass-tableware", "transmission": 1, "ior": 1.5}, [])
+    node = surface_node(mat)
+    assert node.bl_idname == "ShaderNodeGroup" and node.node_tree.name == "WP_ThinGlass"
+    assert min(node.inputs["Tint"].default_value[:3]) > 0.97
+    assert rv.principled_node(mat.node_tree) is None
+
+
 def test_shadowless_emitter_matches_object_mesh_or_material():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     mat = bpy.data.materials.new("emitter-flame__m")

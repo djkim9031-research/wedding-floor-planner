@@ -4,7 +4,7 @@
 // real Cycles (pip bpy 4.5 here, Blender 4.5 LTS on the user's Mac).
 //
 //   node scripts/qa/e2e-blender.mjs --hash "preset=Wedding+layout&cam=close&sun=2026-09-20,19:15" \
-//        --out .shots/e2e --res 480x270 --samples 32
+//        --out .shots/e2e --res 480x270 --samples 32 [--viewport 1280x720]
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -20,6 +20,7 @@ const out = resolve(opt('out', '.shots/e2e'));
 const hash = opt('hash', 'preset=Wedding+layout&cam=close&sun=2026-09-20,19:15');
 const [rw, rh] = opt('res', '480x270').split('x').map(Number);
 const samples = opt('samples', '32');
+const [vw, vh] = opt('viewport', '1280x720').split('x').map(Number);
 const python = opt('python', 'python3');
 const extra = opt('args', '').split(' ').filter(Boolean); // passed through to render_venue.py
 mkdirSync(out, { recursive: true });
@@ -52,9 +53,10 @@ const browser = await chromium.launch({
 });
 let exitCode = 1;
 try {
-  // small viewport: the export takes its aspect from --res, and software GL
-  // frames on a loaded machine are slow
-  const page = await browser.newPage({ viewport: { width: 640, height: 360 } });
+  // the export takes its aspect from --res. Keep the short side >= 700 px:
+  // smaller windows switch the cloth to its coarse tier (3" grid, no
+  // subdivision), whose folds let table edges show through the linen
+  const page = await browser.newPage({ viewport: { width: vw, height: vh } });
   page.setDefaultTimeout(300000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
