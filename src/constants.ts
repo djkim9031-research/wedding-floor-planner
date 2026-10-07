@@ -494,11 +494,12 @@ export const PRESETS: PresetDef[] = [
       { type: 'clothC', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 3' },
       // lounge just outside the entry, on the east side of the breezeway walk
       // (the west half stays clear for arriving guests): four charcoal
-      // slatted coffee tables, 2 × 2 with 30" between them
-      { type: 'tableCoffee', x: 305, z: 705, yawDeg: 0 },
-      { type: 'tableCoffee', x: 359, z: 705, yawDeg: 0 },
-      { type: 'tableCoffee', x: 305, z: 753, yawDeg: 0 },
-      { type: 'tableCoffee', x: 359, z: 753, yawDeg: 0 },
+      // slatted coffee tables pushed together into one 2 × 2 block (48" × 36"),
+      // as the pair sits in the couple's photo
+      { type: 'tableCoffee', x: 328, z: 716, yawDeg: 0 },
+      { type: 'tableCoffee', x: 352, z: 716, yawDeg: 0 },
+      { type: 'tableCoffee', x: 328, z: 734, yawDeg: 0 },
+      { type: 'tableCoffee', x: 352, z: 734, yawDeg: 0 },
       { type: 'table', x: 223.28677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 270.78677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 223.28677816578266, z: 127.0814147994799, yawDeg: 0, set: 'Table Set 1' },

@@ -53,15 +53,21 @@ describe('built-in layouts', () => {
     }
   });
 
-  it('the lounge has 4 coffee tables in a 2 × 2 grid with walkways between them', () => {
+  it('the lounge is 4 coffee tables pushed together into one 2 × 2 block on the entry walk', () => {
     const items = PRESETS.find((p) => p.name === 'Wedding layout')!.items.filter((it) => it.type === 'tableCoffee');
     expect(items).toHaveLength(4);
-    expect(new Set(items.map((it) => it.x)).size).toBe(2);
-    expect(new Set(items.map((it) => it.z)).size).toBe(2);
     const { w, d } = ITEM_DIMS.tableCoffee;
     const xs = [...new Set(items.map((it) => it.x))].sort((a, b) => a - b);
     const zs = [...new Set(items.map((it) => it.z))].sort((a, b) => a - b);
-    expect(xs[1] - xs[0] - w).toBeGreaterThanOrEqual(24);
-    expect(zs[1] - zs[0] - d).toBeGreaterThanOrEqual(24);
+    expect(xs).toHaveLength(2);
+    expect(zs).toHaveLength(2);
+    // flush: neighbours touch edge to edge
+    expect(xs[1] - xs[0]).toBeCloseTo(w, 6);
+    expect(zs[1] - zs[0]).toBeCloseTo(d, 6);
+    // outside the entry (south of the vestibule doors at z 659), east half of the walk
+    for (const it of items) {
+      expect(it.z).toBeGreaterThan(662);
+      expect(it.x).toBeGreaterThan(272.5);
+    }
   });
 });
