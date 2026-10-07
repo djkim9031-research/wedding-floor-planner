@@ -971,7 +971,8 @@ export function buildExterior(): THREE.Group {
     ear.rotation.set(-0.15, 0, sx * 0.18);
     part(bunny, bunnyFur, 1, sx * 1.7, 1.2, 2.8, 1, 0.6, 1.4); // front paws
   }
-  bunny.position.set(i2m(352), i2m(DECK_TOP_Y), i2m(-262));
+  // east of the ceremony arc's end chair (331, −259), still facing the squirrel
+  bunny.position.set(i2m(364), i2m(DECK_TOP_Y), i2m(-268));
   bunny.rotation.y = Math.PI + 0.5; // looking toward the squirrel
   critters.add(bunny);
 

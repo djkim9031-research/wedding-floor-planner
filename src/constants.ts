@@ -438,15 +438,19 @@ export const PRESETS: PresetDef[] = [
     name: 'Wedding layout',
     items: [
       { type: 'lantern18', x: 329.34528906642606, z: -204.2944483572774, yawDeg: 0 },
-      { type: 'figureM', x: 196.52571775852886, z: -187.5658261457075, yawDeg: 0 },
-      { type: 'figureW', x: 227.99038969355976, z: -185.0639703700082, yawDeg: 0 },
-      { type: 'chair', x: 208.17359427927747, z: -60.73037620267428, yawDeg: 180 },
-      { type: 'chair', x: 172.49763451044694, z: -59.218600130674474, yawDeg: 180 },
-      { type: 'chair', x: 245.53808518733345, z: -57.34875958515319, yawDeg: 180 },
-      { type: 'chair', x: 279.2561041997567, z: -56.8473731191945, yawDeg: 180 },
-      { type: 'chair', x: 308.25103766058237, z: -78.12364566358359, yawDeg: 225 },
-      { type: 'chair', x: 140.01896607878814, z: -84.52872308639104, yawDeg: 135 },
-      { type: 'chair', x: 119.3032851063646, z: -113.58367258649724, yawDeg: 125 },
+      // ceremony: the couple faces north toward the railing; the guests'
+      // arc of 8 chairs sits on the railing side, looking back at the couple
+      // and the hall (mirrored across the couple from the hall side)
+      { type: 'figureM', x: 196.52571775852886, z: -187.5658261457075, yawDeg: 180 },
+      { type: 'figureW', x: 227.99038969355976, z: -185.0639703700082, yawDeg: 180 },
+      { type: 'chair', x: 208.17, z: -311.9, yawDeg: 0 },
+      { type: 'chair', x: 172.5, z: -313.41, yawDeg: 0 },
+      { type: 'chair', x: 245.54, z: -315.28, yawDeg: 0 },
+      { type: 'chair', x: 279.26, z: -315.78, yawDeg: 0 },
+      { type: 'chair', x: 308.25, z: -294.51, yawDeg: 315 },
+      { type: 'chair', x: 140.02, z: -288.1, yawDeg: 45 },
+      { type: 'chair', x: 119.3, z: -259.05, yawDeg: 55 },
+      { type: 'chair', x: 331.1, z: -259.05, yawDeg: 305 },
       { type: 'tableQ', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, set: 'Table Set 2' },
       { type: 'clothC', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 2' },
       { type: 'tableQ', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, set: 'Table Set 3' },
