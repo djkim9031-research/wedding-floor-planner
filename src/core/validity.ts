@@ -1,4 +1,6 @@
 import {
+  BREEZEWAY_POSTS,
+  BREEZEWAY_POST_SIZE,
   COLUMNS,
   DECK_TRUNKS,
   type TrunkFootprint,
@@ -91,6 +93,9 @@ export function isPoseValid(
   }
   for (const trunk of DECK_TRUNKS) {
     if (obbOverlapsEllipse(corners, trunk, PENETRATION_EPS)) return false;
+  }
+  for (const p of BREEZEWAY_POSTS) {
+    if (obbIntersectsOBB(obb, aabbToOBB(p.x, p.z, BREEZEWAY_POST_SIZE, BREEZEWAY_POST_SIZE), PENETRATION_EPS)) return false;
   }
 
   // lanterns/settings are decor (may sit on tabletops); plants may overlap

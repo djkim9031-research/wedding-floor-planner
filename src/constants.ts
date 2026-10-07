@@ -135,9 +135,25 @@ export const DECK_PLANTER_SPOTS: [number, number][] = [
 ];
 export const DECK_PLANTER_REACH = 18;
 
-/** Zones where items may be placed: the room, and the Tree Deck (an item
- * must fit fully inside one zone — nothing halfway through the glass wall). */
-export const PLACEMENT_AREAS: Vec2[][] = [ROOM_POLYGON, DECK_POLY];
+/** The covered entry breezeway's upper paver level, from the vestibule doors
+ * south to the steps down to the court (the walk the guests arrive on). */
+export const ENTRY_WALK: Vec2[] = [
+  { x: 76, z: 662 },
+  { x: 469, z: 662 },
+  { x: 469, z: 1688 },
+  { x: 76, z: 1688 },
+];
+
+/** The breezeway's 8" posts: two rows at x 150 / 395, every 144" from z 730. */
+export const BREEZEWAY_POSTS: Vec2[] = [150, 395].flatMap((x) =>
+  Array.from({ length: 8 }, (_, k) => ({ x, z: 730 + 144 * k })),
+);
+export const BREEZEWAY_POST_SIZE = 8;
+
+/** Zones where items may be placed: the room, the Tree Deck and the entry
+ * walk (an item must fit fully inside one zone — nothing halfway through the
+ * glass wall). */
+export const PLACEMENT_AREAS: Vec2[][] = [ROOM_POLYGON, DECK_POLY, ENTRY_WALK];
 
 /** Where the stand-here camera may walk: room, deck, hallways, bathrooms,
  * and the entry breezeway. */
@@ -476,12 +492,13 @@ export const PRESETS: PresetDef[] = [
       { type: 'clothC', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 2' },
       { type: 'tableQ', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, set: 'Table Set 3' },
       { type: 'clothC', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 3' },
-      // lounge by the entry: four charcoal slatted coffee tables, 2 × 2 with
-      // walkways (54" across, 36" front to back) between them
-      { type: 'tableCoffee', x: 320, z: 445, yawDeg: 0 },
-      { type: 'tableCoffee', x: 398, z: 445, yawDeg: 0 },
-      { type: 'tableCoffee', x: 320, z: 499, yawDeg: 0 },
-      { type: 'tableCoffee', x: 398, z: 499, yawDeg: 0 },
+      // lounge just outside the entry, on the east side of the breezeway walk
+      // (the west half stays clear for arriving guests): four charcoal
+      // slatted coffee tables, 2 × 2 with 30" between them
+      { type: 'tableCoffee', x: 305, z: 705, yawDeg: 0 },
+      { type: 'tableCoffee', x: 359, z: 705, yawDeg: 0 },
+      { type: 'tableCoffee', x: 305, z: 753, yawDeg: 0 },
+      { type: 'tableCoffee', x: 359, z: 753, yawDeg: 0 },
       { type: 'table', x: 223.28677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 270.78677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 223.28677816578266, z: 127.0814147994799, yawDeg: 0, set: 'Table Set 1' },

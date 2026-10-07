@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DECK_POLY, DECK_TRUNKS, ITEM_DIMS } from '../constants';
+import { BREEZEWAY_POSTS, DECK_POLY, DECK_TRUNKS, ITEM_DIMS } from '../constants';
 import { obbCorners, obbFromPose, pointInPolygon } from './geometry';
 import { isPoseValid, obbOverlapsEllipse } from './validity';
 
@@ -56,5 +56,15 @@ describe('deck trunk openings', () => {
       ['chair', 455, -185, 190],
     ];
     for (const [type, x, z, yawDeg] of demo) expect(isPoseValid(type, { x, z, yawDeg }, [])).toBe(true);
+  });
+});
+
+describe('entry breezeway walk', () => {
+  it('takes items on the walk outside the entry, but not on its posts', () => {
+    expect(isPoseValid('tableCoffee', { x: 305, z: 705, yawDeg: 0 }, [])).toBe(true);
+    const post = BREEZEWAY_POSTS.find((p) => p.x === 395)!;
+    expect(isPoseValid('tableCoffee', { x: post.x, z: post.z, yawDeg: 0 }, [])).toBe(false);
+    // straddling the vestibule doors (half in the hall, half on the walk)
+    expect(isPoseValid('tableCoffee', { x: 300, z: 662, yawDeg: 0 }, [])).toBe(false);
   });
 });
