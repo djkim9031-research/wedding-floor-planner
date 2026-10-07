@@ -51,6 +51,7 @@ const templates = new Map<ItemType, THREE.Group>();
 const tableOutlines = new Map<TableType, THREE.BufferGeometry>();
 
 function buildTableTemplate(type: TableType, dimsOverride?: { w: number; d: number; h?: number }): THREE.Group {
+  if (type === 'tableCoffee') return buildCoffeeTable();
   const { w, d } = dimsOverride ?? ITEM_DIMS[type];
   const top = dimsOverride?.h ?? TABLE_TOPS[type];
   const wood = tableMaterial(type);
@@ -76,13 +77,40 @@ function buildTableTemplate(type: TableType, dimsOverride?: { w: number; d: numb
     leg.castShadow = true;
     g.add(leg);
   }
-  if (type === 'tableCoffee') {
-    // lower shelf between the legs, 5" off the floor
-    const shelf = new THREE.Mesh(new THREE.BoxGeometry(i2m(w - LEG_SIZE * 2), i2m(1), i2m(d - LEG_SIZE * 2)), wood);
-    shelf.position.y = i2m(5.5);
-    shelf.castShadow = shelf.receiveShadow = true;
-    g.add(shelf);
-  }
+  return g;
+}
+
+/** Charcoal outdoor lounge table from the couple's photo: slatted top over a
+ * deep apron on thick square legs, no shelf. Top at TABLE_TOPS.tableCoffee. */
+function buildCoffeeTable(): THREE.Group {
+  const { w, d } = ITEM_DIMS.tableCoffee;
+  const top = TABLE_TOPS.tableCoffee;
+  const mat = tag(new THREE.MeshStandardMaterial({ color: 0x45484b, roughness: 0.72, metalness: 0 }), 'generic', {}, 'coffeeCharcoal');
+  const g = new THREE.Group();
+  const add = (bw: number, bh: number, bd: number, x: number, y: number, z: number) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(i2m(bw), i2m(bh), i2m(bd)), mat);
+    m.position.set(i2m(x), i2m(y), i2m(z));
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+  };
+  // top: five slats running the length, 3/8" gaps
+  const slatT = 0.9;
+  const gap = 0.375;
+  const n = 5;
+  const slatW = (d - gap * (n - 1)) / n;
+  for (let k = 0; k < n; k++) add(w, slatT, slatW, 0, top - slatT / 2, -d / 2 + slatW / 2 + k * (slatW + gap));
+  // apron, set in 1/2" under the slats
+  const apH = 2.75;
+  const apT = 0.9;
+  const ay = top - slatT - apH / 2;
+  add(w - 1, apH, apT, 0, ay, d / 2 - 0.5 - apT / 2);
+  add(w - 1, apH, apT, 0, ay, -(d / 2 - 0.5 - apT / 2));
+  add(apT, apH, d - 1, w / 2 - 0.5 - apT / 2, ay, 0);
+  add(apT, apH, d - 1, -(w / 2 - 0.5 - apT / 2), ay, 0);
+  // thick square legs at the corners
+  const legS = 2.25;
+  const legH = top - slatT;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(legS, legH, legS, sx * (w / 2 - 0.5 - legS / 2), legH / 2, sz * (d / 2 - 0.5 - legS / 2));
   return g;
 }
 

@@ -47,6 +47,14 @@ for (let t = 0; ; t++) {
   await new Promise((r) => setTimeout(r, 250));
 }
 
+const stopServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    /* gone */
+  }
+};
+
 const browser = await chromium.launch({
   headless: true,
   args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
@@ -71,6 +79,10 @@ try {
   } catch (e) {
     console.log('app screenshot skipped: ' + String(e).split('\n')[0]);
   }
+  // the page keeps drawing frames (software GL) — shut the browser and the
+  // preview server before Cycles starts, or they take half the CPU from it
+  await browser.close();
+  stopServer();
   const job = `${out}/job`;
   mkdirSync(job, { recursive: true });
   for (const [name, data] of Object.entries(unzipSync(new Uint8Array(zip)))) writeFileSync(`${job}/${name}`, data);
@@ -97,11 +109,7 @@ try {
   if (result) console.log(`result: ${result.png}`);
   exitCode = r.status === 0 && result ? 0 : 1;
 } finally {
-  await browser.close();
-  try {
-    process.kill(-server.pid, 'SIGTERM');
-  } catch {
-    /* gone */
-  }
+  await browser.close().catch(() => {});
+  stopServer();
 }
 process.exit(exitCode);

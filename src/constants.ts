@@ -189,7 +189,7 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   tableSq: { w: 35.5, d: 35.5 },
   tableQ: { w: 72, d: 36 },
   tableC: { w: 48, d: 30 }, // custom oak — mutable via setCustomTableDims
-  tableCoffee: { w: 48, d: 24 },
+  tableCoffee: { w: 24, d: 18 }, // charcoal slatted lounge table (couple's photo)
   chair: { w: 20, d: 17 },
   clothA: { w: 108, d: 156 },
   clothB: { w: 104, d: 144 },
@@ -222,7 +222,7 @@ export const ITEM_LABELS: Record<ItemType, string> = {
   tableSq: 'Square Oak Table',
   tableQ: 'QCC Table',
   tableC: 'Custom Oak Table',
-  tableCoffee: 'Oak Coffee Table',
+  tableCoffee: 'Slatted Coffee Table',
   chair: 'Oak Bistro Chair',
   clothA: 'Rental Linen',
   clothB: 'C&B Linen',
@@ -356,7 +356,7 @@ export const TABLE_TOPS: Record<TableType, number> = {
   tableSq: 29.5,
   tableQ: 30.5,
   tableC: 30, // mutable via setCustomTableDims
-  tableCoffee: 18, // lounge height, with a slatted shelf below
+  tableCoffee: 16, // low lounge height
 };
 export const TABLE_TOP_MAX = 30.5;
 export const TABLE_TOP_T = 1.5; // rendered top slab thickness
@@ -476,7 +476,8 @@ export const PRESETS: PresetDef[] = [
       { type: 'clothC', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 2' },
       { type: 'tableQ', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, set: 'Table Set 3' },
       { type: 'clothC', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 3' },
-      // lounge by the entry: four oak coffee tables, 2 × 2 with 30" between them
+      // lounge by the entry: four charcoal slatted coffee tables, 2 × 2 with
+      // walkways (54" across, 36" front to back) between them
       { type: 'tableCoffee', x: 320, z: 445, yawDeg: 0 },
       { type: 'tableCoffee', x: 398, z: 445, yawDeg: 0 },
       { type: 'tableCoffee', x: 320, z: 499, yawDeg: 0 },
