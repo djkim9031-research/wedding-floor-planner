@@ -479,21 +479,22 @@ export const PRESETS: PresetDef[] = [
     // ceremony chairs, lantern, and figures, exactly as arranged on the floor
     name: 'Wedding layout',
     items: [
-      // ceremony by the north railing (as marked on the plan): the couple
-      // faces north with the deck oak right behind them; the guests' arc of
-      // 8 chairs faces back toward the couple and the hall, drawn in to 8.5'
-      // so the front row clears the NW deck planter (150, −420)
-      { type: 'lantern18', x: 331.35, z: -318.29, yawDeg: 0 },
-      { type: 'figureM', x: 198.53, z: -301.57, yawDeg: 180 },
-      { type: 'figureW', x: 229.99, z: -299.06, yawDeg: 180 },
-      { type: 'chair', x: 210.99, z: -400.78, yawDeg: 0 },
-      { type: 'chair', x: 182.45, z: -401.99, yawDeg: 0 },
-      { type: 'chair', x: 240.88, z: -403.49, yawDeg: 0 },
-      { type: 'chair', x: 267.86, z: -403.89, yawDeg: 0 },
-      { type: 'chair', x: 291.05, z: -386.87, yawDeg: 315 },
-      { type: 'chair', x: 156.47, z: -381.74, yawDeg: 45 },
-      { type: 'chair', x: 139.89, z: -358.5, yawDeg: 55 },
-      { type: 'chair', x: 309.33, z: -358.5, yawDeg: 305 },
+      // ceremony by the north railing, under the deck oak's great west limb
+      // (the couple moved it 13' west — right, as seen from the deck): the
+      // couple faces north under the limb; the guests' arc of 8 chairs faces
+      // back toward the couple and the hall, clear of the NW deck planter
+      // (150, −420)
+      { type: 'lantern18', x: 175.35, z: -318.29, yawDeg: 0 },
+      { type: 'figureM', x: 42.53, z: -301.57, yawDeg: 180 },
+      { type: 'figureW', x: 73.99, z: -299.06, yawDeg: 180 },
+      { type: 'chair', x: 54.99, z: -400.78, yawDeg: 0 },
+      { type: 'chair', x: 26.45, z: -401.99, yawDeg: 0 },
+      { type: 'chair', x: 84.88, z: -403.49, yawDeg: 0 },
+      { type: 'chair', x: 111.86, z: -403.89, yawDeg: 0 },
+      { type: 'chair', x: 135.05, z: -386.87, yawDeg: 315 },
+      { type: 'chair', x: 0.47, z: -381.74, yawDeg: 45 },
+      { type: 'chair', x: -16.11, z: -358.5, yawDeg: 55 },
+      { type: 'chair', x: 153.33, z: -358.5, yawDeg: 305 },
       { type: 'tableQ', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, set: 'Table Set 2' },
       { type: 'clothC', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 2' },
       { type: 'tableQ', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, set: 'Table Set 3' },
