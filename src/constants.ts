@@ -205,7 +205,7 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   tableSq: { w: 35.5, d: 35.5 },
   tableQ: { w: 72, d: 36 },
   tableC: { w: 48, d: 30 }, // custom oak — mutable via setCustomTableDims
-  tableCoffee: { w: 26, d: 26 }, // charcoal slatted table; four push together (couple's photos)
+  tableCoffee: { w: 29, d: 29 }, // charcoal slatted table; four push together (couple's photos)
   loungeSofa: { w: 84, d: 36 }, // three-seat teak deep-seating sofa
   loungeChair: { w: 32, d: 34 }, // teak deep-seating club chair
   chair: { w: 20, d: 17 },
@@ -502,19 +502,20 @@ export const PRESETS: PresetDef[] = [
       // breezeway walk; the west half stays clear for arriving guests), set up
       // like the couple's photo: four charcoal tables pushed together 2 × 2
       // with small visible gaps (2½", slats alternating like the photo),
-      // filling the ring to ~16" of legroom; a sofa each side, three lounge
-      // chairs south and two north — 11 seats
-      { type: 'tableCoffee', x: 315.75, z: 775.75, yawDeg: 0 },
-      { type: 'tableCoffee', x: 344.25, z: 775.75, yawDeg: 90 },
-      { type: 'tableCoffee', x: 315.75, z: 804.25, yawDeg: 90 },
-      { type: 'tableCoffee', x: 344.25, z: 804.25, yawDeg: 0 },
-      { type: 'loungeSofa', x: 268, z: 790, yawDeg: 90 },
-      { type: 'loungeSofa', x: 392, z: 790, yawDeg: 270 },
-      { type: 'loungeChair', x: 296, z: 850, yawDeg: 180 },
-      { type: 'loungeChair', x: 330, z: 850, yawDeg: 180 },
-      { type: 'loungeChair', x: 364, z: 850, yawDeg: 180 },
-      { type: 'loungeChair', x: 300, z: 730, yawDeg: 0 },
-      { type: 'loungeChair', x: 360, z: 730, yawDeg: 0 },
+      // filling the ring to ~13" of legroom; a sofa each side, three lounge
+      // chairs south and two north (drawn in a little to clear the
+      // breezeway post at 395, 730) — 11 seats
+      { type: 'tableCoffee', x: 338.25, z: 774.25, yawDeg: 0 },
+      { type: 'tableCoffee', x: 369.75, z: 774.25, yawDeg: 90 },
+      { type: 'tableCoffee', x: 338.25, z: 805.75, yawDeg: 90 },
+      { type: 'tableCoffee', x: 369.75, z: 805.75, yawDeg: 0 },
+      { type: 'loungeSofa', x: 292, z: 790, yawDeg: 90 },
+      { type: 'loungeSofa', x: 416, z: 790, yawDeg: 270 },
+      { type: 'loungeChair', x: 320, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 354, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 388, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 336, z: 730, yawDeg: 0 },
+      { type: 'loungeChair', x: 372, z: 730, yawDeg: 0 },
       { type: 'table', x: 223.28677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 270.78677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 223.28677816578266, z: 127.0814147994799, yawDeg: 0, set: 'Table Set 1' },
