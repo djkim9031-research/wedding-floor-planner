@@ -748,7 +748,12 @@ def upgrade_material(mat, tag, meshes):
             em.inputs["Strength"].default_value = 1.0
             info["backplate_default"] = True
         out = output_node(nt)
-        nt.links.new(em.outputs[0], out.inputs["Surface"])
+        surface = em.outputs[0]
+        if bsdf is not None:
+            # the panoramas cut their sky out (glTF alpha): there the world
+            # sky must show through, not the cut-out texels' black emission
+            surface = wrap_alpha(nt, bsdf, surface)
+        nt.links.new(surface, out.inputs["Surface"])
         mat.cycles.emission_sampling = "NONE"   # seen by the camera only, lights nothing
         info["camera_only"] = True
     elif role == "metal-stainless" and bsdf is not None:

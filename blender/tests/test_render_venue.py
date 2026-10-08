@@ -325,6 +325,24 @@ def test_tableware_glass_is_thin_glass():
     assert rv.principled_node(mat.node_tree) is None
 
 
+def test_backplate_cutout_sky_stays_transparent():
+    """A panorama's cut-out sky must show the world sky, not emit its black texels."""
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    mat = bpy.data.materials.new("backplate__pano")
+    mat.use_nodes = True
+    nt = mat.node_tree
+    bsdf = rv.principled_node(nt)
+    img = nt.nodes.new("ShaderNodeTexImage")
+    nt.links.new(img.outputs["Color"], bsdf.inputs["Base Color"])
+    nt.links.new(img.outputs["Alpha"], bsdf.inputs["Alpha"])
+    rv.upgrade_material(mat, {"role": "backplate", "cameraOnly": True, "castShadow": False}, [])
+    mix = surface_node(mat)
+    assert mix.name == "WP Alpha Mix"
+    assert mix.inputs["Fac"].links[0].from_socket == img.outputs["Alpha"]
+    assert mix.inputs[1].links[0].from_node.bl_idname == "ShaderNodeBsdfTransparent"
+    assert mix.inputs[2].links[0].from_node.name == "WP Backplate Emission"
+
+
 def test_shadowless_emitter_matches_object_mesh_or_material():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     mat = bpy.data.materials.new("emitter-flame__m")
