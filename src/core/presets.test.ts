@@ -65,7 +65,7 @@ describe('built-in layouts', () => {
     // separate tables, pushed together: a small gap, never touching
     for (const gap of [xs[1] - xs[0] - w, zs[1] - zs[0] - d]) {
       expect(gap).toBeGreaterThan(0);
-      expect(gap).toBeLessThanOrEqual(1);
+      expect(gap).toBeLessThanOrEqual(2);
     }
     const sofas = items.filter((it) => it.type === 'loungeSofa');
     const chairs = items.filter((it) => it.type === 'loungeChair');

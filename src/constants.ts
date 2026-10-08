@@ -501,12 +501,12 @@ export const PRESETS: PresetDef[] = [
       // cocktail lounge just outside the entry, to the right (east half of the
       // breezeway walk; the west half stays clear for arriving guests), set up
       // like the couple's photo: four small charcoal tables pushed together
-      // 2 × 2 with 1/2" gaps (slats alternating like the photo), a sofa each
-      // side, three lounge chairs south and two north — 11 seats
-      { type: 'tableCoffee', x: 323.75, z: 783.75, yawDeg: 0 },
-      { type: 'tableCoffee', x: 336.25, z: 783.75, yawDeg: 90 },
-      { type: 'tableCoffee', x: 323.75, z: 796.25, yawDeg: 90 },
-      { type: 'tableCoffee', x: 336.25, z: 796.25, yawDeg: 0 },
+      // 2 × 2 with a hint of a gap (1½", slats alternating like the photo), a
+      // sofa each side, three lounge chairs south and two north — 11 seats
+      { type: 'tableCoffee', x: 323.25, z: 783.25, yawDeg: 0 },
+      { type: 'tableCoffee', x: 336.75, z: 783.25, yawDeg: 90 },
+      { type: 'tableCoffee', x: 323.25, z: 796.75, yawDeg: 90 },
+      { type: 'tableCoffee', x: 336.75, z: 796.75, yawDeg: 0 },
       { type: 'loungeSofa', x: 268, z: 790, yawDeg: 90 },
       { type: 'loungeSofa', x: 392, z: 790, yawDeg: 270 },
       { type: 'loungeChair', x: 296, z: 850, yawDeg: 180 },
