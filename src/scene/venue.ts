@@ -354,7 +354,9 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
   plank.roughnessMap.repeat.copy(paverTex.repeat);
   plank.bumpMap.repeat.copy(paverTex.repeat);
 
-  // walk drops 9" to the court over two shallow steps near the south end
+  // walk drops 9" to the court over two shallow steps near the south end;
+  // the same pavers run east along the east hallway's facade as a terrace
+  // (the couple's lounge photos), up to the court's planting bed
   const paverSurf = (x0: number, x1: number, z0: number, z1: number, y: number): Geo => {
     const g = new THREE.ShapeGeometry(rectShape(x0, x1, z0, z1));
     g.rotateX(-Math.PI / 2);
@@ -366,6 +368,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
       paverSurf(76, 469, 659, 1688, -0.75),
       paverSurf(76, 469, 1688, 1706, -5.25),
       paverSurf(76, 469, 1706, 1835, -9.75),
+      paverSurf(469, 560, 659, 890, -0.75), // terrace
     ],
     tag(
       new THREE.MeshStandardMaterial({ map: paverTex, roughnessMap: plank.roughnessMap, bumpMap: plank.bumpMap, bumpScale: 0.02, roughness: 1, metalness: 0 }),
@@ -383,6 +386,7 @@ export function buildVenue(): { group: THREE.Group; roof: THREE.Group } {
       box(76, 469, -12, -0.8, 659, 1688),
       box(76, 469, -12, -5.3, 1688, 1706),
       box(76, 469, -20, -9.8, 1706, 1835),
+      box(469, 560, -12, -0.8, 659, 890),
     ],
     tag(new THREE.MeshStandardMaterial({ color: 0xaaa294, roughness: 0.95, metalness: 0 }), 'stone', {}, 'plinth'),
   );

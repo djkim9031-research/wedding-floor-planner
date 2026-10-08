@@ -136,10 +136,15 @@ export const DECK_PLANTER_SPOTS: [number, number][] = [
 export const DECK_PLANTER_REACH = 18;
 
 /** The covered entry breezeway's upper paver level, from the vestibule doors
- * south to the steps down to the court (the walk the guests arrive on). */
+ * south to the steps down to the court (the walk the guests arrive on), plus
+ * the paved terrace east of its north end along the east hallway's facade
+ * (where the lounge sits in the couple's photos), up to the court's planting
+ * bed at z 890. */
 export const ENTRY_WALK: Vec2[] = [
   { x: 76, z: 662 },
-  { x: 469, z: 662 },
+  { x: 560, z: 662 },
+  { x: 560, z: 890 },
+  { x: 469, z: 890 },
   { x: 469, z: 1688 },
   { x: 76, z: 1688 },
 ];
@@ -192,6 +197,13 @@ export const WALK_AREAS: Vec2[][] = [
     { x: 445, z: 659 },
     { x: 445, z: 2280 },
     { x: 100, z: 2280 },
+  ],
+  [
+    // the paved terrace east of the walk (the lounge), off the facade
+    { x: 445, z: 665 },
+    { x: 560, z: 665 },
+    { x: 560, z: 890 },
+    { x: 445, z: 890 },
   ],
 ];
 
@@ -479,44 +491,45 @@ export const PRESETS: PresetDef[] = [
     // ceremony chairs, lantern, and figures, exactly as arranged on the floor
     name: 'Wedding layout',
     items: [
-      // ceremony by the north railing, under the deck oak's great west limb
-      // (the couple moved it 13' west — right, as seen from the deck): the
-      // couple faces north under the limb; the guests' arc of 8 chairs faces
-      // back toward the couple and the hall, clear of the NW deck planter
-      // (150, −420)
-      { type: 'lantern18', x: 175.35, z: -318.29, yawDeg: 0 },
-      { type: 'figureM', x: 42.53, z: -301.57, yawDeg: 180 },
-      { type: 'figureW', x: 73.99, z: -299.06, yawDeg: 180 },
-      { type: 'chair', x: 54.99, z: -400.78, yawDeg: 0 },
-      { type: 'chair', x: 26.45, z: -401.99, yawDeg: 0 },
-      { type: 'chair', x: 84.88, z: -403.49, yawDeg: 0 },
-      { type: 'chair', x: 111.86, z: -403.89, yawDeg: 0 },
-      { type: 'chair', x: 135.05, z: -386.87, yawDeg: 315 },
-      { type: 'chair', x: 0.47, z: -381.74, yawDeg: 45 },
-      { type: 'chair', x: -16.11, z: -358.5, yawDeg: 55 },
-      { type: 'chair', x: 153.33, z: -358.5, yawDeg: 305 },
+      // ceremony under the deck oak's great west limb (where the couple
+      // circled it on the deck view): the couple stands right under the low
+      // run of the limb, ~13" of headroom, facing north; the guests' arc of
+      // 8 chairs keeps its shape, centred on them, facing back toward the
+      // couple and the hall, clear of the NW deck planter (150, −420)
+      { type: 'lantern18', x: 205.09, z: -318.29, yawDeg: 0 },
+      { type: 'figureM', x: 72.27, z: -266.26, yawDeg: 180 },
+      { type: 'figureW', x: 103.73, z: -263.75, yawDeg: 180 },
+      { type: 'chair', x: 74.13, z: -365.47, yawDeg: 0 },
+      { type: 'chair', x: 45.59, z: -366.68, yawDeg: 0 },
+      { type: 'chair', x: 104.02, z: -368.18, yawDeg: 0 },
+      { type: 'chair', x: 131, z: -368.58, yawDeg: 0 },
+      { type: 'chair', x: 154.19, z: -351.56, yawDeg: 315 },
+      { type: 'chair', x: 19.61, z: -346.43, yawDeg: 45 },
+      { type: 'chair', x: 3.03, z: -323.19, yawDeg: 55 },
+      { type: 'chair', x: 172.47, z: -323.19, yawDeg: 305 },
       { type: 'tableQ', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, set: 'Table Set 2' },
       { type: 'clothC', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 2' },
       { type: 'tableQ', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, set: 'Table Set 3' },
       { type: 'clothC', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 3' },
-      // cocktail lounge just outside the entry, to the right (east half of the
-      // breezeway walk; the west half stays clear for arriving guests), set up
-      // like the couple's photo: four charcoal tables pushed together 2 × 2
-      // with small visible gaps (2½", slats alternating like the photo),
-      // filling the ring to ~13" of legroom; a sofa each side, three lounge
-      // chairs south and two north (drawn in a little to clear the
-      // breezeway post at 395, 730) — 11 seats
-      { type: 'tableCoffee', x: 338.25, z: 774.25, yawDeg: 0 },
-      { type: 'tableCoffee', x: 369.75, z: 774.25, yawDeg: 90 },
-      { type: 'tableCoffee', x: 338.25, z: 805.75, yawDeg: 90 },
-      { type: 'tableCoffee', x: 369.75, z: 805.75, yawDeg: 0 },
-      { type: 'loungeSofa', x: 292, z: 790, yawDeg: 90 },
-      { type: 'loungeSofa', x: 416, z: 790, yawDeg: 270 },
-      { type: 'loungeChair', x: 320, z: 850, yawDeg: 180 },
-      { type: 'loungeChair', x: 354, z: 850, yawDeg: 180 },
-      { type: 'loungeChair', x: 388, z: 850, yawDeg: 180 },
-      { type: 'loungeChair', x: 336, z: 730, yawDeg: 0 },
-      { type: 'loungeChair', x: 372, z: 730, yawDeg: 0 },
+      // cocktail lounge outside the entry, 6' further right (east) than first
+      // drawn, as the couple saw it in person: clear of the doors' approach,
+      // over the walk's east post line onto the terrace along the east
+      // hallway's facade. Set up like the couple's photo: four charcoal
+      // tables pushed together 2 × 2 with small visible gaps (2½", slats
+      // alternating like the photo), ~13–16" of legroom all round; a sofa
+      // each side, three lounge chairs south and two north (nudged east to
+      // clear the breezeway post at 395, 730) — 11 seats
+      { type: 'tableCoffee', x: 410.25, z: 774.25, yawDeg: 0 },
+      { type: 'tableCoffee', x: 441.75, z: 774.25, yawDeg: 90 },
+      { type: 'tableCoffee', x: 410.25, z: 805.75, yawDeg: 90 },
+      { type: 'tableCoffee', x: 441.75, z: 805.75, yawDeg: 0 },
+      { type: 'loungeSofa', x: 364, z: 790, yawDeg: 90 },
+      { type: 'loungeSofa', x: 490, z: 790, yawDeg: 270 },
+      { type: 'loungeChair', x: 392, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 426, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 460, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 418, z: 730, yawDeg: 0 },
+      { type: 'loungeChair', x: 452, z: 730, yawDeg: 0 },
       { type: 'table', x: 223.28677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 270.78677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 223.28677816578266, z: 127.0814147994799, yawDeg: 0, set: 'Table Set 1' },

@@ -821,7 +821,13 @@ export function buildExterior(): THREE.Group {
   // garden court east. Court planters ride the breezeway-planter merge.
   // -------------------------------------------------------------------------
   const pavers = merged(
-    [box(-470, 100, -2, -0.5, 815, 1250), box(375, 830, -2, -0.5, 815, 1250)],
+    [
+      box(-470, 100, -2, -0.5, 815, 1250),
+      // east court: kept off the lounge's paving (the walk's terrace, x
+      // 469–560, and the walk beside it, both to z 890)
+      box(375, 830, -2, -0.5, 890, 1250),
+      box(560, 830, -2, -0.5, 815, 890),
+    ],
     tag(new THREE.MeshStandardMaterial({ color: 0xcfc5b2, roughness: 0.95, metalness: 0 }), 'stone', {}, 'walkPavers'),
   );
   pavers.receiveShadow = true;

@@ -67,4 +67,14 @@ describe('entry breezeway walk', () => {
     // straddling the vestibule doors (half in the hall, half on the walk)
     expect(isPoseValid('tableCoffee', { x: 300, z: 662, yawDeg: 0 }, [])).toBe(false);
   });
+
+  it('takes items on the paved terrace east of the walk, but not past it', () => {
+    // on the terrace (x 469–560, z 662–890), and across its seam with the walk
+    expect(isPoseValid('loungeSofa', { x: 520, z: 780, yawDeg: 270 }, [])).toBe(true);
+    expect(isPoseValid('loungeSofa', { x: 469, z: 780, yawDeg: 270 }, [])).toBe(true);
+    // over its east or south edge, or south of it beside the walk (court bed)
+    expect(isPoseValid('tableCoffee', { x: 560, z: 780, yawDeg: 0 }, [])).toBe(false);
+    expect(isPoseValid('tableCoffee', { x: 520, z: 890, yawDeg: 0 }, [])).toBe(false);
+    expect(isPoseValid('tableCoffee', { x: 520, z: 950, yawDeg: 0 }, [])).toBe(false);
+  });
 });
