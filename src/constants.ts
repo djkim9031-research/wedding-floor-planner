@@ -516,14 +516,14 @@ export const PRESETS: PresetDef[] = [
       // over the walk's east post line onto the terrace along the east
       // hallway's facade. Set up like the couple's photo: four charcoal
       // tables pushed together 2 × 2 with small visible gaps (2½", slats
-      // alternating like the photo), ~13–16" of legroom all round; a sofa
-      // each side, three lounge chairs south and two north (nudged east to
-      // clear the breezeway post at 395, 730) — 11 seats
+      // alternating like the photo), ~13–16" of legroom all round; a sofa on
+      // the east side (the couple took out the west one, on the doors' side),
+      // three lounge chairs south and two north (nudged east to clear the
+      // breezeway post at 395, 730) — 8 seats
       { type: 'tableCoffee', x: 410.25, z: 774.25, yawDeg: 0 },
       { type: 'tableCoffee', x: 441.75, z: 774.25, yawDeg: 90 },
       { type: 'tableCoffee', x: 410.25, z: 805.75, yawDeg: 90 },
       { type: 'tableCoffee', x: 441.75, z: 805.75, yawDeg: 0 },
-      { type: 'loungeSofa', x: 364, z: 790, yawDeg: 90 },
       { type: 'loungeSofa', x: 490, z: 790, yawDeg: 270 },
       { type: 'loungeChair', x: 392, z: 850, yawDeg: 180 },
       { type: 'loungeChair', x: 426, z: 850, yawDeg: 180 },

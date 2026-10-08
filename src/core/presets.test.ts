@@ -54,7 +54,7 @@ describe('built-in layouts', () => {
     }
   });
 
-  it('the cocktail lounge outside the entry: 4 tables pushed together with tiny gaps, 11 lounge seats', () => {
+  it('the cocktail lounge outside the entry: 4 tables pushed together with tiny gaps, 8 lounge seats', () => {
     const items = PRESETS.find((p) => p.name === 'Wedding layout')!.items;
     const tables = items.filter((it) => it.type === 'tableCoffee');
     expect(tables).toHaveLength(4);
@@ -70,7 +70,8 @@ describe('built-in layouts', () => {
     }
     const sofas = items.filter((it) => it.type === 'loungeSofa');
     const chairs = items.filter((it) => it.type === 'loungeChair');
-    expect(sofas.length * 3 + chairs.length).toBe(11);
+    // one sofa (east) + 5 chairs: the couple took out the west sofa
+    expect(sofas.length * 3 + chairs.length).toBe(8);
     // everyone faces the tables across 12–18" of legroom: the nearest table
     // edge ahead of each seat (forward = (sin yaw, cos yaw))
     const bx = [xs[0] - w / 2, xs[1] + w / 2];
