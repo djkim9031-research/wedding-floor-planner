@@ -12,6 +12,11 @@ import type { HallMaterials } from './materials';
 // screen in front of the window wall's centre bay, speakers, the rafter strip
 // lights and the entry EXIT sign.
 
+/** Projector lowered and screen down, as in photo 05. Off for the wedding:
+ * the couple doesn't want the screen down, so the lift is raised into its
+ * housing and the screen rolled up into its case. */
+export const AV_DEPLOYED = false;
+
 /** Track-head pairs along each glulam (z, inches) — every 8', clear of the posts. */
 export const TRACK_PAIR_Z = [54, 150, 246, 354, 450, 546];
 const HEAD_R = 1.4;
@@ -120,53 +125,63 @@ export function buildCeilingProps(m: HallMaterials): THREE.Group {
   const liftG: Geo[] = [];
 
   // --- projector on a scissor lift under the ridge (photo 05). Throw ≈ 17'
-  // to the screen; the lift hangs from the rafter at z ≈ 217.
+  // to the screen; the lift hangs from the rafter at z ≈ 217. Stowed, the
+  // projector rides up inside the housing and the closure panel seals it.
   const PZ = 210;
   const PX = RIDGE_X;
   const hoodTop = roofY(PX) - 12;
   whiteG.push(box(PX - 10, PX + 10, hoodTop - 16, hoodTop, PZ - 10, PZ + 10)); // lift housing
   whiteG.push(box(PX - 1.5, PX + 1.5, hoodTop, roofY(PX) - 1, PZ + 5, PZ + 8)); // hanger
   const liftTop = hoodTop - 16;
-  const liftBot = 121;
-  const segs = 5;
-  const sh = (liftTop - liftBot) / segs;
-  for (const sx of [-5, 5]) {
-    for (let i = 0; i < segs; i++) {
-      const y0 = liftTop - i * sh;
-      const y1 = y0 - sh;
-      liftG.push(rod({ x: PX + sx, y: y0, z: PZ - 5 }, { x: PX + sx, y: y1, z: PZ + 5 }, 0.45, 5));
-      liftG.push(rod({ x: PX + sx, y: y0, z: PZ + 5 }, { x: PX + sx, y: y1, z: PZ - 5 }, 0.45, 5));
+  if (!AV_DEPLOYED) {
+    whiteG.push(box(PX - 12, PX + 12, liftTop - 1, liftTop, PZ - 12, PZ + 12)); // closure panel, flush
+  } else {
+    const liftBot = 121;
+    const segs = 5;
+    const sh = (liftTop - liftBot) / segs;
+    for (const sx of [-5, 5]) {
+      for (let i = 0; i < segs; i++) {
+        const y0 = liftTop - i * sh;
+        const y1 = y0 - sh;
+        liftG.push(rod({ x: PX + sx, y: y0, z: PZ - 5 }, { x: PX + sx, y: y1, z: PZ + 5 }, 0.45, 5));
+        liftG.push(rod({ x: PX + sx, y: y0, z: PZ + 5 }, { x: PX + sx, y: y1, z: PZ - 5 }, 0.45, 5));
+      }
+    }
+    whiteG.push(box(PX - 9, PX + 9, liftBot - 1.5, liftBot, PZ - 9, PZ + 9)); // mount plate
+    blackG.push(box(PX - 8.5, PX + 8.5, liftBot - 8.5, liftBot - 1.5, PZ - 8, PZ + 8)); // projector
+    blackG.push(rod({ x: PX + 4, y: liftBot - 5, z: PZ - 8 }, { x: PX + 4, y: liftBot - 5, z: PZ - 10 }, 1.6, 12)); // lens barrel
+    whiteG.push(box(PX - 12, PX + 12, liftBot - 11, liftBot - 10, PZ - 12, PZ + 12)); // closure panel below
+    for (const [dx, dz] of [
+      [-10, -10],
+      [10, -10],
+      [-10, 10],
+      [10, 10],
+    ]) {
+      liftG.push(rod({ x: PX + dx, y: liftBot - 10, z: PZ + dz }, { x: PX + dx, y: liftBot - 1.5, z: PZ + dz }, 0.2, 4));
     }
   }
-  whiteG.push(box(PX - 9, PX + 9, liftBot - 1.5, liftBot, PZ - 9, PZ + 9)); // mount plate
-  blackG.push(box(PX - 8.5, PX + 8.5, liftBot - 8.5, liftBot - 1.5, PZ - 8, PZ + 8)); // projector
-  blackG.push(rod({ x: PX + 4, y: liftBot - 5, z: PZ - 8 }, { x: PX + 4, y: liftBot - 5, z: PZ - 10 }, 1.6, 12)); // lens barrel
-  whiteG.push(box(PX - 12, PX + 12, liftBot - 11, liftBot - 10, PZ - 12, PZ + 12)); // closure panel below
-  for (const [dx, dz] of [
-    [-10, -10],
-    [10, -10],
-    [-10, 10],
-    [10, 10],
-  ]) {
-    liftG.push(rod({ x: PX + dx, y: liftBot - 10, z: PZ + dz }, { x: PX + dx, y: liftBot - 1.5, z: PZ + dz }, 0.2, 4));
-  }
 
-  // --- drop-down screen in front of the window wall's centre bay
+  // --- drop-down screen in front of the window wall's centre bay; rolled up,
+  // only its bottom bar shows, tucked under the case
   const SX0 = 211;
   const SX1 = 334;
   const SZ = 9.4;
   blackG.push(box(SX0 - 5, SX1 + 5, 127, 132, SZ - 2.5, SZ + 2.5)); // case
   for (const hx of [SX0 + 6, SX1 - 6]) blackG.push(box(hx - 0.4, hx + 0.4, 132, roofY(hx) - RAFTER_D, SZ - 0.4, SZ + 0.4));
-  const screenBlackG: Geo[] = [
-    box(SX0, SX1, 117, 127, SZ - 0.1, SZ + 0.1), // black drop
-    box(SX0 - 1.5, SX0, 49, 127, SZ - 0.1, SZ + 0.1),
-    box(SX1, SX1 + 1.5, 49, 127, SZ - 0.1, SZ + 0.1),
-    box(SX0, SX1, 49, 50.5, SZ - 0.1, SZ + 0.1),
-  ];
-  blackG.push(box(SX0 - 2, SX1 + 2, 47.5, 49, SZ - 0.5, SZ + 0.5)); // bottom bar
-  const screen = new THREE.Mesh(box(SX0, SX1, 50.5, 117, SZ - 0.1, SZ + 0.1), m.screen);
-  screen.name = 'projectionScreen';
-  g.add(screen, merged(screenBlackG, m.screenBlack));
+  if (!AV_DEPLOYED) {
+    blackG.push(box(SX0 - 2, SX1 + 2, 125.5, 127, SZ - 0.5, SZ + 0.5)); // bottom bar
+  } else {
+    const screenBlackG: Geo[] = [
+      box(SX0, SX1, 117, 127, SZ - 0.1, SZ + 0.1), // black drop
+      box(SX0 - 1.5, SX0, 49, 127, SZ - 0.1, SZ + 0.1),
+      box(SX1, SX1 + 1.5, 49, 127, SZ - 0.1, SZ + 0.1),
+      box(SX0, SX1, 49, 50.5, SZ - 0.1, SZ + 0.1),
+    ];
+    blackG.push(box(SX0 - 2, SX1 + 2, 47.5, 49, SZ - 0.5, SZ + 0.5)); // bottom bar
+    const screen = new THREE.Mesh(box(SX0, SX1, 50.5, 117, SZ - 0.1, SZ + 0.1), m.screen);
+    screen.name = 'projectionScreen';
+    g.add(screen, merged(screenBlackG, m.screenBlack));
+  }
 
   // --- speakers: wall-mounted high on the west wall (photo 05) and one
   // pendant under the ridge near the south end (photo 02)
