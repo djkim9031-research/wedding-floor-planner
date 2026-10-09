@@ -548,26 +548,27 @@ function buildPlanter(type: PlanterType): THREE.Group {
   return g;
 }
 
-/** Boston fern: 22 tapered fronds arching outward on golden-angle spokes. */
+/** Boston fern: 14 tapered fronds arching outward on golden-angle spokes. */
 function buildPlantFern(): THREE.Group {
   const g = new THREE.Group();
   const dark = tag(new THREE.MeshStandardMaterial({ color: 0x3e5a34, roughness: 0.9, flatShading: true, side: THREE.DoubleSide }), 'foliage', { translucency: 0.3 }, 'fernDark');
   const light = tag(new THREE.MeshStandardMaterial({ color: 0x4e6a40, roughness: 0.9, flatShading: true, side: THREE.DoubleSide }), 'foliage', { translucency: 0.3 }, 'fernLight');
-  for (let k = 0; k < 22; k++) {
-    const len = 11 + 4 * Math.abs(Math.sin(k * 2.7));
+  // kept light and upright so the pot shows under it
+  for (let k = 0; k < 14; k++) {
+    const len = 9 + 3 * Math.abs(Math.sin(k * 2.7));
     const geo = new THREE.PlaneGeometry(i2m(1.7), i2m(len), 1, 4);
     geo.translate(0, i2m(len / 2), 0);
     const pos = geo.getAttribute('position') as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) {
       const t = pos.getY(i) / i2m(len);
       pos.setX(i, pos.getX(i) * (1 - 0.75 * t * t)); // taper to the tip
-      pos.setZ(i, pos.getZ(i) + i2m(4.2) * t * t); // arching droop
+      pos.setZ(i, pos.getZ(i) + i2m(2.6) * t * t); // arching droop
     }
     geo.computeVertexNormals();
     const frond = new THREE.Mesh(geo, k % 3 ? dark : light);
     frond.rotation.order = 'YXZ';
     frond.rotation.y = k * 2.39996;
-    frond.rotation.x = -(0.6 + 0.45 * Math.abs(Math.sin(k * 1.3))); // lean 34–60° outward
+    frond.rotation.x = -(0.35 + 0.35 * Math.abs(Math.sin(k * 1.3))); // lean 20–40° outward
     frond.castShadow = true;
     g.add(frond);
   }
@@ -809,7 +810,7 @@ function buildPlantMossTree(): THREE.Group {
   return g;
 }
 
-/** Coast rosemary (Westringia fruticosa), ~3': a few dozen thin woody stems
+/** Coast rosemary (Westringia fruticosa), ~2½': a couple dozen thin woody stems
  * fanning up and outward from the base, each clothed in whorls of tiny
  * silvery grey-green needle leaves — airy, sprawling, wider at the top.
  * Everything is merged into two geometries so cloning stays cheap. */
@@ -887,20 +888,20 @@ function buildPlantRosemary(): THREE.Group {
     return pt;
   };
 
-  // trimmed: a compact, upright plant (~30" across) rather than a sprawling
-  // shrub, so it frames the couple without hiding the setup behind it
-  const stems = 44;
+  // trimmed: a sparse, upright plant (~22" across) rather than a sprawling
+  // shrub, so it frames the couple and its pot stays in view
+  const stems = 28;
   const up = new THREE.Vector3(0, 1, 0);
   const base = new THREE.Vector3(0, i2m(0.6), 0);
   for (let k = 0; k < stems; k++) {
     const az = k * 2.39996;
-    const elev = 0.85 + 0.6 * Math.abs(Math.sin(k * 1.31)); // 49°–83° from horizontal
-    const len = 20 + 14 * Math.abs(Math.sin(k * 0.77)); // 20–34"
-    const droop = 0.18 + 0.25 * (1 - elev / 1.45);
+    const elev = 1.08 + 0.4 * Math.abs(Math.sin(k * 1.31)); // 62°–85° from horizontal
+    const len = 16 + 10 * Math.abs(Math.sin(k * 0.77)); // 16–26"
+    const droop = 0.08 + 0.12 * (1 - elev / 1.48);
     const dir = new THREE.Vector3(Math.cos(az) * Math.cos(elev), Math.sin(elev), Math.sin(az) * Math.cos(elev));
     const pt = spray(base, dir, len, droop, k, 0.2);
-    // two wispy side sprays off the upper half of each stem
-    for (let b = 0; b < 2; b++) {
+    // a wispy side spray off the upper half of each stem
+    for (let b = 0; b < 1; b++) {
       const t0 = 0.45 + 0.25 * b + 0.1 * Math.abs(Math.sin(k * 3.7 + b));
       const o = pt(t0);
       const tan = pt(t0 + 0.02).sub(o).normalize();
