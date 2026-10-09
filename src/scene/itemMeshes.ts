@@ -809,7 +809,7 @@ function buildPlantMossTree(): THREE.Group {
   return g;
 }
 
-/** Coast rosemary (Westringia fruticosa), ~4': dozens of thin woody stems
+/** Coast rosemary (Westringia fruticosa), ~3': a few dozen thin woody stems
  * fanning up and outward from the base, each clothed in whorls of tiny
  * silvery grey-green needle leaves — airy, sprawling, wider at the top.
  * Everything is merged into two geometries so cloning stays cheap. */
@@ -887,13 +887,15 @@ function buildPlantRosemary(): THREE.Group {
     return pt;
   };
 
-  const stems = 78;
+  // trimmed: a compact, upright plant (~30" across) rather than a sprawling
+  // shrub, so it frames the couple without hiding the setup behind it
+  const stems = 44;
   const up = new THREE.Vector3(0, 1, 0);
   const base = new THREE.Vector3(0, i2m(0.6), 0);
   for (let k = 0; k < stems; k++) {
     const az = k * 2.39996;
-    const elev = 0.5 + 0.95 * Math.abs(Math.sin(k * 1.31)); // 29°–83° from horizontal
-    const len = 26 + 22 * Math.abs(Math.sin(k * 0.77)); // 26–48"
+    const elev = 0.85 + 0.6 * Math.abs(Math.sin(k * 1.31)); // 49°–83° from horizontal
+    const len = 20 + 14 * Math.abs(Math.sin(k * 0.77)); // 20–34"
     const droop = 0.18 + 0.25 * (1 - elev / 1.45);
     const dir = new THREE.Vector3(Math.cos(az) * Math.cos(elev), Math.sin(elev), Math.sin(az) * Math.cos(elev));
     const pt = spray(base, dir, len, droop, k, 0.2);
