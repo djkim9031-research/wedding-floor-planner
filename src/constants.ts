@@ -507,11 +507,11 @@ export const PRESETS: PresetDef[] = [
       { type: 'chair', x: 19.61, z: -346.43, yawDeg: 45 },
       { type: 'chair', x: 3.03, z: -323.19, yawDeg: 55 },
       { type: 'chair', x: 172.47, z: -323.19, yawDeg: 305 },
-      // a potted olive either side of the couple, framing them under the limb
-      { type: 'planterHarithM', x: 46, z: -266, yawDeg: 0 },
-      { type: 'plantOlive', x: 46, z: -266, yawDeg: 0 },
-      { type: 'planterHarithM', x: 130, z: -263, yawDeg: 0 },
-      { type: 'plantOlive', x: 130, z: -263, yawDeg: 0 },
+      // potted coast rosemary either side of the couple, framing them under the limb
+      { type: 'planterHarithS', x: 46, z: -266, yawDeg: 0 },
+      { type: 'plantRosemary', x: 46, z: -266, yawDeg: 0 },
+      { type: 'planterHarithS', x: 130, z: -263, yawDeg: 0 },
+      { type: 'plantRosemary', x: 130, z: -263, yawDeg: 0 },
       { type: 'tableQ', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, set: 'Table Set 2' },
       { type: 'clothC', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 2' },
       { type: 'tableQ', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, set: 'Table Set 3' },
@@ -544,11 +544,11 @@ export const PRESETS: PresetDef[] = [
       { type: 'clothC', x: 270.78677816578266, z: 111.33141479947989, yawDeg: 0, dims: { w: 200, d: 120 }, set: 'Table Set 1' },
       { type: 'chair', x: 255.76119443857152, z: 69.20542745211704, yawDeg: 0, set: 'Table Set 1' },
       { type: 'chair', x: 280.46103462572677, z: 70.23115454099435, yawDeg: 0, set: 'Table Set 1' },
-      // a potted boxwood either side of the two seats on the table's north side
-      { type: 'planterCodyM', x: 230, z: 68, yawDeg: 0 },
-      { type: 'plantBoxwood', x: 230, z: 68, yawDeg: 0 },
-      { type: 'planterCodyM', x: 306, z: 68, yawDeg: 0 },
-      { type: 'plantBoxwood', x: 306, z: 68, yawDeg: 0 },
+      // a potted Boston fern either side of the two seats on the table's north side
+      { type: 'planterHarithS', x: 230, z: 68, yawDeg: 0 },
+      { type: 'plantFern', x: 230, z: 68, yawDeg: 0 },
+      { type: 'planterHarithS', x: 306, z: 68, yawDeg: 0 },
+      { type: 'plantFern', x: 306, z: 68, yawDeg: 0 },
       { type: 'chair', x: 188.0830891235752, z: 97.67198605415963, yawDeg: 90, set: 'Table Set 1' },
       { type: 'chair', x: 188.3712171993445, z: 122.66155391472093, yawDeg: 90, set: 'Table Set 1' },
       { type: 'chair', x: 351.3474343769902, z: 100.27980915899259, yawDeg: 270, set: 'Table Set 1' },
