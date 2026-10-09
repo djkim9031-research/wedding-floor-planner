@@ -473,6 +473,9 @@ export function deckOakSpec(): TreeSpec {
 // The exterior
 // ---------------------------------------------------------------------------
 
+/** The deck oak's bunny and squirrel easter egg. */
+const SHOW_CRITTERS = false;
+
 export function buildExterior(): THREE.Group {
   const t0 = performance.now();
   const group = new THREE.Group();
@@ -949,7 +952,8 @@ export function buildExterior(): THREE.Group {
 
 
   // -------------------------------------------------------------------------
-  // Easter egg: a bunny and a squirrel playing by the deck oak.
+  // Easter egg: a bunny and a squirrel playing by the deck oak. Left out of
+  // the scene for now (the couple's setup views for the coordinator).
   // -------------------------------------------------------------------------
   const critters = new THREE.Group();
   const bunnyFur = tag(new THREE.MeshStandardMaterial({ color: 0xa29384, roughness: 0.95 }), 'generic', {}, 'bunnyFur');
@@ -1007,7 +1011,7 @@ export function buildExterior(): THREE.Group {
   squirrel.rotation.y = Math.PI + 3.7; // facing back toward the bunny
   critters.add(squirrel);
 
-  group.add(critters);
+  if (SHOW_CRITTERS) group.add(critters);
 
   retireLegacyLawn(group);
   group.userData.buildMs = Math.round(performance.now() - t0);

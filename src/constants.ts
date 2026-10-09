@@ -496,7 +496,6 @@ export const PRESETS: PresetDef[] = [
       // run of the limb, ~13" of headroom, facing north; the guests' arc of
       // 8 chairs keeps its shape, centred on them, facing back toward the
       // couple and the hall, clear of the NW deck planter (150, −420)
-      { type: 'lantern18', x: 205.09, z: -318.29, yawDeg: 0 },
       { type: 'figureM', x: 72.27, z: -266.26, yawDeg: 180 },
       { type: 'figureW', x: 103.73, z: -263.75, yawDeg: 180 },
       { type: 'chair', x: 74.13, z: -365.47, yawDeg: 0 },
@@ -507,11 +506,17 @@ export const PRESETS: PresetDef[] = [
       { type: 'chair', x: 19.61, z: -346.43, yawDeg: 45 },
       { type: 'chair', x: 3.03, z: -323.19, yawDeg: 55 },
       { type: 'chair', x: 172.47, z: -323.19, yawDeg: 305 },
-      // potted coast rosemary either side of the couple, framing them under the limb
-      { type: 'planterHarithS', x: 46, z: -266, yawDeg: 0 },
-      { type: 'plantRosemary', x: 46, z: -266, yawDeg: 0 },
-      { type: 'planterHarithS', x: 130, z: -263, yawDeg: 0 },
-      { type: 'plantRosemary', x: 130, z: -263, yawDeg: 0 },
+      // either side of the couple, framing them under the limb: coast
+      // rosemary in a Harith M pot beside each of them, a Boston fern in a
+      // Harith S pot just outside it
+      { type: 'planterHarithM', x: 48, z: -266, yawDeg: 0 },
+      { type: 'plantRosemary', x: 48, z: -266, yawDeg: 0 },
+      { type: 'planterHarithS', x: 27, z: -266, yawDeg: 0 },
+      { type: 'plantFern', x: 27, z: -266, yawDeg: 0 },
+      { type: 'planterHarithM', x: 128, z: -263, yawDeg: 0 },
+      { type: 'plantRosemary', x: 128, z: -263, yawDeg: 0 },
+      { type: 'planterHarithS', x: 149, z: -263, yawDeg: 0 },
+      { type: 'plantFern', x: 149, z: -263, yawDeg: 0 },
       { type: 'tableQ', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, set: 'Table Set 2' },
       { type: 'clothC', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 2' },
       { type: 'tableQ', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, set: 'Table Set 3' },
