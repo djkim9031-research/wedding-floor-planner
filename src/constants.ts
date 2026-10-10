@@ -508,15 +508,15 @@ export const PRESETS: PresetDef[] = [
       { type: 'chair', x: 172.47, z: -323.19, yawDeg: 305 },
       // either side of the couple, framing them under the limb: coast
       // rosemary in a Harith M pot beside each of them, a Boston fern in a
-      // Harith S pot just outside it
+      // Harith S pot just outside it, set 18" toward the guests' chairs
       { type: 'planterHarithM', x: 48, z: -266, yawDeg: 0 },
       { type: 'plantRosemary', x: 48, z: -266, yawDeg: 0 },
-      { type: 'planterHarithS', x: 27, z: -266, yawDeg: 0 },
-      { type: 'plantFern', x: 27, z: -266, yawDeg: 0 },
+      { type: 'planterHarithS', x: 27, z: -284, yawDeg: 0 },
+      { type: 'plantFern', x: 27, z: -284, yawDeg: 0 },
       { type: 'planterHarithM', x: 128, z: -263, yawDeg: 0 },
       { type: 'plantRosemary', x: 128, z: -263, yawDeg: 0 },
-      { type: 'planterHarithS', x: 149, z: -263, yawDeg: 0 },
-      { type: 'plantFern', x: 149, z: -263, yawDeg: 0 },
+      { type: 'planterHarithS', x: 149, z: -281, yawDeg: 0 },
+      { type: 'plantFern', x: 149, z: -281, yawDeg: 0 },
       { type: 'tableQ', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, set: 'Table Set 2' },
       { type: 'clothC', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 2' },
       { type: 'tableQ', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, set: 'Table Set 3' },
