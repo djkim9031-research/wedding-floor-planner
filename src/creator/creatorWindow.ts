@@ -103,7 +103,7 @@ export function openCreator(
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
 
   // ---- viewport layout: four wide elevation strips stacked on the left,
   // the bird's-eye placement view on the right ----

@@ -1,6 +1,10 @@
 import { PRESETS, isTable } from '../constants';
+import { platform } from '../platform/bridge';
+import { arrayBufferToText } from '../platform/files';
+import { onNativeMenu, textFieldFocused } from '../platform/nativeMenu';
 import * as persist from '../state/persist';
 import * as store from '../state/store';
+import { askText, confirmBox } from './dialog';
 
 let openPanel: HTMLElement | null = null;
 
@@ -75,17 +79,57 @@ export function buildPresetsMenu(toast: (msg: string) => void): HTMLElement {
   });
 }
 
+/** Name + store the current layout (inline dialog instead of window.prompt,
+ * which the Mac app doesn't have). */
+async function saveCurrentLayout(toast: (msg: string) => void): Promise<void> {
+  const existing = persist.listLayouts();
+  const name = await askText('Save layout', 'Layout ' + (existing.length + 1), { label: 'Layout name' });
+  if (!name) return;
+  if (
+    existing.includes(name) &&
+    !(await confirmBox(`Replace “${name}”?`, 'A saved layout with this name already exists.', { okLabel: 'Replace' }))
+  ) {
+    return;
+  }
+  persist.saveLayout(name, store.getState().items);
+  toast(`Saved “${name}”`);
+}
+
+async function exportLayoutFile(toast: (msg: string) => void): Promise<void> {
+  const saved = await persist.exportLayout(store.getState().items);
+  // the browser download shows itself; the Mac app confirms where it went
+  if (saved && platform().native) toast(`Exported “${saved.split('/').pop()}”`);
+}
+
+async function importLayoutFile(toast: (msg: string) => void): Promise<void> {
+  const file = await platform().openFile(persist.LAYOUT_FILTERS);
+  if (!file) return;
+  const items = persist.parseLayout(arrayBufferToText(file.data));
+  if (items) {
+    store.importItems(items);
+    toast(`Imported “${file.name}”`);
+  } else {
+    toast('Could not read that layout file');
+  }
+}
+
+let nativeMenuWired = false;
+
+/** Mac app menu bar → the same actions as the toolbar (no-op on the web). */
+function wireNativeMenu(toast: (msg: string) => void): void {
+  if (nativeMenuWired) return;
+  nativeMenuWired = true;
+  // Edit ▸ Undo/Redo own ⌘Z; while typing, they act on the text field instead
+  onNativeMenu('undo', () => (textFieldFocused() ? document.execCommand('undo') : store.undo()));
+  onNativeMenu('redo', () => (textFieldFocused() ? document.execCommand('redo') : store.redo()));
+  onNativeMenu('save-layout', () => void exportLayoutFile(toast));
+  onNativeMenu('open-layout', () => void importLayoutFile(toast));
+}
+
 export function buildLayoutsMenu(toast: (msg: string) => void): HTMLElement {
+  wireNativeMenu(toast);
   return makeMenu('Layouts', (panel) => {
-    panel.appendChild(
-      menuItem('Save current…', '', () => {
-        const name = prompt('Layout name:', 'Layout ' + (persist.listLayouts().length + 1));
-        if (name) {
-          persist.saveLayout(name, store.getState().items);
-          toast(`Saved “${name}”`);
-        }
-      }),
-    );
+    panel.appendChild(menuItem('Save current…', '', () => void saveCurrentLayout(toast)));
 
     const names = persist.listLayouts();
     if (names.length) {
@@ -120,29 +164,7 @@ export function buildLayoutsMenu(toast: (msg: string) => void): HTMLElement {
     const sep2 = document.createElement('div');
     sep2.className = 'menu-sep';
     panel.appendChild(sep2);
-    panel.appendChild(
-      menuItem('Export file…', '.json', () => {
-        persist.exportLayout(store.getState().items);
-      }),
-    );
-    panel.appendChild(
-      menuItem('Import file…', '.json', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'application/json,.json';
-        input.addEventListener('change', async () => {
-          const file = input.files?.[0];
-          if (!file) return;
-          const items = await persist.importLayoutFile(file);
-          if (items) {
-            store.importItems(items);
-            toast(`Imported “${file.name}”`);
-          } else {
-            toast('Could not read that layout file');
-          }
-        });
-        input.click();
-      }),
-    );
+    panel.appendChild(menuItem('Export file…', '.json', () => void exportLayoutFile(toast)));
+    panel.appendChild(menuItem('Import file…', '.json', () => void importLayoutFile(toast)));
   });
 }

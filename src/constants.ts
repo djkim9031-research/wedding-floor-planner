@@ -52,17 +52,24 @@ export interface ColumnDef {
   height: number;
 }
 
-/** Two interior structural columns carrying the glulam beams. */
+/** Two interior structural posts carrying the glulam beams. Reference photo 05
+ * shows slim ~6" square white posts running up to the beams, which sit right
+ * under the rafters (beam soffit ≈ 13'8"). */
 export const COLUMNS: ColumnDef[] = [
-  { cx: 183, cz: 300, size: 10, height: 102 },
-  { cx: 365, cz: 300, size: 10, height: 102 },
+  { cx: 183, cz: 300, size: 6, height: 165 },
+  { cx: 365, cz: 300, size: 6, height: 165 },
 ];
 
 // Structural grid used by the venue builder (thirds of the room width).
 export const BAY_X = [0, 181.7, 363.3, 545];
 
 // Heights (inches)
+/** Eave of the annex wings and the entry breezeway. */
 export const EAVE_Y = 108;
+/** Hall wall-top line: where the reed ceiling plane meets the east/west walls.
+ * Measured from reference photos 02/05 (rails at 36", window-wall header
+ * ≈ 10'–11', rake at the corners ≈ 12'); the ridge stays at RIDGE_Y. */
+export const HALL_EAVE_Y = 144;
 export const RIDGE_Y = 210;
 export const RIDGE_X = 272.5;
 export const DOOR_HEAD_Y = 84;
@@ -88,12 +95,70 @@ export const DECK_POLY: Vec2[] = [
   { x: 551, z: 0 },
 ];
 
-/** The single oak rising through the central deck (per the venue photos). */
-export const DECK_TREES: Vec2[] = [{ x: 287, z: -190 }];
+/** Horizontal ellipse (inches, model frame). `rotDeg` turns the local +x
+ * axis like an item yaw (positive rotates +x toward −z). */
+export interface TrunkFootprint {
+  x: number;
+  z: number;
+  /** semi-axis along the rotated local x */
+  rx: number;
+  /** semi-axis along the rotated local z */
+  rz: number;
+  rotDeg: number;
+}
 
-/** Zones where items may be placed: the room, and the Tree Deck (an item
- * must fit fully inside one zone — nothing halfway through the glass wall). */
-export const PLACEMENT_AREAS: Vec2[][] = [ROOM_POLYGON, DECK_POLY];
+/** Where the deck oak stands relative to where its skeleton and crown were
+ * first authored (trunk A at 406, −324). The couple placed the tree on the
+ * plan: right behind where they stand for the ceremony, trunk B about 7"
+ * from them. Everything tied to the tree (crown, litter, critters) follows
+ * this offset. */
+export const DECK_OAK_MOVE = { x: -218, z: 89 };
+
+/** The deck oak's trunks where they pass through the deck: the scribed board
+ * opening around each flared base (the trunk itself sits ~1.25" inside it).
+ * Photos 03/04: a strongly leaning main trunk (A, leaning west) and an
+ * upright companion (B) behind it off one root crown, plus a massive upright
+ * stem (C) just east. Nothing may be placed over an opening. */
+export const DECK_TRUNKS: TrunkFootprint[] = [
+  { x: 406, z: -324, rx: 13.5, rz: 10.5, rotDeg: 4 }, // A — leaning main trunk
+  { x: 432, z: -364, rx: 9.5, rz: 9.5, rotDeg: 0 }, // B — upright companion
+  { x: 452, z: -334, rx: 11.5, rz: 11, rotDeg: -10 }, // C — upright east stem
+].map((t) => ({ ...t, x: t.x + DECK_OAK_MOVE.x, z: t.z + DECK_OAK_MOVE.z }));
+
+/** Bronze deck planters (fixed scenery, each with a shrub): centre points.
+ * The pot is a 26" tapered square, the shrub spreads ~18" around the centre. */
+export const DECK_PLANTER_SPOTS: [number, number][] = [
+  [-70, -36],
+  [150, -420],
+  [620, -40],
+  [700, 110],
+];
+export const DECK_PLANTER_REACH = 18;
+
+/** The covered entry breezeway's upper paver level, from the vestibule doors
+ * south to the steps down to the court (the walk the guests arrive on), plus
+ * the paved terrace east of its north end along the east hallway's facade
+ * (where the lounge sits in the couple's photos), up to the court's planting
+ * bed at z 890. */
+export const ENTRY_WALK: Vec2[] = [
+  { x: 76, z: 662 },
+  { x: 560, z: 662 },
+  { x: 560, z: 890 },
+  { x: 469, z: 890 },
+  { x: 469, z: 1688 },
+  { x: 76, z: 1688 },
+];
+
+/** The breezeway's 8" posts: two rows at x 150 / 395, every 144" from z 730. */
+export const BREEZEWAY_POSTS: Vec2[] = [150, 395].flatMap((x) =>
+  Array.from({ length: 8 }, (_, k) => ({ x, z: 730 + 144 * k })),
+);
+export const BREEZEWAY_POST_SIZE = 8;
+
+/** Zones where items may be placed: the room, the Tree Deck and the entry
+ * walk (an item must fit fully inside one zone — nothing halfway through the
+ * glass wall). */
+export const PLACEMENT_AREAS: Vec2[][] = [ROOM_POLYGON, DECK_POLY, ENTRY_WALK];
 
 /** Where the stand-here camera may walk: room, deck, hallways, bathrooms,
  * and the entry breezeway. */
@@ -133,6 +198,13 @@ export const WALK_AREAS: Vec2[][] = [
     { x: 445, z: 2280 },
     { x: 100, z: 2280 },
   ],
+  [
+    // the paved terrace east of the walk (the lounge), off the facade
+    { x: 445, z: 665 },
+    { x: 560, z: 665 },
+    { x: 560, z: 890 },
+    { x: 445, z: 890 },
+  ],
 ];
 
 // ---------------------------------------------------------------------------
@@ -145,6 +217,9 @@ export const ITEM_DIMS: Record<ItemType, { w: number; d: number }> = {
   tableSq: { w: 35.5, d: 35.5 },
   tableQ: { w: 72, d: 36 },
   tableC: { w: 48, d: 30 }, // custom oak — mutable via setCustomTableDims
+  tableCoffee: { w: 29, d: 29 }, // charcoal slatted table; four push together (couple's photos)
+  loungeSofa: { w: 84, d: 36 }, // three-seat teak deep-seating sofa
+  loungeChair: { w: 32, d: 34 }, // teak deep-seating club chair
   chair: { w: 20, d: 17 },
   clothA: { w: 108, d: 156 },
   clothB: { w: 104, d: 144 },
@@ -177,6 +252,9 @@ export const ITEM_LABELS: Record<ItemType, string> = {
   tableSq: 'Square Oak Table',
   tableQ: 'QCC Table',
   tableC: 'Custom Oak Table',
+  tableCoffee: 'Slatted Coffee Table',
+  loungeSofa: 'Lounge Sofa',
+  loungeChair: 'Lounge Chair',
   chair: 'Oak Bistro Chair',
   clothA: 'Rental Linen',
   clothB: 'C&B Linen',
@@ -231,6 +309,8 @@ export type LanternType = 'lantern18' | 'lantern24' | 'lantern30' | 'lantern36';
  * Bright rentals: Artificial Hedge 48×10×96 (10" black planter base);
  * Ivory Sausalito Screen 48×21×90 (walnut caster base, fabric panel). */
 export const isBarrier = (t: ItemType): boolean => t === 'hedge' || t === 'screen';
+/** Deep-seating lounge pieces (solid: they bump tables, chairs and each other). */
+export const isLounge = (t: ItemType): boolean => t === 'loungeSofa' || t === 'loungeChair';
 export const HEDGE_H = 96;
 export const SCREEN_H = 90;
 export const isLantern = (t: ItemType): t is LanternType => t.startsWith('lantern');
@@ -299,7 +379,7 @@ export const PLANT_SPECS: Record<PlantType, { planter: PlanterType; h: number }>
   plantRosemary: { planter: 'planterHarithS', h: 48 }, // 4' Westringia, fits any pot
 };
 
-export const TABLE_TYPES = ['table', 'tableSq', 'tableQ', 'tableC'] as const;
+export const TABLE_TYPES = ['table', 'tableSq', 'tableQ', 'tableC', 'tableCoffee'] as const;
 export type TableType = (typeof TABLE_TYPES)[number];
 export const isTable = (t: ItemType): t is TableType =>
   (TABLE_TYPES as readonly string[]).includes(t); // derived — new table types can't be missed again
@@ -310,6 +390,7 @@ export const TABLE_TOPS: Record<TableType, number> = {
   tableSq: 29.5,
   tableQ: 30.5,
   tableC: 30, // mutable via setCustomTableDims
+  tableCoffee: 12, // low lounge height
 };
 export const TABLE_TOP_MAX = 30.5;
 export const TABLE_TOP_T = 1.5; // rendered top slab thickness
@@ -410,20 +491,55 @@ export const PRESETS: PresetDef[] = [
     // ceremony chairs, lantern, and figures, exactly as arranged on the floor
     name: 'Wedding layout',
     items: [
-      { type: 'lantern18', x: 329.34528906642606, z: -204.2944483572774, yawDeg: 0 },
-      { type: 'figureM', x: 196.52571775852886, z: -187.5658261457075, yawDeg: 0 },
-      { type: 'figureW', x: 227.99038969355976, z: -185.0639703700082, yawDeg: 0 },
-      { type: 'chair', x: 208.17359427927747, z: -60.73037620267428, yawDeg: 180 },
-      { type: 'chair', x: 172.49763451044694, z: -59.218600130674474, yawDeg: 180 },
-      { type: 'chair', x: 245.53808518733345, z: -57.34875958515319, yawDeg: 180 },
-      { type: 'chair', x: 279.2561041997567, z: -56.8473731191945, yawDeg: 180 },
-      { type: 'chair', x: 308.25103766058237, z: -78.12364566358359, yawDeg: 225 },
-      { type: 'chair', x: 140.01896607878814, z: -84.52872308639104, yawDeg: 135 },
-      { type: 'chair', x: 119.3032851063646, z: -113.58367258649724, yawDeg: 125 },
+      // ceremony under the deck oak's great west limb (where the couple
+      // circled it on the deck view): the couple stands right under the low
+      // run of the limb, ~13" of headroom, facing north; the guests' arc of
+      // 8 chairs keeps its shape, centred on them, facing back toward the
+      // couple and the hall, clear of the NW deck planter (150, −420)
+      { type: 'figureM', x: 72.27, z: -266.26, yawDeg: 180 },
+      { type: 'figureW', x: 103.73, z: -263.75, yawDeg: 180 },
+      { type: 'chair', x: 74.13, z: -365.47, yawDeg: 0 },
+      { type: 'chair', x: 45.59, z: -366.68, yawDeg: 0 },
+      { type: 'chair', x: 104.02, z: -368.18, yawDeg: 0 },
+      { type: 'chair', x: 131, z: -368.58, yawDeg: 0 },
+      { type: 'chair', x: 154.19, z: -351.56, yawDeg: 315 },
+      { type: 'chair', x: 19.61, z: -346.43, yawDeg: 45 },
+      { type: 'chair', x: 3.03, z: -323.19, yawDeg: 55 },
+      { type: 'chair', x: 172.47, z: -323.19, yawDeg: 305 },
+      // either side of the couple, framing them under the limb: coast
+      // rosemary in a Harith M pot beside each of them, a Boston fern in a
+      // Harith S pot just outside it, set 18" toward the guests' chairs
+      { type: 'planterHarithM', x: 48, z: -266, yawDeg: 0 },
+      { type: 'plantRosemary', x: 48, z: -266, yawDeg: 0 },
+      { type: 'planterHarithS', x: 27, z: -284, yawDeg: 0 },
+      { type: 'plantFern', x: 27, z: -284, yawDeg: 0 },
+      { type: 'planterHarithM', x: 128, z: -263, yawDeg: 0 },
+      { type: 'plantRosemary', x: 128, z: -263, yawDeg: 0 },
+      { type: 'planterHarithS', x: 149, z: -281, yawDeg: 0 },
+      { type: 'plantFern', x: 149, z: -281, yawDeg: 0 },
       { type: 'tableQ', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, set: 'Table Set 2' },
       { type: 'clothC', x: 488.3024645788308, z: 219.9400689521737, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 2' },
       { type: 'tableQ', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, set: 'Table Set 3' },
       { type: 'clothC', x: 136.00914094853152, z: 482.58569277880554, yawDeg: 90, dims: { w: 102, d: 60 }, set: 'Table Set 3' },
+      // cocktail lounge outside the entry, 6' further right (east) than first
+      // drawn, as the couple saw it in person: clear of the doors' approach,
+      // over the walk's east post line onto the terrace along the east
+      // hallway's facade. Set up like the couple's photo: four charcoal
+      // tables pushed together 2 × 2 with small visible gaps (2½", slats
+      // alternating like the photo), ~13–16" of legroom all round; a sofa on
+      // the east side (the couple took out the west one, on the doors' side),
+      // three lounge chairs south and two north (nudged east to clear the
+      // breezeway post at 395, 730) — 8 seats
+      { type: 'tableCoffee', x: 410.25, z: 774.25, yawDeg: 0 },
+      { type: 'tableCoffee', x: 441.75, z: 774.25, yawDeg: 90 },
+      { type: 'tableCoffee', x: 410.25, z: 805.75, yawDeg: 90 },
+      { type: 'tableCoffee', x: 441.75, z: 805.75, yawDeg: 0 },
+      { type: 'loungeSofa', x: 490, z: 790, yawDeg: 270 },
+      { type: 'loungeChair', x: 392, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 426, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 460, z: 850, yawDeg: 180 },
+      { type: 'loungeChair', x: 418, z: 730, yawDeg: 0 },
+      { type: 'loungeChair', x: 452, z: 730, yawDeg: 0 },
       { type: 'table', x: 223.28677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 270.78677816578266, z: 95.5814147994799, yawDeg: 0, set: 'Table Set 1' },
       { type: 'table', x: 223.28677816578266, z: 127.0814147994799, yawDeg: 0, set: 'Table Set 1' },
@@ -433,22 +549,31 @@ export const PRESETS: PresetDef[] = [
       { type: 'clothC', x: 270.78677816578266, z: 111.33141479947989, yawDeg: 0, dims: { w: 200, d: 120 }, set: 'Table Set 1' },
       { type: 'chair', x: 255.76119443857152, z: 69.20542745211704, yawDeg: 0, set: 'Table Set 1' },
       { type: 'chair', x: 280.46103462572677, z: 70.23115454099435, yawDeg: 0, set: 'Table Set 1' },
+      // a potted Boston fern either side of the two seats on the table's north side
+      { type: 'planterHarithS', x: 230, z: 68, yawDeg: 0 },
+      { type: 'plantFern', x: 230, z: 68, yawDeg: 0 },
+      { type: 'planterHarithS', x: 306, z: 68, yawDeg: 0 },
+      { type: 'plantFern', x: 306, z: 68, yawDeg: 0 },
       { type: 'chair', x: 188.0830891235752, z: 97.67198605415963, yawDeg: 90, set: 'Table Set 1' },
       { type: 'chair', x: 188.3712171993445, z: 122.66155391472093, yawDeg: 90, set: 'Table Set 1' },
       { type: 'chair', x: 351.3474343769902, z: 100.27980915899259, yawDeg: 270, set: 'Table Set 1' },
       { type: 'chair', x: 350.9500735156043, z: 125.28393353461696, yawDeg: 270, set: 'Table Set 1' },
-      { type: 'chair', x: 284.1929226478649, z: 152.83783805045692, yawDeg: 180, set: 'Table Set 1' },
-      { type: 'chair', x: 257.94255561983476, z: 152.87399418147504, yawDeg: 180, set: 'Table Set 1' },
-      { type: 'chair', x: 232.59725743392056, z: 152.40921443979738, yawDeg: 180, set: 'Table Set 1' },
-      { type: 'chair', x: 310.6645847911573, z: 152.61729784952564, yawDeg: 180, set: 'Table Set 1' },
+      // south side: five seats at 23" (squeezed from four at ~25.5"); the
+      // outer covers stop just short of the end guests' glasses and napkins
+      { type: 'chair', x: 222, z: 152.6, yawDeg: 180, set: 'Table Set 1' },
+      { type: 'chair', x: 245, z: 152.6, yawDeg: 180, set: 'Table Set 1' },
+      { type: 'chair', x: 268, z: 152.6, yawDeg: 180, set: 'Table Set 1' },
+      { type: 'chair', x: 291, z: 152.6, yawDeg: 180, set: 'Table Set 1' },
+      { type: 'chair', x: 314, z: 152.6, yawDeg: 180, set: 'Table Set 1' },
       { type: 'setting', x: 254.22898566745533, z: 86.92546750083052, yawDeg: 180, set: 'Table Set 1' },
       { type: 'setting', x: 278.1738336128281, z: 86.80262248515506, yawDeg: 180, set: 'Table Set 1' },
       { type: 'setting', x: 206.14320416965901, z: 97.4557319041776, yawDeg: 270, set: 'Table Set 1' },
       { type: 'setting', x: 205.83128516501858, z: 120.73429109630668, yawDeg: 270, set: 'Table Set 1' },
-      { type: 'setting', x: 236.07900714016017, z: 133.9280984690826, yawDeg: 0, set: 'Table Set 1' },
-      { type: 'setting', x: 260.110846587206, z: 134.80361347364448, yawDeg: 0, set: 'Table Set 1' },
-      { type: 'setting', x: 285.7522692100625, z: 134.67302953212612, yawDeg: 0, set: 'Table Set 1' },
-      { type: 'setting', x: 311.31178259814027, z: 135.07644006388296, yawDeg: 0, set: 'Table Set 1' },
+      { type: 'setting', x: 222, z: 134.6, yawDeg: 0, set: 'Table Set 1' },
+      { type: 'setting', x: 245, z: 134.6, yawDeg: 0, set: 'Table Set 1' },
+      { type: 'setting', x: 268, z: 134.6, yawDeg: 0, set: 'Table Set 1' },
+      { type: 'setting', x: 291, z: 134.6, yawDeg: 0, set: 'Table Set 1' },
+      { type: 'setting', x: 314, z: 134.6, yawDeg: 0, set: 'Table Set 1' },
       { type: 'setting', x: 334.33405182383996, z: 97.59042323930909, yawDeg: 90, set: 'Table Set 1' },
       { type: 'setting', x: 334.2430182238856, z: 122.33079533094788, yawDeg: 90, set: 'Table Set 1' },
     ],

@@ -1,0 +1,43 @@
+[
+  {
+    "name": "default-day",
+    "hash": "preset=Wedding+layout&sun=2026-09-20,16:30&settle=fast"
+  },
+  {
+    "name": "dinner-close",
+    "hash": "preset=Wedding+layout&demo=chairs&cam=close&sun=2026-09-20,16:30&settle=fast"
+  },
+  {
+    "name": "deck-floor",
+    "hash": "demo=deck&cam=deckfloor&sun=2026-09-20,17:30&settle=fast"
+  },
+  {
+    "name": "planters",
+    "hash": "demo=planters&cam=planters&sun=2026-09-20,13:00&settle=fast"
+  },
+  {
+    "name": "entry",
+    "hash": "cam=entry&sun=2026-09-20,12:00&settle=fast"
+  },
+  {
+    "name": "site-roof",
+    "hash": "cam=site&roof=1&sun=2026-09-20,11:00&settle=fast"
+  },
+  {
+    "name": "stand-dusk",
+    "hash": "preset=Wedding+layout&view=stand&roof=1&sun=2026-09-20,19:10&settle=fast"
+  },
+  {
+    "name": "lanterns-night",
+    "hash": "demo=lanterns&cam=close&sun=2026-09-20,20:30&settle=fast"
+  },
+  {
+    "name": "hall-roof",
+    "hash": "preset=Wedding+layout&cam=hall&roof=1&sun=2026-09-20,18:40&settle=fast"
+  },
+  {
+    "name": "creator",
+    "hash": "creator=demo&sun=2026-09-20,16:30&settle=fast",
+    "waitMs": 7000
+  }
+]
