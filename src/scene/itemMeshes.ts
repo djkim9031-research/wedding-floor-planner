@@ -503,9 +503,9 @@ function buildSetting(): THREE.Group {
   flat(0.38, 4.8, 4.9, 3.2 - 2.4, 0); // knife handle
   flat(0.7, 4.2, 4.95, 3.2 - 4.8 - 2.1, 0, 0.06); // knife blade
   flat(0.36, 5.2, 6.5, 3.2 - 2.6, 0); // soup spoon handle
-  const spoonBowl = new THREE.Mesh(new THREE.SphereGeometry(i2m(1), 14, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), steel);
-  spoonBowl.scale.set(0.8, 0.28, 1.25);
-  spoonBowl.position.set(i2m(6.5), i2m(ON_LINEN + 0.3), i2m(3.2 - 5.2 - 1.15));
+  const spoonBowl = new THREE.Mesh(new THREE.SphereGeometry(i2m(1), 14, 8), steel);
+  spoonBowl.scale.set(0.8, 0.14, 1.25);
+  spoonBowl.position.set(i2m(6.5), i2m(ON_LINEN + 0.14), i2m(3.2 - 5.2 - 1.15));
   spoonBowl.castShadow = spoonBowl.receiveShadow = true;
   g.add(spoonBowl);
 
