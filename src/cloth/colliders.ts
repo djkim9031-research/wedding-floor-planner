@@ -139,8 +139,10 @@ function slabsFor(it: PlacedItem, items: PlacedItem[]): SlabDef[] {
   if (it.type === 'setting') {
     const m = mountTop(items, it.x, it.z);
     return [
-      { ox: -1.5, oz: 0, hx: 5.5, hz: 5.5, top: m + 2.4, sideBottom: m, ejectBelow: m, band: 3 }, // plate stack + menu
-      { ox: 7, oz: -2.5, hx: 3, hz: 4.5, top: m + 8, sideBottom: m, ejectBelow: m, band: 6 }, // glassware
+      { ox: -1.5, oz: 0, hx: 5.4, hz: 5.4, top: m + 2.9, sideBottom: m, ejectBelow: m, band: 3 }, // plate + bowl stack
+      { ox: -9.2, oz: 0, hx: 2.3, hz: 4.4, top: m + 0.7, sideBottom: m, ejectBelow: m, band: 3 }, // napkin + menu
+      { ox: 9.2, oz: -1.2, hx: 2.4, hz: 1.7, top: m + 4.1, sideBottom: m, ejectBelow: m, band: 4 }, // mug
+      { ox: 5.4, oz: -6.6, hx: 1.6, hz: 1.6, top: m + 6.6, sideBottom: m, ejectBelow: m, band: 6 }, // goblet
     ];
   }
   if (isFigure(it.type)) {

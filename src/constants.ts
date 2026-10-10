@@ -559,7 +559,7 @@ export const PRESETS: PresetDef[] = [
       { type: 'chair', x: 351.3474343769902, z: 100.27980915899259, yawDeg: 270, set: 'Table Set 1' },
       { type: 'chair', x: 350.9500735156043, z: 125.28393353461696, yawDeg: 270, set: 'Table Set 1' },
       // south side: five seats at 23" (squeezed from four at ~25.5"); the
-      // outer covers stop just short of the end guests' glasses and B&B plates
+      // outer covers stop just short of the end guests' goblets and napkins
       { type: 'chair', x: 222, z: 152.6, yawDeg: 180, set: 'Table Set 1' },
       { type: 'chair', x: 245, z: 152.6, yawDeg: 180, set: 'Table Set 1' },
       { type: 'chair', x: 268, z: 152.6, yawDeg: 180, set: 'Table Set 1' },

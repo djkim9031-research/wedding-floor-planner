@@ -401,12 +401,15 @@ function buildScreen(): THREE.Group {
   return g;
 }
 
-/** One guest's rented setting: Lucca stoneware (10.75" dinner, 8" salad,
- * 6" B&B), water goblet, Nattie red-wine glass, Aspen stemless, linen napkin.
- * Glass is transparent and catches sun/candle light; plates shade softly. */
+/** One guest's rented setting, as on the rental order: Lucca Off White
+ * stoneware — 10¾" dinner plate, 8" salad plate on it, 9¾" wide-rim soup
+ * bowl on top (served first) and a 12 oz mug at the right — plus a 12 oz
+ * standard water goblet above the knife, and a linen napkin with the menu
+ * card at the left. Local +z faces the guest, +x is their right hand.
+ * Glass is transparent and catches sun/candle light; stoneware shades softly. */
 function buildSetting(): THREE.Group {
   const g = new THREE.Group();
-  const stoneware = tag(new THREE.MeshStandardMaterial({ color: 0xefe9dc, roughness: 0.55 }), 'ceramic', {}, 'stoneware');
+  const stoneware = tag(new THREE.MeshStandardMaterial({ color: 0xefe9dc, roughness: 0.5, side: THREE.DoubleSide }), 'ceramic', {}, 'stoneware');
   const glass = tag(new THREE.MeshPhysicalMaterial({
     color: 0xf2f7fa,
     transparent: true,
@@ -416,32 +419,78 @@ function buildSetting(): THREE.Group {
     side: THREE.DoubleSide,
     depthWrite: false,
   }), 'glass-tableware', { transmission: 1, ior: 1.5 }, 'tableGlass');
-  const plate = (r: number, x: number, z: number, y: number, h = 0.9) => {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(i2m(r), i2m(r * 0.82), i2m(h), 20), stoneware);
-    m.position.set(i2m(x), i2m(y + h / 2), i2m(z));
-    m.castShadow = m.receiveShadow = true;
+  // lathe a closed (r, y) profile in inches about the vertical axis at (x, z)
+  const turn = (pts: [number, number][], mat: THREE.Material, x: number, y: number, z: number, segs = 32, shadows = true) => {
+    const m = new THREE.Mesh(new THREE.LatheGeometry(pts.map(([r, h]) => new THREE.Vector2(i2m(r), i2m(h))), segs), mat);
+    m.position.set(i2m(x), i2m(y), i2m(z));
+    m.castShadow = m.receiveShadow = shadows;
     g.add(m);
+    return m;
   };
-  plate(10.75 / 2, -1.5, 0, 0); // dinner
-  plate(8 / 2, -1.5, 0, 0.9); // salad on top
-  plate(6 / 2, -1.5, -8.2, 0, 0.7); // B&B above the dinner plate
+  // plate: foot ring, flat well, flared rim rolled at the edge; top of the well
+  // sits 0.34" up, so the next piece stacks there
+  const PLATE_WELL = 0.34;
+  const plate = (dia: number, foot: number, well: number, rimH: number, y: number) => {
+    const R = dia / 2;
+    turn([
+      [0, 0.12], [foot - 0.2, 0.12], [foot, 0], [foot + 0.25, 0], [well, 0.12],
+      [R - 0.12, rimH - 0.1], [R, rimH], [R - 0.08, rimH + 0.1],
+      [R - 0.3, rimH + 0.02], [well - 0.1, PLATE_WELL], [0, PLATE_WELL],
+    ], stoneware, -1.5, y, 0);
+  };
+  plate(10.75, 3.6, 3.9, 0.85, 0); // dinner 10¾"
+  plate(8, 2.6, 2.9, 0.7, PLATE_WELL); // salad 8"
+  // soup bowl 9¾": ~2" deep 6" well with a broad flat rim
+  const bowlY = 2 * PLATE_WELL;
+  turn([
+    [0, 0.15], [1.7, 0.15], [1.9, 0], [2.15, 0], [2.9, 1.0], [3.3, 1.7], [4.75, 1.98],
+    [4.875, 2.08], [4.8, 2.18], [3.25, 1.9], [2.75, 1.05], [2.0, 0.42], [0, 0.38],
+  ], stoneware, -1.5, bowlY, 0);
 
-  // menu card crowning the plate stack: ivory face inside green bridal edges
-  const menuY = 1.8; // dinner + salad
+  // 12 oz mug Ø3¼" × 4", handle out to the guest's right
+  const MUG_X = 8.4;
+  const MUG_Z = -1.2;
+  turn([
+    [0, 0.1], [1.35, 0.1], [1.45, 0], [1.6, 0.06], [1.625, 0.5], [1.625, 3.94], [1.56, 4],
+    [1.48, 3.94], [1.48, 0.55], [1.3, 0.38], [0, 0.36],
+  ], stoneware, MUG_X, 0, MUG_Z, 28);
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(i2m(1.0), i2m(0.21), 8, 16, Math.PI), stoneware);
+  handle.rotation.z = -Math.PI / 2; // half-ring standing on the +x side
+  handle.position.set(i2m(MUG_X + 1.55), i2m(2.1), i2m(MUG_Z));
+  handle.castShadow = handle.receiveShadow = true;
+  g.add(handle);
+
+  // 12 oz standard water goblet: 6½" tall, foot Ø3", short stem, tulip bowl
+  turn([
+    [0, 0], [1.5, 0], [1.5, 0.12], [0.4, 0.3], [0.2, 0.7], [0.2, 2.3], [0.55, 2.6],
+    [1.2, 3.1], [1.6, 3.9], [1.65, 4.8], [1.55, 6.5],
+  ], glass, 5.4, 0, -6.6, 24, false);
+
+  // linen napkin at the left with the menu card laid on it: ivory face inside
+  // green bridal edges
+  const NAP_X = -9.2;
+  const napkin = new THREE.Mesh(
+    new THREE.BoxGeometry(i2m(3.6), i2m(0.5), i2m(8.4)),
+    tag(new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.85 }), 'linen', { sheen: 0.5 }, 'napkin'),
+  );
+  napkin.position.set(i2m(NAP_X), i2m(0.25), 0);
+  napkin.castShadow = napkin.receiveShadow = true;
+  g.add(napkin);
+  const menuY = 0.5;
   const menuGreen = tag(new THREE.MeshStandardMaterial({ color: 0x5c7053, roughness: 0.8 }), 'generic', {}, 'menuGreen');
   const menuIvory = tag(new THREE.MeshStandardMaterial({ color: 0xfbf8ef, roughness: 0.72 }), 'generic', {}, 'menuIvory');
   const menuBorder = new THREE.Mesh(new THREE.BoxGeometry(i2m(4.5), i2m(0.12), i2m(8.75)), menuGreen);
-  menuBorder.position.set(i2m(-1.5), i2m(menuY + 0.06), 0);
+  menuBorder.position.set(i2m(NAP_X), i2m(menuY + 0.06), 0);
   menuBorder.castShadow = menuBorder.receiveShadow = true;
   g.add(menuBorder);
   const menuFace = new THREE.Mesh(new THREE.BoxGeometry(i2m(4.06), i2m(0.08), i2m(8.31)), menuIvory);
-  menuFace.position.set(i2m(-1.5), i2m(menuY + 0.14), 0);
+  menuFace.position.set(i2m(NAP_X), i2m(menuY + 0.14), 0);
   menuFace.receiveShadow = true;
   g.add(menuFace);
   const ink = tag(new THREE.MeshStandardMaterial({ color: 0x76806b, roughness: 0.9 }), 'generic', {}, 'ink');
   const menuLine = (zOff: number, wIn: number) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(i2m(wIn), i2m(0.03), i2m(0.32)), ink);
-    m.position.set(i2m(-1.5), i2m(menuY + 0.19), i2m(zOff));
+    m.position.set(i2m(NAP_X), i2m(menuY + 0.19), i2m(zOff));
     g.add(m);
   };
   menuLine(-3.1, 2.3); // MENU header
@@ -449,26 +498,6 @@ function buildSetting(): THREE.Group {
   menuLine(-0.1, 2.7);
   menuLine(1.2, 3.1);
   menuLine(2.5, 2.4);
-  const stem = (x: number, z: number, bowlR: number, bowlH: number, stemH: number) => {
-    const s1 = new THREE.Mesh(new THREE.CylinderGeometry(i2m(0.22), i2m(1.2), i2m(stemH), 10), glass);
-    s1.position.set(i2m(x), i2m(stemH / 2), i2m(z));
-    g.add(s1);
-    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(i2m(bowlR * 0.94), i2m(bowlR * 0.62), i2m(bowlH), 14), glass);
-    bowl.position.set(i2m(x), i2m(stemH + bowlH / 2), i2m(z));
-    g.add(bowl);
-  };
-  stem(5.4, -6.6, 1.75, 3.6, 2.6); // water goblet 12 oz
-  stem(7.6, -3.4, 1.6, 4.4, 3.4); // Nattie 18 oz
-  const stemless = new THREE.Mesh(new THREE.CylinderGeometry(i2m(1.55), i2m(1.15), i2m(4.4), 14), glass);
-  stemless.position.set(i2m(8.3), i2m(2.2), i2m(0.6));
-  g.add(stemless);
-  const napkin = new THREE.Mesh(
-    new THREE.BoxGeometry(i2m(3.4), i2m(0.5), i2m(8.4)),
-    tag(new THREE.MeshStandardMaterial({ color: 0xfaf7f0, roughness: 0.85 }), 'linen', { sheen: 0.5 }, 'napkin'),
-  );
-  napkin.position.set(i2m(-8.6), i2m(0.25), i2m(0));
-  napkin.castShadow = napkin.receiveShadow = true;
-  g.add(napkin);
   return g;
 }
 
