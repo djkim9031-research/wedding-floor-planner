@@ -483,9 +483,10 @@ function buildSetting(): THREE.Group {
   // couple's own flatware, stainless, laid lengthwise (heads toward the table
   // centre): dinner + salad fork on the napkin, knife (blade in) and soup spoon
   const steel = tag(new THREE.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.25, metalness: 1 }), 'metal-stainless', {}, 'flatware');
+  const ON_LINEN = 0.3; // the draped linen rides a little above the setting's base
   const flat = (w: number, len: number, x: number, z: number, y: number, t = 0.12) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(i2m(w), i2m(t), i2m(len)), steel);
-    m.position.set(i2m(x), i2m(y + t / 2), i2m(z));
+    m.position.set(i2m(x), i2m(ON_LINEN + y + t / 2), i2m(z));
     m.castShadow = m.receiveShadow = true;
     g.add(m);
   };
@@ -504,7 +505,7 @@ function buildSetting(): THREE.Group {
   flat(0.36, 5.2, 6.5, 3.2 - 2.6, 0); // soup spoon handle
   const spoonBowl = new THREE.Mesh(new THREE.SphereGeometry(i2m(1), 14, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), steel);
   spoonBowl.scale.set(0.8, 0.28, 1.25);
-  spoonBowl.position.set(i2m(6.5), i2m(0.3), i2m(3.2 - 5.2 - 1.15));
+  spoonBowl.position.set(i2m(6.5), i2m(ON_LINEN + 0.3), i2m(3.2 - 5.2 - 1.15));
   spoonBowl.castShadow = spoonBowl.receiveShadow = true;
   g.add(spoonBowl);
 
@@ -524,18 +525,18 @@ function buildSetting(): THREE.Group {
   const menuGreen = tag(new THREE.MeshStandardMaterial({ color: 0x5c7053, roughness: 0.8 }), 'generic', {}, 'menuGreen');
   const menuIvory = tag(new THREE.MeshStandardMaterial({ color: 0xfbf8ef, roughness: 0.72 }), 'generic', {}, 'menuIvory');
   const menuBorder = new THREE.Mesh(new THREE.BoxGeometry(i2m(8.75), i2m(0.12), i2m(4.5)), menuGreen);
-  menuBorder.position.set(i2m(MENU_X), i2m(0.06), i2m(MENU_Z));
+  menuBorder.position.set(i2m(MENU_X), i2m(ON_LINEN + 0.06), i2m(MENU_Z));
   menuBorder.castShadow = menuBorder.receiveShadow = true;
   g.add(menuBorder);
   const menuFace = new THREE.Mesh(new THREE.BoxGeometry(i2m(8.31), i2m(0.08), i2m(4.06)), menuIvory);
-  menuFace.position.set(i2m(MENU_X), i2m(0.14), i2m(MENU_Z));
+  menuFace.position.set(i2m(MENU_X), i2m(ON_LINEN + 0.14), i2m(MENU_Z));
   menuFace.receiveShadow = true;
   g.add(menuFace);
   const ink = tag(new THREE.MeshStandardMaterial({ color: 0x76806b, roughness: 0.9 }), 'generic', {}, 'ink');
   const menuLine = (xOff: number, wIn: number) => {
     // text runs left to right as the guest reads it; lines stack toward them
     const m = new THREE.Mesh(new THREE.BoxGeometry(i2m(wIn), i2m(0.03), i2m(0.32)), ink);
-    m.position.set(i2m(MENU_X), i2m(0.19), i2m(MENU_Z + xOff));
+    m.position.set(i2m(MENU_X), i2m(ON_LINEN + 0.19), i2m(MENU_Z + xOff));
     g.add(m);
   };
   menuLine(-1.45, 2.3); // MENU header

@@ -141,9 +141,9 @@ function slabsFor(it: PlacedItem, items: PlacedItem[]): SlabDef[] {
     return [
       { ox: -1.5, oz: 0, hx: 5.4, hz: 5.4, top: m + 2.9, sideBottom: m, ejectBelow: m, band: 3 }, // plate + bowl stack
       { ox: -9.4, oz: 0, hx: 2.2, hz: 4.6, top: m + 0.8, sideBottom: m, ejectBelow: m, band: 3 }, // napkin + forks
-      { ox: 5.7, oz: -0.5, hx: 1.2, hz: 4.5, top: m + 0.6, sideBottom: m, ejectBelow: m, band: 2 }, // knife + spoon
+      { ox: 5.7, oz: -0.5, hx: 1.2, hz: 4.5, top: m + 0.9, sideBottom: m, ejectBelow: m, band: 2 }, // knife + spoon
       { ox: 9.6, oz: 1.9, hx: 2.2, hz: 2.2, top: m + 4.1, sideBottom: m, ejectBelow: m, band: 4 }, // mug
-      { ox: -1.6, oz: -8.6, hx: 4.4, hz: 2.3, top: m + 0.4, sideBottom: m, ejectBelow: m, band: 2 }, // menu card
+      { ox: -1.6, oz: -8.6, hx: 4.4, hz: 2.3, top: m + 0.7, sideBottom: m, ejectBelow: m, band: 2 }, // menu card
       { ox: 7.5, oz: -7.8, hx: 3.6, hz: 4.6, top: m + 8.8, sideBottom: m, ejectBelow: m, band: 6 }, // glassware
     ];
   }
